@@ -1,0 +1,64 @@
+<div class="toast-container" role="region" aria-label="Notificaciones">
+  @for (toast of toasts(); track trackById($index, toast)) {
+    <div
+      class="toast"
+      [class.toast--error]="toast.type === 'error'"
+      [class.toast--warning]="toast.type === 'warning'"
+      [class.toast--info]="toast.type === 'info'"
+      [class.toast--success]="toast.type === 'success'"
+      [attr.role]="toast.type === 'error' ? 'alert' : 'status'"
+      [attr.aria-live]="toast.type === 'error' ? 'assertive' : 'polite'"
+      aria-atomic="true"
+    >
+      <span class="toast__icon" aria-hidden="true">
+        @switch (toast.type) {
+          @case ('error') {
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="13"></line>
+              <line x1="12" y1="16.5" x2="12" y2="16.5"></line>
+            </svg>
+          }
+          @case ('warning') {
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="16.5" x2="12" y2="16.5"></line>
+            </svg>
+          }
+          @case ('success') {
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="9 12 12 15 17 9.5"></polyline>
+            </svg>
+          }
+          @default {
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="12" x2="12" y2="16"></line>
+              <line x1="12" y1="8" x2="12" y2="8"></line>
+            </svg>
+          }
+        }
+      </span>
+
+      <p class="toast__message">{{ toast.message }}</p>
+
+      @if (toast.count > 1) {
+        <span class="toast__count" aria-label="Repetido {{ toast.count }} veces">×{{ toast.count }}</span>
+      }
+
+      <button
+        type="button"
+        class="toast__close"
+        (click)="dismiss(toast.id)"
+        aria-label="Cerrar notificación"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+          <line x1="6" y1="18" x2="18" y2="6"></line>
+        </svg>
+      </button>
+    </div>
+  }
+</div>

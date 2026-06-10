@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "angular": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "angular/SKILL.md",
+      "computedHash": "9fed6bae43cb7f22234371d4f33a7eb6ea05630b87539ad6fe7903337d820690"
+    },
+    "clean-code": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/clean-code/SKILL.md",
+      "computedHash": "551e1ac1c416d9df11fce8bc613c3595794f1f5e634d20c5b3e257afded11ed7"
+    },
+    "database-architect": {
+      "source": "rmyndharis/antigravity-skills",
+      "sourceType": "github",
+      "skillPath": "skills/database-architect/SKILL.md",
+      "computedHash": "4200c80bbaa1c1ec1ef77363c99a87c3fe74c9768739e22ee41662c4d9621c02"
+    },
+    "java-spring-boot": {
+      "source": "pluginagentmarketplace/custom-plugin-java",
+      "sourceType": "github",
+      "skillPath": "skills/java-spring-boot/SKILL.md",
+      "computedHash": "c1d1523ec6ead1de3c7efd73e7a6041af983ef0dc38ae2050f75c6375ba6b7ae"
+    },
+    "oauth2-authentication": {
+      "source": "manutej/luxor-claude-marketplace",
+      "sourceType": "github",
+      "skillPath": "plugins/luxor-backend-toolkit/skills/oauth2-authentication/SKILL.md",
+      "computedHash": "8f46be5f2ce1a1967e4b9f7d8220cb58c70efd43dea088cb0725a0647f632a16"
+    }
+  }
+}

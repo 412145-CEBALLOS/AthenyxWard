@@ -1,0 +1,84 @@
+<aside class="sidebar" [class.open]="isOpen()"
+  [class.closing]="isClosing()" [class]="isOpen() ? 'large' : 'short'">
+    <div class="burger-container" [class]="isOpen() ? 'place-end' : 'place-center'">
+        <button class="hamburger" (click)="toggle()" [class.active]="isOpen()" aria-label="Abrir menú">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    </div>
+    @if (isOpen() && !isClosing()) {
+        <div>
+            <div class="sidebar-header">
+                <div class="profile">
+                    @if (user(); as u) {
+                        @if (u.pictureUrl) {
+                            <img [src]="u.pictureUrl" [alt]="u.name" class="profile-base avatar" />
+                        } @else {
+                            <div class="profile-base placeholder">{{ u.name.charAt(0) }}</div>
+                        }
+                    }
+                </div>
+                    @if (user(); as u) {
+                    <div>
+                        <span class="profile-name">{{ u.name }}</span>
+                        <p class="profile-email">{{ u.email }}</p>
+                    </div>
+                } @else {
+                    <h2>Usuario</h2>
+                }
+            </div>
+            <nav class="buttons-container">
+                <div class="btns-sub-container">
+                    <span>PRINCIPAL</span>
+                    <a (click)="toggle()" routerLink="home" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" title="Inicio">
+                        <i class="ti ti-home"></i> Inicio
+                    </a>
+                </div>
+                <div class="btns-sub-container">
+                    <span>ANÁLISIS</span>
+                    <a (click)="toggle()" routerLink="history" routerLinkActive="active" title="Historial de análisis">
+                        <i class="ti ti-history"></i> Historial de análisis
+                    </a>
+                    <a (click)="toggle()" routerLink="stats" routerLinkActive="active" title="Estadísticas">
+                        <i class="ti ti-chart-bar"></i> Estadísticas
+                    </a>
+                </div>
+                <div class="btns-sub-container">
+                    <span>CUENTA</span>
+                    <a (click)="toggle()" routerLink="plan" routerLinkActive="active" title="Mi plan">
+                        <i class="ti ti-credit-card"></i> Mi plan
+                    </a>
+                    @if (this.user()?.role !== 'TRIAL') {
+                        <a (click)="toggle()" routerLink="reminders" routerLinkActive="active" title="Recordatorios">
+                            <i class="ti ti-calendar-event"></i> Recordatorios
+                        </a>
+                        <a (click)="toggle()" routerLink="important" routerLinkActive="active" title="Correos importantes">
+                            <i class="ti ti-flag-3"></i> Correos importantes
+                        </a>
+                    }
+                    <a (click)="toggle()" routerLink="settings" routerLinkActive="active" title="Configuración">
+                        <i class="ti ti-settings"></i> Configuración
+                    </a>
+                    <a (click)="toggle()" routerLink="help" routerLinkActive="active" title="Centro de ayuda">
+                        <i class="ti ti-help-circle"></i> Centro de ayuda
+                    </a>
+                </div>
+                @if (this.user()?.role === 'ADMIN') {
+                    <div class="btns-sub-container nav-last-children">
+                        <span>ADMIN</span>
+                        <a (click)="toggle()" routerLink="admin/users" routerLinkActive="active" title="Gestión de usuarios">
+                            <i class="ti ti-user-cog"></i> Gestión de usuarios
+                        </a>
+                        <a (click)="toggle()" routerLink="admin/audit" routerLinkActive="active" title="Registros/Auditoría">
+                            <i class="ti ti-news"></i> Registros/Auditoría
+                        </a>
+                        <a (click)="toggle()" routerLink="admin/settings" routerLinkActive="active" title="Configuración global">
+                            <i class="ti ti-settings-2"></i> Configuración global
+                        </a>
+                    </div>
+                }
+            </nav>
+        </div>
+    }
+</aside>

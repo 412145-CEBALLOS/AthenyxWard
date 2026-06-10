@@ -1,0 +1,43 @@
+:host {
+  display: block;
+}
+
+.viewer-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
+  box-shadow: 0 8px 40px rgba(59, 130, 246, 0.08), 0 2px 12px rgba(0, 0, 0, 0.04);
+  overflow: visible;
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.viewer-subject {
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+}
+
+.viewer-subject h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.viewer-body {
+  padding: 24px 28px 28px;
+}
+
+@media (max-width: 720px) {
+  .viewer-body {
+    padding: 0;
+  }
+}

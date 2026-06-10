@@ -1,0 +1,23 @@
+<section class="page-shell">
+  <header class="page-header">
+    <div class="page-header-text">
+      <i class="ti {{ icon() }} page-icon"></i>
+      <div>
+        <h1 class="page-title">{{ title() }}</h1>
+        @if (subtitle()) {
+          <p class="page-subtitle">{{ subtitle() }}</p>
+        }
+      </div>
+    </div>
+    @if (demo()) {
+      <span class="demo-badge" title="Datos de demostración">
+        <i class="ti ti-info-circle"></i>
+        Datos de demostración
+      </span>
+    }
+  </header>
+
+  <div class="page-content">
+    <ng-content></ng-content>
+  </div>
+</section>

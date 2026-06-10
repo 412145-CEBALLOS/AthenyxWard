@@ -1,0 +1,29 @@
+<div class="paginator">
+  @if (canJumpFirst()) {
+    <span
+      class="paginator-btn"
+      title="Primera página"
+      (click)="jumpFirst()">←</span>
+  }
+  <span
+    class="paginator-btn"
+    [class.btn-disabled]="!canJumpPrevFive()"
+    title="Retroceder 5 páginas"
+    (click)="canJumpPrevFive() && jumpPrevFive()">«</span>
+  <span
+    class="paginator-btn"
+    [class.btn-disabled]="!canJumpPrev()"
+    title="Página anterior"
+    (click)="canJumpPrev() && jumpPrev()">‹</span>
+  <span class="paginator-info">{{ currentPage() + 1 }}</span>
+  <span
+    class="paginator-btn"
+    [class.btn-disabled]="!canJumpNext()"
+    title="Página siguiente"
+    (click)="canJumpNext() && jumpNext()">›</span>
+  <span
+    class="paginator-btn"
+    [class.btn-disabled]="!canJumpNextFive()"
+    title="Avanzar 5 páginas"
+    (click)="canJumpNextFive() && jumpNextFive()">»</span>
+</div>

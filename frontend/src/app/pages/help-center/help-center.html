@@ -1,0 +1,24 @@
+<app-page-shell
+  icon="ti ti-help-circle"
+  title="Centro de ayuda"
+  subtitle="Preguntas frecuentes y respuestas rápidas.">
+
+  <div class="help-card">
+    @for (group of faqs(); track group.category) {
+      <section class="help-group">
+        <h2 class="help-category">{{ group.category }}</h2>
+        <div class="help-items">
+          @for (item of group.items; track item.q) {
+            <details class="help-item">
+              <summary class="help-question">
+                <span>{{ item.q }}</span>
+                <i class="ti ti-chevron-down help-chevron"></i>
+              </summary>
+              <p class="help-answer">{{ item.a }}</p>
+            </details>
+          }
+        </div>
+      </section>
+    }
+  </div>
+</app-page-shell>

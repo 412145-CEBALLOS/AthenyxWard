@@ -1,0 +1,43 @@
+<app-page-shell
+  icon="ti ti-flag-3"
+  title="Correos importantes"
+  subtitle="Mensajes que has marcado como prioritarios para revisarlos más tarde.">
+
+  @if (emails().length === 0) {
+    <div class="important-empty">
+      <i class="ti ti-flag-off"></i>
+      <p>No tienes correos marcados como importantes.</p>
+      <span>Marca mensajes desde la bandeja para que aparezcan aquí.</span>
+    </div>
+  } @else {
+    <ul class="important-list">
+      @for (email of emails(); track email.id) {
+        <li class="important-item">
+          <div class="important-flag">
+            <i class="ti ti-flag-3-filled"></i>
+          </div>
+          <div class="important-body">
+            <div class="important-top-row">
+              <span class="important-sender">{{ email.sender }}</span>
+              <span class="important-date">{{ email.receivedAt }}</span>
+            </div>
+            <span class="important-subject">{{ email.subject }}</span>
+            <p class="important-snippet">{{ email.snippet }}</p>
+            <div class="important-footer">
+              <span class="important-risk" [attr.data-low]="email.risk < 30">
+                Riesgo: {{ email.risk }}%
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="important-unmark"
+            title="Quitar de importantes"
+            (click)="unmark(email.id)">
+            <i class="ti ti-x"></i>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-page-shell>

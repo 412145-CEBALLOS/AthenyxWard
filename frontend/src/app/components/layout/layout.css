@@ -1,0 +1,19 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  flex: 1;
+  overflow-y: hidden;
+}
+
+.sidebar-margin {
+  margin-left: 52px;
+}

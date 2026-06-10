@@ -1,0 +1,79 @@
+@if (showTrialExpiredModal()) {
+  <div class="modal-overlay">
+    <div class="modal-card">
+      <h2>Período de prueba terminado</h2>
+      <p>Tu período de prueba ha finalizado.</p>
+      <button class="btn-primary" (click)="dismissTrialExpiredModal()">OK</button>
+    </div>
+  </div>
+}
+
+<div class="home-container">
+  <aside class="email-box" [class.ocult]="mobileEmailDetail()">
+    <div class="email-box-header">
+      <div class="email-box-title-row">
+        <i class="ti ti-mail email-box-icon"></i>
+        <h2>Bandeja de entrada</h2>
+      </div>
+    </div>
+
+    @if (hasEmails() && !loading()) {
+      <app-email-paginator
+        [currentPage]="currentPage()"
+        [hasNextPage]="hasNextPage()"
+        [lastKnownPage]="lastKnownPage()"
+        (page)="goToPage($event)" />
+    }
+
+    @if (loading()) {
+      <div class="email-loading">
+        <span class="spinner large"></span>
+        <span>Cargando correos...</span>
+      </div>
+    } @else if (emails().length === 0) {
+      <div class="email-empty">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="#cbd5e1" stroke-width="1.5"/>
+          <polyline points="22,6 12,13 2,6" stroke="#cbd5e1" stroke-width="1.5"/>
+        </svg>
+        <p>No hay correos aún</p>
+        <span>Los correos aparecerán aquí automáticamente</span>
+      </div>
+    } @else {
+      <app-email-list
+        [emails]="emails()"
+        [selectedGmailId]="selectedEmail()?.gmailId ?? null"
+        (select)="selectEmail($event)" />
+    }
+  </aside>
+
+  <main class="viewer" [class.ocult]="!mobileEmailDetail()">
+    <div class="back-button">
+      <button (click)="this.mobileEmailDetail.set(false);">Volver</button>
+    </div>
+
+    @if (selectedEmail(); as email) {
+      <app-email-viewer
+        [email]="email"
+        [analysis]="analysisResult()"
+        [state]="analysisState()"
+        [accessibilityMode]="accessibilityMode()"
+        [isPremium]="isPremium()"
+        (hide)="onEmailHide()"
+        (delete)="onEmailDelete()"
+        (markPhishing)="onEmailMarkPhishing()"
+        (markImportant)="onEmailMarkImportant()"
+        (createReminder)="onEmailCreateReminder()"
+        (retry)="onEmailAnalysisRetry()" />
+    } @else {
+      <div class="viewer-empty">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="#94a3b8" stroke-width="1.5"/>
+          <polyline points="22,6 12,13 2,6" stroke="#94a3b8" stroke-width="1.5"/>
+        </svg>
+        <p>Selecciona un correo para verlo</p>
+        <span>Aquí aparecerá el contenido del correo seleccionado</span>
+      </div>
+    }
+  </main>
+</div>

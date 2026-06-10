@@ -1,0 +1,64 @@
+<header class="header">
+  <div class="header-brand">
+    <svg class="brand-icon" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" fill="#60a5fa"/>
+      <path d="M2 17l10 5 10-5" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"/>
+      <path d="M2 12l10 5 10-5" stroke="#93c5fd" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span class="header-logo">Athenyx Ward</span>
+  </div>
+
+  <div class="burger-container">
+        <button class="hamburger" (click)="toggleSidebarButton()" aria-label="Abrir menú">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+  </div>
+
+  <div class="header-actions">
+    <div class="header-search">
+      <i class="ti ti-search header-search-icon" aria-hidden="true"></i>
+      <input type="text" placeholder="Buscar..." aria-label="Buscar" />
+    </div>
+  </div>
+
+  <div class="notifications-wrapper" (keydown.escape)="closeNotifications()">
+    <button class="notifications-btn"
+            type="button"
+            (click)="toggleNotifications()"
+            [attr.aria-expanded]="notificationsOpen()"
+            aria-haspopup="true"
+            aria-label="Notificaciones">
+      <i class="ti ti-bell" aria-hidden="true"></i>
+    </button>
+
+    @if (notificationsOpen()) {
+      <div class="notifications-panel" role="dialog" aria-label="Notificaciones">
+        <div class="notifications-panel-header">Notificaciones</div>
+        <p class="notifications-panel-empty">No tienes notificaciones</p>
+      </div>
+    }
+  </div>
+
+  <div class="header-profile">
+    @if (user(); as u) {
+      <div class="profile-info">
+        <span class="profile-name">{{ u.name }}</span>
+        <span class="profile-role">{{ u.role === 'PREMIUM' ? 'Premium' : u.role === 'TRIAL' ? 'VERSIÓN DE PRUEBA' : 'Admin' }}</span>
+      </div>
+      @if (u.pictureUrl) {
+        <img [src]="u.pictureUrl" [alt]="u.name" class="profile-avatar" />
+      } @else {
+        <div class="profile-avatar-placeholder">{{ u.name.charAt(0) }}</div>
+      }
+    }
+    <button class="header-logout" (click)="logout()" title="Cerrar sesión">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16,17 21,12 16,7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+    </button>
+  </div>
+</header>

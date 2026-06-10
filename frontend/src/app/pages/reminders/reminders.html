@@ -1,0 +1,42 @@
+<app-page-shell
+  icon="ti ti-calendar-event"
+  title="Recordatorios"
+  subtitle="Tus próximos pendientes basados en correos importantes.">
+
+  @if (reminders().length === 0) {
+    <div class="reminders-empty">
+      <i class="ti ti-calendar-off"></i>
+      <p>No tienes recordatorios pendientes.</p>
+    </div>
+  } @else {
+    <ul class="reminders-list">
+      @for (reminder of reminders(); track reminder.id) {
+        <li class="reminder-item" [class.done]="reminder.done">
+          <button
+            type="button"
+            class="reminder-check"
+            [attr.aria-label]="reminder.done ? 'Marcar como pendiente' : 'Marcar como completado'"
+            (click)="toggle(reminder.id)">
+            <i class="ti" [class.ti-circle]="!reminder.done" [class.ti-circle-check-filled]="reminder.done"></i>
+          </button>
+          <div class="reminder-body">
+            <span class="reminder-title">{{ reminder.title }}</span>
+            <span class="reminder-subject">{{ reminder.emailSubject }}</span>
+            <span class="reminder-due">
+              <i class="ti ti-clock"></i>
+              {{ reminder.dueAt }}
+            </span>
+          </div>
+          <button
+            type="button"
+            class="reminder-remove"
+            aria-label="Eliminar recordatorio"
+            title="Eliminar"
+            (click)="remove(reminder.id)">
+            <i class="ti ti-trash"></i>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-page-shell>

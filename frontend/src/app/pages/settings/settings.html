@@ -1,0 +1,36 @@
+<app-page-shell
+  icon="ti ti-settings"
+  title="Configuración"
+  subtitle="Personaliza tu experiencia en Athenyx Ward.">
+
+  <div class="settings-card">
+    @for (setting of settings(); track setting.key) {
+      <div class="settings-row">
+        <div class="settings-text">
+          <span class="settings-label">{{ setting.label }}</span>
+          <p class="settings-description">{{ setting.description }}</p>
+        </div>
+        <div class="settings-control">
+          @if (setting.kind === 'toggle') {
+            <label class="switch">
+              <input
+                type="checkbox"
+                [checked]="setting.value === true"
+                (change)="onToggle(setting.key, $any($event.target).checked)" />
+              <span class="switch-slider"></span>
+            </label>
+          } @else if (setting.kind === 'select' && setting.options) {
+            <select
+              class="select"
+              [value]="setting.value"
+              (change)="onSelect(setting.key, $any($event.target).value)">
+              @for (opt of setting.options; track opt) {
+                <option [value]="opt">{{ opt === 'es' ? 'Español' : 'English' }}</option>
+              }
+            </select>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</app-page-shell>

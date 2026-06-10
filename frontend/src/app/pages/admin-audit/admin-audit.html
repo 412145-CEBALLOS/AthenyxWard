@@ -1,0 +1,32 @@
+<app-page-shell
+  icon="ti ti-news"
+  title="Registros / Auditoría"
+  subtitle="Trazabilidad de las acciones realizadas en la plataforma.">
+
+  <div class="audit-card">
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Actor</th>
+          <th>Acción</th>
+          <th>Objetivo</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr>
+            <td class="td-date">{{ entry.at }}</td>
+            <td>{{ entry.actor }}</td>
+            <td>
+              <span class="action-chip" [attr.data-action]="entry.action">
+                {{ entry.action }}
+              </span>
+            </td>
+            <td class="td-target">{{ entry.target }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</app-page-shell>

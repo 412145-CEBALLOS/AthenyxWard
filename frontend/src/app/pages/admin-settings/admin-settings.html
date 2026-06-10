@@ -1,0 +1,42 @@
+<app-page-shell
+  icon="ti ti-settings-2"
+  title="Configuración global"
+  subtitle="Parámetros que afectan a todos los usuarios de la plataforma.">
+
+  <div class="admin-settings-card">
+    @for (setting of settings(); track setting.key) {
+      <div class="admin-settings-row">
+        <div class="admin-settings-text">
+          <span class="admin-settings-label">{{ setting.label }}</span>
+          <p class="admin-settings-description">{{ setting.description }}</p>
+        </div>
+        <div class="admin-settings-control">
+          @if (setting.kind === 'toggle') {
+            <label class="switch">
+              <input
+                type="checkbox"
+                [checked]="setting.value === true"
+                (change)="onToggle(setting.key, $any($event.target).checked)" />
+              <span class="switch-slider"></span>
+            </label>
+          } @else {
+            <input
+              type="number"
+              class="number-input"
+              [value]="setting.value"
+              (input)="onNumber(setting.key, $any($event.target).value)" />
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="admin-settings-footer">
+    <button type="button" class="btn-secondary" (click)="reset()" [disabled]="!hasChanges()">
+      Descartar cambios
+    </button>
+    <button type="button" class="btn-primary" (click)="save()" [disabled]="!hasChanges()">
+      Guardar cambios
+    </button>
+  </div>
+</app-page-shell>

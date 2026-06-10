@@ -1,0 +1,53 @@
+<app-page-shell
+  icon="ti ti-user-cog"
+  title="Gestión de usuarios"
+  subtitle="Administra las cuentas registradas en la plataforma.">
+
+  <div class="users-card">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Rol</th>
+          <th>Último acceso</th>
+          <th>Estado</th>
+          <th class="th-actions">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (user of users(); track user.id) {
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar">{{ user.name.charAt(0) }}</div>
+                <div>
+                  <span class="user-name">{{ user.name }}</span>
+                  <span class="user-email">{{ user.email }}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="role-badge" [attr.data-role]="user.role">
+                {{ roleLabel(user.role) }}
+              </span>
+            </td>
+            <td class="td-date">{{ user.lastLogin }}</td>
+            <td>
+              <span class="status-dot" [attr.data-active]="user.active"></span>
+              {{ user.active ? 'Activo' : 'Inactivo' }}
+            </td>
+            <td class="td-actions">
+              <button
+                type="button"
+                class="action-btn"
+                [title]="user.active ? 'Desactivar' : 'Activar'"
+                (click)="toggleActive(user.id)">
+                <i class="ti" [class.ti-user-off]="user.active" [class.ti-user-check]="!user.active"></i>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</app-page-shell>

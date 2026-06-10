@@ -1,0 +1,23 @@
+<div class="viewer-card">
+  <app-email-viewer-header [email]="email()" />
+  <app-email-analysis
+    [analysis]="analysis()"
+    [state]="state()"
+    [accessibilityMode]="accessibilityMode()"
+    [isPremium]="isPremium()"
+    [trialRemaining]="null"
+    (hide)="hide.emit()"
+    (delete)="delete.emit()"
+    (markPhishing)="markPhishing.emit()"
+    (markImportant)="markImportant.emit()"
+    (createReminder)="createReminder.emit()"
+    (retry)="retry.emit()" />
+  <div class="viewer-subject">
+    <h2>{{ email().subject }}</h2>
+  </div>
+  <div class="viewer-body">
+    <app-email-body
+      [htmlContent]="email().htmlContent"
+      [contentForAnalysis]="email().contentForAnalysis" />
+  </div>
+</div>

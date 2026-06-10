@@ -1,0 +1,124 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.history-card {
+  display: flex;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.history-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
+}
+
+.history-bar {
+  width: 4px;
+  flex-shrink: 0;
+  background: #94a3b8;
+}
+
+.history-card[data-level="GREEN"] .history-bar { background: #10b981; }
+.history-card[data-level="YELLOW"] .history-bar { background: #f59e0b; }
+.history-card[data-level="RED"] .history-bar { background: #ef4444; }
+
+.history-body {
+  flex: 1;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.history-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.history-sender {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-date {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.history-subject {
+  font-size: 0.85rem;
+  color: #334155;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-summary {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.history-footer {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  letter-spacing: 0.2px;
+}
+
+.risk-badge[data-level="GREEN"] {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+}
+
+.risk-badge[data-level="YELLOW"] {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+.risk-badge[data-level="RED"] {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}

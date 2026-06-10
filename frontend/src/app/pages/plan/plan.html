@@ -1,0 +1,39 @@
+<app-page-shell
+  icon="ti ti-credit-card"
+  title="Mi plan"
+  subtitle="Gestiona tu suscripción y descubre las ventajas disponibles.">
+
+  <div class="plan-grid">
+    @for (plan of plans(); track plan.name) {
+      <article class="plan-card" [class.highlight]="plan.highlight" [class.current]="isCurrent(plan)">
+        @if (plan.highlight) {
+          <span class="plan-ribbon">Más popular</span>
+        }
+        <header class="plan-header">
+          <h2 class="plan-name">{{ plan.displayName }}</h2>
+          <div class="plan-price">
+            <span class="plan-amount">{{ plan.price }}</span>
+            <span class="plan-period">/ {{ plan.period }}</span>
+          </div>
+        </header>
+        <ul class="plan-features">
+          @for (feature of plan.features; track feature) {
+            <li>
+              <i class="ti ti-check plan-check"></i>
+              {{ feature }}
+            </li>
+          }
+        </ul>
+        <div class="plan-footer">
+          @if (isCurrent(plan)) {
+            <span class="plan-current-badge">Tu plan actual</span>
+          } @else {
+            <button type="button" class="plan-cta" (click)="onSelect(plan.name)">
+              Cambiar a {{ plan.displayName }}
+            </button>
+          }
+        </div>
+      </article>
+    }
+  </div>
+</app-page-shell>

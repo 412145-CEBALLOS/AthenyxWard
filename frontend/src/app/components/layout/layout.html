@@ -1,0 +1,10 @@
+<div class="layout">
+    <app-header (toggleSidebar)="toggleSidebar()"/>
+    <div class="body">
+        <app-sidebar #sidebarRef
+            [isOpen]="sidebarOpen"
+            [isClosing]="sidebarClosing"
+            (toggleSidebar)="toggleSidebar()"/>
+        <router-outlet [class.sidebar-margin]="sidebarOpen"></router-outlet>
+    </div>
+</div>

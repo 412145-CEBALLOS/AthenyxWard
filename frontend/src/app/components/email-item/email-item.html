@@ -1,0 +1,21 @@
+<li
+  class="email-item"
+  [class.selected]="selected()"
+  [class.unread]="unread()"
+  (click)="onClick()">
+  <app-sender-avatar
+    size="sm"
+    [sender]="email().sender"
+    [senderName]="email().senderName" />
+  <div class="email-content">
+    <div class="email-top-row">
+      <span class="email-sender">{{ email().senderName || email().sender }}</span>
+      <span class="email-date">{{ email() | emailDate: false }}</span>
+    </div>
+    <span class="email-subject">{{ email().subject }}</span>
+    <span class="email-snippet">{{ email().snippet }}</span>
+  </div>
+  @if (unread()) {
+    <span class="unread-dot"></span>
+  }
+</li>

@@ -1,0 +1,12 @@
+@if (htmlContent(); as html) {
+  @if (safeHtml(); as safe) {
+    <iframe
+      sandbox="allow-scripts"
+      [srcdoc]="safe"
+      style="width:100%; border:none; display:block;"
+      scrolling="no">
+    </iframe>
+  }
+} @else {
+  <pre class="fallback-text">{{ contentForAnalysis() || 'Sin contenido disponible.' }}</pre>
+}

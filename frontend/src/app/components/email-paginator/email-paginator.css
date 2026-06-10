@@ -1,0 +1,42 @@
+:host {
+  display: block;
+}
+
+.paginator {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  display: flex;
+  place-items: center;
+  justify-content: center;
+  padding: 0.35rem 0;
+  gap: 4px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.paginator-btn {
+  color: white;
+  border: none;
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 0 0.5rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  background: transparent;
+}
+
+.paginator-btn:not(.btn-disabled):hover {
+  transform: translateY(-3px);
+}
+
+.btn-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.paginator-info {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: white;
+  padding: 0 10px;
+  min-width: 40px;
+  text-align: center;
+}

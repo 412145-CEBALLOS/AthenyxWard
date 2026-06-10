@@ -1,0 +1,8 @@
+<ul class="email-list">
+  @for (email of emails(); track email.gmailId) {
+    <app-email-item
+      [email]="email"
+      [selected]="selectedGmailId() === email.gmailId"
+      (select)="select.emit($event)" />
+  }
+</ul>

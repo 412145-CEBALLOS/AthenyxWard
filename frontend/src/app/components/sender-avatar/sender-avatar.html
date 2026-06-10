@@ -1,0 +1,22 @@
+<span
+  class="avatar"
+  [class.size-sm]="size() === 'sm'"
+  [class.size-md]="size() === 'md'"
+  [class.size-lg]="size() === 'lg'"
+  [class.has-gravatar]="state().kind === 'gravatar'"
+  [class.has-favicon]="state().kind === 'favicon'"
+  [style.--avatar-hue]="state().hue">
+  @if (showImage()) {
+    <img
+      #avatarImg
+      class="layer"
+      [class.loaded]="imageLoaded()"
+      [src]="imageUrl()"
+      alt=""
+      loading="lazy"
+      referrerpolicy="no-referrer"
+      (load)="onLoad()"
+      (error)="onError()" />
+  }
+  <span class="initials">{{ state().initials }}</span>
+</span>
