@@ -1,4 +1,5 @@
-import { Component, ElementRef, OnDestroy, OnInit, inject, signal, output } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject, signal, output, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -10,6 +11,7 @@ import { AuthService } from '../../services/auth.service';
 export class HeaderComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly elementRef = inject(ElementRef);
+  private readonly platformId = inject(PLATFORM_ID);
   readonly toggleSidebar = output<void>();
   readonly user = this.authService.user;
   readonly notificationsOpen = signal(false);
@@ -21,11 +23,15 @@ export class HeaderComponent implements OnInit, OnDestroy {
   };
 
   ngOnInit(): void {
-    document.addEventListener('click', this.onDocClick);
+    if (isPlatformBrowser(this.platformId)) {
+      document.addEventListener('click', this.onDocClick);
+    }
   }
 
   ngOnDestroy(): void {
-    document.removeEventListener('click', this.onDocClick);
+    if (isPlatformBrowser(this.platformId)) {
+      document.removeEventListener('click', this.onDocClick);
+    }
   }
 
   toggleSidebarButton() {

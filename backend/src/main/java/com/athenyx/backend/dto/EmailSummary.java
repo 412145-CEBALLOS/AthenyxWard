@@ -17,5 +17,6 @@ public record EmailSummary(
     LocalDateTime receivedAt,
     LocalDateTime fetchedAt,
     boolean isRead,
-    String originalDateHeader
+    String originalDateHeader,
+    boolean isImportant
 ) {}

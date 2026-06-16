@@ -9,7 +9,12 @@
     [senderName]="email().senderName" />
   <div class="email-content">
     <div class="email-top-row">
-      <span class="email-sender">{{ email().senderName || email().sender }}</span>
+      <span class="email-sender">
+        @if (email().isImportant) {
+          <i class="ti ti-flag-3-filled important-flag-icon" title="Marcado como importante"></i>
+        }
+        {{ email().senderName || email().sender }}
+      </span>
       <span class="email-date">{{ email() | emailDate: false }}</span>
     </div>
     <span class="email-subject">{{ email().subject }}</span>

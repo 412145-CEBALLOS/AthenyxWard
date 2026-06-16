@@ -55,6 +55,9 @@
                         </a>
                         <a (click)="toggle()" routerLink="important" routerLinkActive="active" title="Correos importantes">
                             <i class="ti ti-flag-3"></i> Correos importantes
+                            @if (importantCount() > 0) {
+                                <span class="important-badge">{{ importantCount() }}</span>
+                            }
                         </a>
                     }
                     <a (click)="toggle()" routerLink="settings" routerLinkActive="active" title="Configuración">

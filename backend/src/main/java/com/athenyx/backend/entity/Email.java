@@ -55,6 +55,9 @@ public class Email {
 
     private boolean isRead;
 
+    @Builder.Default
+    private boolean isImportant = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

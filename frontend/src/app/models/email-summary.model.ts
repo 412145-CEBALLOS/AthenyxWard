@@ -14,6 +14,7 @@ export interface EmailSummary {
   fetchedAt: string;
   isRead: boolean;
   originalDateHeader: string | null;
+  isImportant: boolean;
 }
 
 /**
@@ -33,6 +34,7 @@ export interface EmailDetail {
   fetchedAt: string;
   isRead: boolean;
   originalDateHeader: string | null;
+  isImportant: boolean;
 }
 
 /**
@@ -44,4 +46,9 @@ export interface EmailPageResponse {
   currentPage: number;
   pageSize: number;
   hasNextPage: boolean;
+}
+
+export interface ImportantToggleResponse {
+  emailId: number;
+  isImportant: boolean;
 }

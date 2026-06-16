@@ -1,11 +1,13 @@
 import { Component, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { EmailListComponent } from '../../components/email-list/email-list';
 import { EmailPaginatorComponent } from '../../components/email-paginator/email-paginator';
 import { EmailViewerComponent } from '../../components/email-viewer/email-viewer';
 import { EmailService } from '../../services/email.service';
 import { AuthService } from '../../services/auth.service';
 import { AvatarService } from '../../services/avatar.service';
+import { ToastService } from '../../services/toast.service';
+import { computeMockAnalysis } from '../../utils/email-risk.util';
 import { EmailDetail, EmailSummary, EmailPageResponse } from '../../models/email-summary.model';
 import { EmailAnalysisResult, AnalysisState } from '../../models/email-analysis.model';
 import { Subject, takeUntil } from 'rxjs';
@@ -24,6 +26,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly avatars = inject(AvatarService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly toast = inject(ToastService);
 
   readonly emails = signal<EmailSummary[]>([]);
   readonly selectedEmail = signal<EmailDetail | null>(null);
@@ -37,6 +41,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   readonly analysisState = signal<AnalysisState>('idle');
 
   readonly isPremium = computed(() => this.authService.user()?.role === 'PREMIUM');
+  readonly canMarkImportant = computed(() => this.authService.user()?.role !== 'TRIAL');
   readonly accessibilityMode = computed(() => this.authService.user()?.accessibilityMode ?? true);
 
   readonly mobileEmailDetail = signal(false);
@@ -46,6 +51,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly onDestroy = new Subject<void>();
   private readonly pageCache = new Map<number, EmailPageResponse>();
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingEmailId: number | null = null;
 
   ngOnInit(): void {
     const user = this.authService.user();
@@ -54,6 +60,13 @@ export class HomeComponent implements OnInit, OnDestroy {
     } else {
       this.fetchEmails(0);
     }
+    this.route.queryParamMap.pipe(takeUntil(this.onDestroy)).subscribe((params) => {
+      const emailIdParam = params.get('emailId');
+      if (emailIdParam) {
+        this.pendingEmailId = Number(emailIdParam);
+        this.tryConsumePendingSelection();
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -77,6 +90,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.hasNextPage.set(cached.hasNextPage);
       this.avatars.precompute(cached.emails.map((e) => e.sender));
       this.prefetchNextPage(page + 1);
+      this.tryConsumePendingSelection();
       return;
     }
 
@@ -94,6 +108,8 @@ export class HomeComponent implements OnInit, OnDestroy {
         if (!response.hasNextPage) {
           this.lastKnownPage.set(page);
         }
+        this.emailService.refreshImportantCount();
+        this.tryConsumePendingSelection();
       },
       error: () => {
         this.loading.set(false);
@@ -154,7 +170,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (detail) => {
         this.selectedEmail.set(detail);
-        this.analysisResult.set(this.buildMockAnalysis(detail));
+        this.emails.update((list) =>
+          list.map((e) => e.gmailId === email.gmailId ? { ...e, isImportant: detail.isImportant } : e)
+        );
+        this.analysisResult.set(computeMockAnalysis(detail));
         this.analysisState.set('ready');
       },
       error: () => {
@@ -163,66 +182,61 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  // TODO(Sprint 3): replace with real backend /api/emails/{id}/analysis call.
-  // Kept as a demo placeholder so the analysis panel renders for the next sprint review.
-  private buildMockAnalysis(detail: EmailDetail): EmailAnalysisResult {
-    const senderDomain = (detail.sender.split('@')[1] ?? '').toLowerCase();
-    const displayName = detail.senderName?.trim() || detail.sender;
-    const displayMismatch = !!detail.senderName &&
-      detail.senderName.length > 0 &&
-      !detail.sender.toLowerCase().includes(displayName.toLowerCase().split(' ')[0] ?? '__');
-    const riskPercentage = displayMismatch || senderDomain.includes('verify') ? 78 : 22;
-    const riskLevel: EmailAnalysisResult['riskLevel'] =
-      riskPercentage < 40 ? 'GREEN' : riskPercentage < 70 ? 'YELLOW' : 'RED';
+  private tryConsumePendingSelection(): void {
+    if (this.pendingEmailId == null) return;
+    const found = this.emails().find((e) => e.id === this.pendingEmailId);
+    if (found) {
+      this.selectEmail(found);
+    } else {
+      this.openStandaloneEmail(this.pendingEmailId);
+    }
+    this.pendingEmailId = null;
+  }
 
-    return {
-      analysisId: detail.id,
-      emailId: detail.id,
-      riskPercentage,
-      riskLevel,
-      threatCategories: riskLevel === 'GREEN'
-        ? []
-        : ['PHISHING', 'DANGEROUS_LINK', 'SOCIAL_ENGINEERING'],
-      heuristicFindings: [
-        { rule: 'urgent-language', description: 'Tono de urgencia artificial detectado', score: 25 },
-        { rule: 'domain-mismatch', description: 'Dominio del remitente no coincide con la marca', score: 30 },
-      ],
-      suspiciousUrls: riskLevel === 'GREEN' ? [] : [
-        {
-          raw: 'http://banc0-verify.example/login',
-          resolvedDomain: 'banc0-verify.example',
-          reason: 'Dominio no oficial del banco declarado.',
-        },
-      ],
-      senderTrust: {
-        sender: detail.sender,
-        displayName,
-        domain: senderDomain,
-        displayMismatch,
-        spf: riskLevel === 'GREEN' ? 'PASS' : 'FAIL',
-        dkim: riskLevel === 'GREEN' ? 'PASS' : 'NEUTRAL',
+  private openStandaloneEmail(emailId: number): void {
+    this.mobileEmailDetail.set(true);
+    this.selectedEmail.set(null);
+    this.analysisResult.set(null);
+    this.analysisState.set('loading');
+    this.emailService.getEmailDetail(emailId).pipe(
+      takeUntil(this.onDestroy)
+    ).subscribe({
+      next: (detail) => {
+        this.selectedEmail.set(detail);
+        this.analysisResult.set(computeMockAnalysis(detail));
+        this.analysisState.set('ready');
       },
-      aiExplanation: riskLevel === 'GREEN'
-        ? 'El correo proviene de un remitente conocido y no presenta indicadores de riesgo.'
-        : 'El correo simula ser una notificación urgente de un banco, solicita verificar identidad mediante un enlace externo y genera presión temporal para forzar la acción.',
-      contentSummary: detail.snippet || 'Sin resumen disponible.',
-      recommendedActions: riskLevel === 'GREEN'
-        ? [{ label: 'No se requieren acciones especiales.' }]
-        : [
-            { label: 'No hacer clic en los enlaces del correo.' },
-            { label: 'Contactar al banco por canales oficiales.' },
-            { label: 'Marcar como phishing y eliminar.' },
-          ],
-      analyzedAt: new Date().toISOString(),
-      source: 'HYBRID',
-      modelName: 'llama3',
-    };
+      error: () => {
+        this.analysisState.set('error');
+      },
+    });
   }
 
   onEmailHide(): void { console.warn('TODO Sprint 3: hide email'); }
   onEmailDelete(): void { console.warn('TODO Sprint 3: delete email'); }
   onEmailMarkPhishing(): void { console.warn('TODO Sprint 3: mark as phishing'); }
-  onEmailMarkImportant(): void { console.warn('TODO Sprint 3: mark important (premium)'); }
+  onEmailMarkImportant(): void {
+    const email = this.selectedEmail();
+    if (!email) return;
+    this.emailService.toggleImportant(email.id).pipe(
+      takeUntil(this.onDestroy)
+    ).subscribe({
+      next: (res) => {
+        this.emails.update((list) =>
+          list.map((e) => e.id === email.id ? { ...e, isImportant: res.isImportant } : e)
+        );
+        this.selectedEmail.update((e) => e ? { ...e, isImportant: res.isImportant } : e);
+        if (res.isImportant) {
+          this.toast.success('Correo marcado como importante.');
+        } else {
+          this.toast.info('Correo removido de importantes.');
+        }
+      },
+      error: () => {
+        this.toast.error('No se pudo cambiar el estado de importante. Intenta de nuevo.');
+      },
+    });
+  }
   onEmailCreateReminder(): void { console.warn('TODO Sprint 3: create reminder (premium)'); }
 
   // TODO(Sprint 3): remove mock; wire to real backend retry flow.
@@ -235,7 +249,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.retryTimer = null;
       const live = this.selectedEmail();
       if (!live) return;
-      this.analysisResult.set(this.buildMockAnalysis(live));
+      this.analysisResult.set(computeMockAnalysis(live));
       this.analysisState.set('ready');
     }, 600);
   }

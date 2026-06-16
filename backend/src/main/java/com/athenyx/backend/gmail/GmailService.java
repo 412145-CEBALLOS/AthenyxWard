@@ -1,6 +1,7 @@
 package com.athenyx.backend.gmail;
 
 import com.athenyx.backend.dto.EmailDetail;
+import com.athenyx.backend.dto.EmailImportantToggleResponse;
 import com.athenyx.backend.dto.EmailPageResponse;
 import com.athenyx.backend.dto.EmailSummary;
 import com.athenyx.backend.entity.Email;
@@ -235,8 +236,47 @@ public class GmailService {
                 email.getReceivedAt(),
                 email.getFetchedAt(),
                 email.isRead(),
-                email.getOriginalDateHeader()
+                email.getOriginalDateHeader(),
+                email.isImportant()
         );
+    }
+
+    public List<EmailSummary> getImportantEmails(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new RuntimeException("Usuario no encontrado");
+        }
+        List<Email> emails = emailRepository.findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(userId);
+        return emails.stream().map(email -> new EmailSummary(
+                email.getId(),
+                email.getGmailId(),
+                email.getSender(),
+                email.getSenderName(),
+                email.getSubject(),
+                email.getSnippet(),
+                email.getReceivedAt(),
+                email.getFetchedAt(),
+                email.isRead(),
+                email.getOriginalDateHeader(),
+                email.isImportant()
+        )).toList();
+    }
+
+    public long getImportantEmailCount(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new RuntimeException("Usuario no encontrado");
+        }
+        return emailRepository.countByUserIdAndIsImportantTrue(userId);
+    }
+
+    public EmailImportantToggleResponse toggleImportant(Long userId, Long emailId) {
+        Email email = emailRepository.findById(emailId)
+                .orElseThrow(() -> new RuntimeException("Correo no encontrado"));
+        if (!email.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Acceso denegado");
+        }
+        email.setImportant(!email.isImportant());
+        emailRepository.save(email);
+        return new EmailImportantToggleResponse(emailId, email.isImportant());
     }
 
     private Gmail buildGmailService(User user) throws GeneralSecurityException, IOException {
@@ -356,7 +396,8 @@ public class GmailService {
                 receivedAt,
                 fetchedAt,
                 email.isRead(),
-                dateStr
+                dateStr,
+                email.isImportant()
         );
     }
 

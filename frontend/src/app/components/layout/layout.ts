@@ -1,4 +1,5 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HeaderComponent } from "../header/header";
 import { SidebarComponent } from "../sidebar/sidebar";
 import { RouterOutlet } from '@angular/router';
@@ -11,6 +12,7 @@ import { RouterOutlet } from '@angular/router';
 })
 export class LayoutComponent implements OnInit, OnDestroy {
   private readonly elementRef = inject(ElementRef);
+  private readonly platformId = inject(PLATFORM_ID);
   @ViewChild('sidebarRef', { read: ElementRef }) private sidebarEl?: ElementRef;
 
   sidebarOpen = false;
@@ -26,11 +28,15 @@ export class LayoutComponent implements OnInit, OnDestroy {
   };
 
   ngOnInit(): void {
-    document.addEventListener('click', this.onDocClick);
+    if (isPlatformBrowser(this.platformId)) {
+      document.addEventListener('click', this.onDocClick);
+    }
   }
 
   ngOnDestroy(): void {
-    document.removeEventListener('click', this.onDocClick);
+    if (isPlatformBrowser(this.platformId)) {
+      document.removeEventListener('click', this.onDocClick);
+    }
   }
 
   toggleSidebar() {

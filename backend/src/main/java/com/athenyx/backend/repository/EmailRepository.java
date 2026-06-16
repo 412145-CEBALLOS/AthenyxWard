@@ -27,4 +27,14 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
      * Fetches an email by Gmail id, scoped to a user.
      */
     Optional<Email> findByGmailIdAndUserId(String id, Long id1);
+
+    /**
+     * Lists emails marked as important for the user, newest first.
+     */
+    List<Email> findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(Long userId);
+
+    /**
+     * Counts emails marked as important for the user.
+     */
+    long countByUserIdAndIsImportantTrue(Long userId);
 }

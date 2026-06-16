@@ -191,15 +191,21 @@
               <button type="button" class="btn-action" (click)="onMarkPhishing()">
                 Marcar como phishing
               </button>
-              <button type="button" class="btn-action btn-action-premium"
-                      [disabled]="!isPremium()"
-                      [title]="isPremium() ? '' : 'Disponible en plan Premium'"
+              <button type="button" class="btn-action btn-action-premium btn-action-important"
+                      [disabled]="!canMarkImportant()"
+                      [title]="canMarkImportant() ? '' : 'Mejora tu plan para marcar correos importantes'"
                       (click)="onMarkImportant()">
-                Marcar importante
+                @if (isImportant()) {
+                  <i class="ti ti-flag-3-filled" aria-hidden="true"></i>
+                  <span>Importante</span>
+                } @else {
+                  <i class="ti ti-flag-3" aria-hidden="true"></i>
+                  <span>Marcar importante</span>
+                }
               </button>
               <button type="button" class="btn-action btn-action-premium"
-                      [disabled]="!isPremium()"
-                      [title]="isPremium() ? '' : 'Disponible en plan Premium'"
+                      [disabled]="!canMarkImportant()"
+                      [title]="canMarkImportant() ? '' : 'Disponible en plan Premium'"
                       (click)="onCreateReminder()">
                 Crear recordatorio
               </button>

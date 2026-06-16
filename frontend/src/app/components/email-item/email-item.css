@@ -118,3 +118,10 @@
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
   margin-left: 4px;
 }
+
+.important-flag-icon {
+  color: #f59e0b;
+  margin-right: 4px;
+  font-size: 0.9rem;
+  vertical-align: middle;
+}

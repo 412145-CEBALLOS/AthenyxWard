@@ -108,19 +108,35 @@ Detect:
 * dangerous links,
 * fraud attempts,
 * account theft attempts,
-* suspicious AI-generated emails.
+* suspicious AI-generated emails,
+* mismatched sender identity (From vs Return-Path vs Reply-To),
+* mass mailing services impersonation (Mailchimp, SendGrid simulating personal email),
+* suspicious timestamps (future dates, inconsistent timezones).
 
 ### Heuristic Analysis
 
-Use custom heuristic rules for:
+Use 15-20 custom heuristic rules for:
 
-* suspicious sender domains,
-* urgent language detection,
-* fake login pages,
-* malicious URLs,
-* suspicious metadata,
-* impersonation attempts,
-* scam-like language patterns.
+* suspicious sender domains (typosquatting, lookalikes of banks/social networks),
+* urgent language detection ("urgente", "inmediato", "suspendido", "verificar ahora"),
+* fake login pages (URLs mimicking official login forms),
+* malicious URLs (direct IPs, short domains, typosquatting),
+* sender impersonation (display name mismatch with email address),
+* suspicious metadata (anomalous headers, impossible dates, weird timezones),
+* scam-like language patterns (prizes, inheritances, lotteries),
+* suspicious attachments (.exe, .bat, .scr, .zip with executables),
+* regex patterns (credit card numbers, ID documents requested in body).
+
+### Metadata Analysis
+
+* Extract and analyze: From, Return-Path, Reply-To, Received headers, Date.
+* Detect mismatch between From and Return-Path.
+* Detect when Reply-To differs from sender (possible impersonation).
+* Detect anomalous timestamps (future date, inconsistent timezone).
+* Extract sending domain and validate against known lists.
+* Validate SPF/DKIM/DMARC records via DNS lookup.
+* Detect emails from mass mailing services (Mailchimp, SendGrid) pretending to be personal.
+* Compute sender trust score (0-100) with clear thresholds.
 
 ### AI-Based Analysis
 
@@ -140,17 +156,17 @@ Each analyzed email should provide:
 
 ## Threat Percentage
 
-Example:
-
-* 12% risk
-* 67% risk
-* 91% risk
+* Score range: 0 (safe) to 100 (dangerous).
+* Calculated by weighted aggregation of all heuristic rule scores.
+* Displayed as "X% riesgo" in the UI.
+* If analysis is in progress, show "Analizando..." state.
 
 ## Security Traffic-Light System
 
-* Green → safe
-* Yellow → suspicious/moderate risk
-* Red → dangerous/high risk
+* **Green** → risk < 40% (email is safe, no indicator in list).
+* **Yellow** → risk 40-70% (suspicious, yellow indicator in list).
+* **Red** → risk > 70% (dangerous, prominent red indicator in list).
+* Visual component: percentage donut chart that changes color based on threat level.
 
 ## Explainable Results
 
@@ -176,10 +192,11 @@ Users can:
 * hide dangerous emails,
 * delete suspicious emails.
 
-Premium users can additionally:
+**Premium and Admin users (not Trial):**
 
 * mark emails as important,
-* create reminders from emails.
+* create and manage reminders from emails,
+* receive reminder notifications.
 
 ---
 
@@ -187,34 +204,55 @@ Premium users can additionally:
 
 ## Important Email Marking
 
-Available only for Premium users.
+**Available for Premium and Admin users only (not Trial).**
 
 When a user marks an email as important:
 
-* the email will move to the top of the email list,
-* the system will visually indicate that the email is marked as important.
+* the email appears in the `/important` page,
+* the system shows a visual indicator (flag icon) in the email list and viewer,
+* the sidebar shows a badge with the count of important emails.
 
-No additional automation will be performed.
+No additional automation is performed.
 
 ---
 
 ## Smart Reminders
 
-Available only for Premium users.
+**Available for Premium and Admin users only (not Trial).**
 
-Users can generate reminders from emails.
+Users can generate reminders from emails. Each reminder stores:
 
-The reminder system only stores:
+* reminder date and time,
+* reminder message,
+* done status (pending/completed).
 
-* the reminder date,
-* the reminder message.
+Reminders are stored in the database and:
 
-These reminders are stored in the database and displayed as notifications when the configured date approaches.
+* displayed on a dedicated `/reminders` page (sorted by upcoming date),
+* shown as a notification icon on the email list and viewer when configured,
+* highlighted visually when due within the next 24 hours.
 
-When entering the email associated with a reminder:
+**Reminder notifications:**
+* Frontend polls `/api/notifications/upcoming` every 2 minutes.
+* Upcoming reminders (within 24h) are shown in the notification panel.
+* When a reminder's time arrives or passes, a toast notification is shown.
+* Users can mark the reminder as done directly from the notification or toast.
+* The frontend tracks shown notification IDs in memory to avoid duplicates until page reload.
 
-* an icon or visual mark must indicate that the email already has a reminder configured,
-* the user must also have the option to remove the reminder.
+When entering an email that already has a reminder:
+
+* an icon or visual mark indicates the email has a reminder configured,
+* the user has the option to view, edit, or remove the reminder.
+
+---
+
+## Notifications
+
+* Polling every 2 minutes to `/api/notifications/upcoming`.
+* Upcoming reminders (within 24 hours) are highlighted in the notification panel.
+* Toast notification is shown when a reminder's configured time arrives or has passed.
+* Users can mark the reminder as done directly from the notification or toast.
+* Notification IDs are tracked in frontend memory to prevent duplicate toasts (cleared on page reload).
 
 ---
 
@@ -347,18 +385,20 @@ The AI responses and all interface elements must be in Spanish.
 
 * platform management,
 * metrics access,
-* user management.
+* user management,
+* all features enabled (same as Premium).
 
 ### Premium
 
 * unlimited analyses,
-* all features enabled.
+* all productivity features enabled (important emails, reminders, notifications).
 
 ### Trial
 
 * 1-month trial,
 * limited to 20 email analyses,
-* productivity features disabled.
+* productivity features disabled (marking important, reminders, notifications).
+* Trial users see a "Upgrade your plan" message when attempting to use restricted features.
 
 ---
 
@@ -463,6 +503,13 @@ Client-server architecture.
 * accessible,
 * dashboard-oriented.
 
+## Key UI Components
+
+| Component | Description |
+|-----------|-------------|
+| `ThreatDonutComponent` | Percentage donut chart with traffic-light color (green/yellow/red) |
+| `ReminderIndicatorComponent` | Chip showing 🔔 icon + reminder date, integrated in email-list and email-viewer |
+
 ---
 
 # Database
@@ -473,28 +520,27 @@ MySQL
 
 ## Main Entities
 
-Potential entities:
+| Entity | Description |
+|--------|-------------|
+| `User` | User account with Google ID, role, accessibility mode, analysis count |
+| `Email` | Gmail message with sender, subject, content, URLs, **isImportant** flag |
+| `EmailAnalysis` | Analysis result (1:N with Email — re-analysis creates new record) |
+| `Reminder` | Reminder linked to an Email (1:1 — one reminder per email) |
+| `RefreshToken` | JWT refresh token with family-based revocation |
+| `Role` | Enum: ADMIN / PREMIUM / TRIAL |
+| `Subscription` | (Sprint 4) |
+| `Payment` | (Sprint 4) |
 
-* User
-* Role
-* Email
-* EmailAnalysis
-* Reminder
-* Subscription
-* Payment
-* Notification
-
-The EmailAnalysis entity should centralize:
-
+**EmailAnalysis** centralizes:
 * threat analysis results,
 * historical analysis records,
 * risk percentages,
 * AI explanations,
 * timestamps,
 * risk classifications,
-* heuristic analysis data.
-
-This avoids redundancy between ThreatAnalysis and AnalysisHistory concepts.
+* heuristic findings (JSON),
+* suspicious URLs (JSON),
+* sender trust data (JSON).
 
 ---
 
@@ -509,6 +555,41 @@ For reading emails.
 ### Google OAuth2
 
 For secure authentication.
+
+---
+
+## Internal APIs
+
+### Analysis
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/emails/{id}/analyze` | Trigger heuristic analysis (uses 24h cache if recent) |
+| GET | `/api/emails/{id}/analysis` | Get latest analysis result for an email |
+| GET | `/api/analysis/history` | Get paginated analysis history (filter by date range) |
+
+### Important Emails
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/emails/important` | List user's important emails (newest first) |
+| GET | `/api/emails/important/count` | Returns `{ count: number }` — used for the sidebar badge |
+| POST | `/api/emails/{id}/important` | Toggle important flag (403 if Trial) |
+
+### Reminders
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/reminders` | List all user's reminders |
+| POST | `/api/reminders` | Create reminder (409 if already exists for email, 403 if Trial) |
+| PATCH | `/api/reminders/{id}` | Update reminder (date, message, done) |
+| DELETE | `/api/reminders/{id}` | Delete reminder |
+
+### Notifications
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/notifications/upcoming` | Get reminders due within 24 hours (403 if Trial) |
 
 ---
 
@@ -564,14 +645,25 @@ Authentication & Gmail integration:
 
 ## Sprint 2
 
-Threat detection engine:
+Threat detection engine + Productivity features:
 
-* heuristic rules,
-* metadata analysis,
-* threat scoring,
-* traffic-light system,
-* analysis history,
-* homepage updated with analysis results and warnings.
+**Threat Detection:**
+* heuristic rules (15-20 rules covering domains, language, URLs, metadata, patterns),
+* metadata analysis (From/Return-Path/Reply-To validation, SPF/DKIM/DMARC, sender trust score),
+* threat scoring (0-100% with weighted algorithm),
+* traffic-light system (Green <40%, Yellow 40-70%, Red >70%),
+* async analysis (<1 second, non-blocking),
+* 24h analysis cache (no re-analysis if recent result exists),
+* analysis history with pagination and date filters,
+* homepage updated with real analysis results and warnings.
+
+**Productivity (Premium/Admin only, NOT Trial):**
+* mark emails as important (with sidebar badge count),
+* smart reminders from emails (CRUD, date/time/message, done status),
+* visual indicator on emails with active reminders,
+* reminder notifications via polling (every 2 minutes),
+* toast notifications when reminder time arrives/passes,
+* mark done directly from notification.
 
 ---
 
@@ -579,12 +671,10 @@ Threat detection engine:
 
 Local AI integration:
 
-* Spring AI,
-* Ollama,
-* Llama 3,
-* explainable AI analysis,
-* reminders,
-* email actions.
+* Spring AI + Ollama + Llama 3 integration,
+* explainable AI analysis (HYBRID mode — supplements heuristic rules),
+* AI-generated threat explanations and natural-language warnings,
+* email actions (hide, delete, mark as phishing).
 
 ---
 

@@ -1,14 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
+import { RouterTestingModule } from '@angular/router/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ImportantEmailsComponent } from './important-emails';
+import { EmailService } from '../../services/email.service';
 
-describe('ImportantEmails', () => {
+describe('ImportantEmailsComponent', () => {
   let component: ImportantEmailsComponent;
   let fixture: ComponentFixture<ImportantEmailsComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ImportantEmailsComponent],
+      imports: [ImportantEmailsComponent, RouterTestingModule, HttpClientTestingModule],
     })
     .compileComponents();
 

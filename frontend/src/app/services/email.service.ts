@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { EmailDetail, EmailPageResponse, EmailSummary } from '../models/email-summary.model';
+import { Observable, tap } from 'rxjs';
+import { EmailDetail, EmailPageResponse, EmailSummary, ImportantToggleResponse } from '../models/email-summary.model';
 import { environment } from '../../environments/environment';
 
 /**
@@ -13,6 +13,8 @@ import { environment } from '../../environments/environment';
   providedIn: 'root',
 })
 export class EmailService {
+  readonly importantCount = signal<number>(0);
+
   constructor(private readonly http: HttpClient) {}
 
   /**
@@ -33,5 +35,37 @@ export class EmailService {
    */
   getEmailDetail(emailId: number): Observable<EmailDetail> {
     return this.http.get<EmailDetail>(`${environment.apiUrl}/emails/${emailId}`);
+  }
+
+  /**
+   * Fetches all emails marked as important for the current user.
+   */
+  fetchImportantEmails(): Observable<EmailSummary[]> {
+    return this.http.get<EmailSummary[]>(`${environment.apiUrl}/emails/important`);
+  }
+
+  /**
+   * Refreshes the important email count signal from the backend.
+   */
+  refreshImportantCount(): void {
+    this.http.get<{ count: number }>(`${environment.apiUrl}/emails/important/count`).pipe(
+      tap((res) => this.importantCount.set(res.count))
+    ).subscribe();
+  }
+
+  /**
+   * Toggles the important flag on an email. Returns the new state.
+   *
+   * @param emailId local database id of the email
+   */
+  toggleImportant(emailId: number): Observable<ImportantToggleResponse> {
+    return this.http.post<ImportantToggleResponse>(
+      `${environment.apiUrl}/emails/${emailId}/important`,
+      {}
+    ).pipe(
+      tap((res) => {
+        this.importantCount.update((c) => res.isImportant ? c + 1 : c - 1);
+      })
+    );
   }
 }

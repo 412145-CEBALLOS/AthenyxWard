@@ -118,7 +118,7 @@ describe('EmailAnalysisComponent', () => {
   it('disables premium actions for trial users', () => {
     fixture.componentRef.setInput('analysis', buildAnalysis(20));
     fixture.componentRef.setInput('state', 'ready');
-    fixture.componentRef.setInput('isPremium', false);
+    fixture.componentRef.setInput('canMarkImportant', false);
     fixture.detectChanges();
     const premiumButtons: NodeListOf<HTMLButtonElement> =
       fixture.nativeElement.querySelectorAll('.btn-action-premium');

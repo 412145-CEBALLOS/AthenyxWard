@@ -3,7 +3,18 @@
   title="Correos importantes"
   subtitle="Mensajes que has marcado como prioritarios para revisarlos más tarde.">
 
-  @if (emails().length === 0) {
+  @if (loading()) {
+    <div class="important-loading">
+      <span class="spinner large"></span>
+      <span>Cargando correos importantes…</span>
+    </div>
+  } @else if (error()) {
+    <div class="important-empty">
+      <i class="ti ti-alert-circle"></i>
+      <p>No se pudieron cargar los correos.</p>
+      <span>Intenta de nuevo más tarde.</span>
+    </div>
+  } @else if (emails().length === 0) {
     <div class="important-empty">
       <i class="ti ti-flag-off"></i>
       <p>No tienes correos marcados como importantes.</p>
@@ -12,14 +23,14 @@
   } @else {
     <ul class="important-list">
       @for (email of emails(); track email.id) {
-        <li class="important-item">
+        <li class="important-item" (click)="goToEmail(email)">
           <div class="important-flag">
             <i class="ti ti-flag-3-filled"></i>
           </div>
           <div class="important-body">
             <div class="important-top-row">
-              <span class="important-sender">{{ email.sender }}</span>
-              <span class="important-date">{{ email.receivedAt }}</span>
+              <span class="important-sender">{{ email.senderName || email.sender }}</span>
+              <span class="important-date">{{ email.receivedAt | importantEmailDate }}</span>
             </div>
             <span class="important-subject">{{ email.subject }}</span>
             <p class="important-snippet">{{ email.snippet }}</p>
@@ -33,7 +44,7 @@
             type="button"
             class="important-unmark"
             title="Quitar de importantes"
-            (click)="unmark(email.id)">
+            (click)="unmark(email); $event.stopPropagation()">
             <i class="ti ti-x"></i>
           </button>
         </li>

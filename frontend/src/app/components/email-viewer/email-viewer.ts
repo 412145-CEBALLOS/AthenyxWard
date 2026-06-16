@@ -23,7 +23,8 @@ export class EmailViewerComponent {
   readonly analysis = input<EmailAnalysisResult | null>(null);
   readonly state = input<AnalysisState>('idle');
   readonly accessibilityMode = input<boolean>(true);
-  readonly isPremium = input<boolean>(false);
+  readonly canMarkImportant = input<boolean>(false);
+  readonly isImportant = input<boolean>(false);
 
   readonly hide = output<void>();
   readonly delete = output<void>();

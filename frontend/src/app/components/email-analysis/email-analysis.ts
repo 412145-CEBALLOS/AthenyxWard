@@ -41,7 +41,8 @@ export class EmailAnalysisComponent {
   readonly analysis = input<EmailAnalysisResult | null>(null);
   readonly state = input<AnalysisState>('idle');
   readonly accessibilityMode = input<boolean>(true);
-  readonly isPremium = input<boolean>(false);
+  readonly canMarkImportant = input<boolean>(false);
+  readonly isImportant = input<boolean>(false);
   readonly trialRemaining = input<number | null>(null);
 
   readonly hide = output<void>();
