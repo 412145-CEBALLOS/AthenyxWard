@@ -19,7 +19,7 @@ class SenderImpersonationRuleTest {
             "securityalert@gmail.com",
             "PayPal Security",
             "Please confirm your account", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -33,7 +33,7 @@ class SenderImpersonationRuleTest {
             "order-confirm@outlook.com",
             "Amazon",
             "Your order has shipped", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -47,7 +47,7 @@ class SenderImpersonationRuleTest {
             "ship-confirm@amazon.com",
             "Amazon",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -57,7 +57,7 @@ class SenderImpersonationRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Subject", "sender@gmail.com", null,
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -69,7 +69,7 @@ class SenderImpersonationRuleTest {
             "billing@protonmail.com",
             "Netflix Support",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -83,7 +83,7 @@ class SenderImpersonationRuleTest {
             "friend@company.com",
             "Friend",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }

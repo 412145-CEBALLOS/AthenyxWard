@@ -18,7 +18,7 @@ class FreeEmailProviderBrandRuleTest {
             "Amazon: Your order has shipped",
             "john@gmail.com", "Amazon",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -31,7 +31,7 @@ class FreeEmailProviderBrandRuleTest {
             "PayPal: Payment received",
             "mike@outlook.com", "PayPal",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -44,7 +44,7 @@ class FreeEmailProviderBrandRuleTest {
             "Hello from John",
             "john@gmail.com", "John",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -55,7 +55,7 @@ class FreeEmailProviderBrandRuleTest {
             "Amazon: Your order",
             "order@amazon.com", "Amazon",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -66,7 +66,7 @@ class FreeEmailProviderBrandRuleTest {
             "Hello",
             "friend@gmail.com", "Netflix Support",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();

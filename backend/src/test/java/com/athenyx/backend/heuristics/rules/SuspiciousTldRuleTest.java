@@ -17,7 +17,7 @@ class SuspiciousTldRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Hello", "sender@example.com", "Sender",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -28,7 +28,7 @@ class SuspiciousTldRuleTest {
             "Download",
             "sender@file.zip", "File Share",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -42,7 +42,7 @@ class SuspiciousTldRuleTest {
             "sender@normal.com", "Sender",
             "content", "",
             java.util.List.of("https://deal.click/offer"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -59,7 +59,7 @@ class SuspiciousTldRuleTest {
                 "https://site.xyz/file",
                 "https://file.top/download"
             ),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -73,7 +73,7 @@ class SuspiciousTldRuleTest {
             "sender@safe.org", "Sender",
             "content", "",
             java.util.List.of("https://safe.com/page", "https://safe.net/download"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }

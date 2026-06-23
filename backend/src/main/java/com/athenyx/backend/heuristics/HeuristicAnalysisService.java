@@ -6,6 +6,8 @@ import com.athenyx.backend.entity.Email;
 import com.athenyx.backend.entity.EmailAnalysis;
 import com.athenyx.backend.entity.Role;
 import com.athenyx.backend.entity.User;
+import com.athenyx.backend.metadata.EmailHeaderCache;
+import com.athenyx.backend.metadata.MetadataAnalysisResult;
 import com.athenyx.backend.repository.EmailAnalysisRepository;
 import com.athenyx.backend.repository.EmailRepository;
 import com.athenyx.backend.repository.UserRepository;
@@ -33,6 +35,7 @@ public class HeuristicAnalysisService {
     private final EmailAnalysisRepository analysisRepository;
     private final UserRepository userRepository;
     private final HeuristicEngine engine;
+    private final EmailHeaderCache emailHeaderCache;
     private final ObjectMapper objectMapper;
 
     @Async("heuristicsExecutor")
@@ -55,12 +58,29 @@ public class HeuristicAnalysisService {
         Email email = emailRepository.findById(emailId)
             .orElseThrow(() -> new RuntimeException("Correo no encontrado"));
 
+        MetadataAnalysisResult metadata = emailHeaderCache.getOrAnalyze(email);
         EmailHeuristicsInput input = toInput(email);
         HeuristicResult result = engine.run(input);
 
         List<RecommendedActionDto> actions = buildRecommendedActions(result);
         String aiExplanation = buildAiExplanation(result);
         String contentSummary = email.getSnippet() != null ? email.getSnippet() : "";
+
+        SenderTrustDto senderTrust = new SenderTrustDto(
+            email.getSender(),
+            email.getSenderName(),
+            extractDomain(email.getSender()),
+            false,
+            email.getSpfStatus(),
+            email.getDkimStatus(),
+            email.getDmarcStatus(),
+            email.getReturnPath(),
+            email.getReplyTo(),
+            metadata.headers().massMailingProvider().name(),
+            metadata.timestampAnalysis().timezoneAnomaly(),
+            metadata.trustLevel().name(),
+            metadata.trustScore()
+        );
 
         EmailAnalysis analysis = EmailAnalysis.builder()
             .email(email)
@@ -70,12 +90,7 @@ public class HeuristicAnalysisService {
             .riskPercentage(result.riskPercentage())
             .findings(toJson(result.findings()))
             .suspiciousUrls(toJson(Collections.emptyList()))
-            .senderTrust(toJson(new SenderTrustDto(
-                email.getSender(),
-                email.getSenderName(),
-                extractDomain(email.getSender()),
-                false, null, null
-            )))
+            .senderTrust(toJson(senderTrust))
             .recommendedActions(toJson(actions))
             .aiExplanation(aiExplanation)
             .contentSummary(contentSummary)
@@ -121,11 +136,14 @@ public class HeuristicAnalysisService {
             urls,
             email.getReceivedAt(),
             email.getOriginalDateHeader(),
-            null,
-            null,
-            null,
-            null,
-            null
+            email.getReplyTo(),
+            email.getReturnPath(),
+            email.getSpfStatus(),
+            email.getDkimStatus(),
+            email.getDmarcStatus(),
+            email.getOriginalTimezone(),
+            email.getListUnsubscribe(),
+            email.getXMailer()
         );
     }
 

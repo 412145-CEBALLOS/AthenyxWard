@@ -17,7 +17,7 @@ class SuspiciousAttachmentRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Hello", "sender@example.com", "Sender",
             "Just a normal email", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -28,7 +28,7 @@ class SuspiciousAttachmentRuleTest {
             "Invoice", "accounting@vendor.com", "Accounting",
             "Please find attached",
             "", java.util.List.of("https://vendor.com/invoice.exe"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -41,7 +41,7 @@ class SuspiciousAttachmentRuleTest {
             "Documents", "sender@example.com", "Sender",
             "Documents attached",
             "", java.util.List.of("https://files.com/docs.zip"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -54,7 +54,7 @@ class SuspiciousAttachmentRuleTest {
             "Resume", "candidate@email.com", "Candidate",
             "Please review my resume",
             "", java.util.List.of("https://storage.com/resume.zip/invoice.exe"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -70,7 +70,7 @@ class SuspiciousAttachmentRuleTest {
                 "https://files.com/update.bat",
                 "https://files.com/script.js"
             ),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();

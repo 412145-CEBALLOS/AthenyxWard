@@ -19,7 +19,7 @@ class FakeLoginPageRuleTest {
             "Check out our latest products.",
             "<html><body><a href='https://shop.example.com'>Shop</a></body></html>",
             java.util.List.of("https://shop.example.com/page"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -32,7 +32,7 @@ class FakeLoginPageRuleTest {
             "Please verify your account.",
             "",
             java.util.List.of("https://bank-verify.com/login?redirect=https://bank.com"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -47,7 +47,7 @@ class FakeLoginPageRuleTest {
             "Please verify.",
             "<form action='http://evil.com/login'><input name='password'></form>",
             java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -59,7 +59,7 @@ class FakeLoginPageRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Subject", "sender@example.com", "Sender",
             "Content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }

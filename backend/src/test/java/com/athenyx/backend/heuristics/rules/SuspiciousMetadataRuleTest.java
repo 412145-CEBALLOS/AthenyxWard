@@ -19,7 +19,7 @@ class SuspiciousMetadataRuleTest {
             "Hello", "sender@example.com", "Sender",
             "content", "", java.util.List.of(),
             LocalDateTime.now(), "Mon, 22 Jun 2026 10:00:00 +0000",
-            null, null, null, null, null
+            null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -30,7 +30,7 @@ class SuspiciousMetadataRuleTest {
             "Alert", "sender@example.com", "Sender",
             "content", "", java.util.List.of(),
             LocalDateTime.now().plusDays(5), "Mon, 22 Jun 2026 10:00:00 +0000",
-            null, null, null, null, null
+            null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -43,7 +43,7 @@ class SuspiciousMetadataRuleTest {
             "Alert", "sender@example.com", "Sender",
             "content", "", java.util.List.of(),
             LocalDateTime.now(), null,
-            null, null, null, null, null
+            null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -56,7 +56,7 @@ class SuspiciousMetadataRuleTest {
             "Alert", "sender@example.com", "Sender",
             "content", "", java.util.List.of(),
             LocalDateTime.now().plusDays(10), null,
-            null, null, null, null, null
+            null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();

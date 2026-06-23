@@ -367,24 +367,53 @@ public class GmailService {
         String htmlContent = extractHtmlContent(message);
         String urls = extractUrls(message);
 
+        String returnPath = headers.get("Return-Path");
+        String replyTo = headers.get("Reply-To");
+        String receivedHeaders = extractReceivedHeaders(message);
+        String authenticationResults = headers.get("Authentication-Results");
+        String listUnsubscribe = headers.get("List-Unsubscribe");
+        String xMailer = headers.get("X-Mailer");
+        String originalTimezone = extractTimezone(dateStr);
+        String attachmentsMeta = extractAttachmentsMeta(message);
+
         Email email = emailRepository.findByGmailIdAndUserId(message.getId(), user.getId())
-                .orElseGet(() -> {
-                    Email newEmail = Email.builder()
-                            .gmailId(message.getId())
-                            .sender(senderEmail)
-                            .senderName(senderName)
-                            .subject(subject)
-                            .snippet(snippet)
-                            .contentForAnalysis(contentForAnalysis)
-                            .htmlContent(htmlContent)
-                            .extractedUrls(urls)
-                            .receivedAt(receivedAt)
-                            .originalDateHeader(dateStr)
-                            .isRead(false)
-                            .user(user)
-                            .build();
-                    return emailRepository.save(newEmail);
-                });
+                .orElseGet(() -> Email.builder()
+                        .gmailId(message.getId())
+                        .sender(senderEmail)
+                        .senderName(senderName)
+                        .subject(subject)
+                        .snippet(snippet)
+                        .contentForAnalysis(contentForAnalysis)
+                        .htmlContent(htmlContent)
+                        .extractedUrls(urls)
+                        .receivedAt(receivedAt)
+                        .originalDateHeader(dateStr)
+                        .isRead(false)
+                        .user(user)
+                        .returnPath(returnPath)
+                        .replyTo(replyTo)
+                        .receivedHeaders(receivedHeaders)
+                        .spfStatus(extractSpfStatus(authenticationResults))
+                        .dkimStatus(extractDkimStatus(authenticationResults))
+                        .dmarcStatus(extractDmarcStatus(authenticationResults))
+                        .listUnsubscribe(listUnsubscribe)
+                        .xMailer(xMailer)
+                        .originalTimezone(originalTimezone)
+                        .attachmentsMeta(attachmentsMeta)
+                        .build());
+
+        email.setReturnPath(email.getReturnPath() != null ? email.getReturnPath() : returnPath);
+        email.setReplyTo(email.getReplyTo() != null ? email.getReplyTo() : replyTo);
+        email.setReceivedHeaders(email.getReceivedHeaders() != null ? email.getReceivedHeaders() : receivedHeaders);
+        email.setSpfStatus(email.getSpfStatus() != null ? email.getSpfStatus() : extractSpfStatus(authenticationResults));
+        email.setDkimStatus(email.getDkimStatus() != null ? email.getDkimStatus() : extractDkimStatus(authenticationResults));
+        email.setDmarcStatus(email.getDmarcStatus() != null ? email.getDmarcStatus() : extractDmarcStatus(authenticationResults));
+        email.setListUnsubscribe(email.getListUnsubscribe() != null ? email.getListUnsubscribe() : listUnsubscribe);
+        email.setXMailer(email.getXMailer() != null ? email.getXMailer() : xMailer);
+        email.setOriginalTimezone(email.getOriginalTimezone() != null ? email.getOriginalTimezone() : originalTimezone);
+        email.setAttachmentsMeta(email.getAttachmentsMeta() != null ? email.getAttachmentsMeta() : attachmentsMeta);
+
+        emailRepository.save(email);
 
         return new EmailSummary(
                 email.getId(),
@@ -593,5 +622,90 @@ public class GmailService {
         }
 
         return "";
+    }
+
+    private String extractReceivedHeaders(Message message) {
+        List<String> receivedList = new ArrayList<>();
+        if (message.getPayload() != null && message.getPayload().getHeaders() != null) {
+            for (MessagePartHeader h : message.getPayload().getHeaders()) {
+                if ("Received".equals(h.getName())) {
+                    receivedList.add(h.getValue());
+                }
+            }
+        }
+        if (!receivedList.isEmpty()) {
+            try {
+                return new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(receivedList);
+            } catch (Exception e) {
+                return String.join(" | ", receivedList);
+            }
+        }
+        return null;
+    }
+
+    private String extractTimezone(String dateStr) {
+        if (dateStr == null) return null;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+            "([+-]\\d{4}|[+-]\\d{2}:?\\d{2}|[A-Z]{2,4})$"
+        ).matcher(dateStr);
+        if (m.find()) {
+            return m.group().trim();
+        }
+        return null;
+    }
+
+    private String extractAttachmentsMeta(Message message) {
+        List<Map<String, String>> attachments = new ArrayList<>();
+        collectAttachments(message.getPayload(), attachments);
+        if (attachments.isEmpty()) return null;
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(attachments);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void collectAttachments(MessagePart part, List<Map<String, String>> attachments) {
+        if (part == null) return;
+        if (part.getBody() != null && part.getFilename() != null && !part.getFilename().isBlank()) {
+            Map<String, String> att = new java.util.HashMap<>();
+            att.put("filename", part.getFilename());
+            att.put("mimeType", part.getMimeType() != null ? part.getMimeType() : "unknown");
+            attachments.add(att);
+        }
+        if (part.getParts() != null) {
+            for (MessagePart sub : part.getParts()) {
+                collectAttachments(sub, attachments);
+            }
+        }
+    }
+
+    private String extractSpfStatus(String authResults) {
+        if (authResults == null) return null;
+        if (authResults.contains("spf=pass")) return "PASS";
+        if (authResults.contains("spf=fail")) return "FAIL";
+        if (authResults.contains("spf=neutral")) return "NEUTRAL";
+        if (authResults.contains("spf=softfail")) return "SOFTFAIL";
+        if (authResults.contains("spf=none")) return "NONE";
+        return null;
+    }
+
+    private String extractDkimStatus(String authResults) {
+        if (authResults == null) return null;
+        if (authResults.contains("dkim=pass")) return "PASS";
+        if (authResults.contains("dkim=fail")) return "FAIL";
+        if (authResults.contains("dkim=neutral")) return "NEUTRAL";
+        if (authResults.contains("dkim=none")) return "NONE";
+        return null;
+    }
+
+    private String extractDmarcStatus(String authResults) {
+        if (authResults == null) return null;
+        if (authResults.contains("dmarc=pass")) return "PASS";
+        if (authResults.contains("dmarc=fail")) return "FAIL";
+        if (authResults.contains("dmarc=neutral")) return "NEUTRAL";
+        if (authResults.contains("dmarc=none")) return "NONE";
+        return null;
     }
 }

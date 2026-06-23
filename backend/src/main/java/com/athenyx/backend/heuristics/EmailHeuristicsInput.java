@@ -16,5 +16,8 @@ public record EmailHeuristicsInput(
     String returnPath,
     String spfStatus,
     String dkimStatus,
-    String dmarcStatus
+    String dmarcStatus,
+    String originalTimezone,
+    String listUnsubscribe,
+    String xMailer
 ) {}

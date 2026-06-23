@@ -17,7 +17,7 @@ class ScamLanguagePatternRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Meeting tomorrow", "colleague@company.com", "Colleague",
             "Hey, let's meet tomorrow at 3pm.", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -27,7 +27,7 @@ class ScamLanguagePatternRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Prize", "winner@lottery.com", "Lottery",
             "Ha ganado un premio!", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -43,7 +43,7 @@ class ScamLanguagePatternRuleTest {
             "Ha sido seleccionado. Necesito transferencia bancaria para mover la herencia. " +
             "Mande sus datos de cuenta bancaria inmediatamente.",
             "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -58,7 +58,7 @@ class ScamLanguagePatternRuleTest {
             "Sorteo",
             "Ha ganado la lotería! Transferencia bancaria disponible. Solicite sus datos de cuenta para reclamar.",
             "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -74,7 +74,7 @@ class ScamLanguagePatternRuleTest {
             "Felicidades! Ha ganado! Premio! Lotería! Herencia! Transferencia! " +
             "Millones! Dólares! Bono! Regalo! Solicite ahora!",
             "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();

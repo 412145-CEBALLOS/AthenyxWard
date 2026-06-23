@@ -17,7 +17,7 @@ class HtmlFormRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Hello", "sender@example.com", "Sender",
             "Just plain text", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -30,7 +30,7 @@ class HtmlFormRuleTest {
             "Please verify.",
             "<form action='http://fake-bank.com/login'><input name='password'></form>",
             java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -45,7 +45,7 @@ class HtmlFormRuleTest {
             "Please enter your payment info.",
             "<form action='https://shop.com/pay'><input name='cc'></form>",
             java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -60,7 +60,7 @@ class HtmlFormRuleTest {
             "Please fill out our survey.",
             "<form action='http://survey.com/form'><input name='email'></form>",
             java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -75,7 +75,7 @@ class HtmlFormRuleTest {
             "Subscribe here.",
             "<form action='https://site.com/subscribe'><input name='email'></form>",
             java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();

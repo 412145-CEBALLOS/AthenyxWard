@@ -48,7 +48,7 @@ class HeuristicEngineTest {
             List.of("https://company.com/drive/file"),
             LocalDateTime.now(),
             "Mon, 22 Jun 2026 10:00:00 +0000",
-            null, null, null, null, null
+            null, null, null, null, null, null, null, null
         );
         HeuristicResult result = engine.run(input);
         assertThat(result.threatLevel()).isEqualTo(ThreatLevel.GREEN);
@@ -70,7 +70,7 @@ class HeuristicEngineTest {
             LocalDateTime.now(),
             "Mon, 22 Jun 2026 10:00:00 +0000",
             "support@paypal-verify.com",
-            null, null, null, null
+            null, null, null, null, null, null, null
         );
         HeuristicResult result = engine.run(input);
         assertThat(result.threatLevel()).isIn(ThreatLevel.YELLOW, ThreatLevel.RED);
@@ -90,7 +90,7 @@ class HeuristicEngineTest {
             List.of(),
             LocalDateTime.now(),
             "Mon, 22 Jun 2026 10:00:00 +0000",
-            null, null, null, null, null
+            null, null, null, null, null, null, null, null
         );
         HeuristicResult result = engine.run(input);
         assertThat(result.threatLevel()).isEqualTo(ThreatLevel.RED);
@@ -110,7 +110,7 @@ class HeuristicEngineTest {
             List.of("https://calendar.company.com/meeting"),
             LocalDateTime.now(),
             "Mon, 22 Jun 2026 10:00:00 +0000",
-            null, null, null, null, null
+            null, null, null, null, null, null, null, null
         );
         HeuristicResult result = engine.run(input);
         assertThat(result.threatLevel()).isEqualTo(ThreatLevel.GREEN);
@@ -133,7 +133,7 @@ class HeuristicEngineTest {
             LocalDateTime.now().plusDays(10),
             null,
             "support@bancomer-scam.com",
-            null, null, null, null
+            null, null, null, null, null, null, null
         );
         HeuristicResult result = engine.run(input);
         assertThat(result.findings().size()).isGreaterThanOrEqualTo(3);

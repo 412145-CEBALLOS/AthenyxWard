@@ -17,7 +17,7 @@ class RiskyKeywordsRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Meeting", "colleague@company.com", "Colleague",
             "Let's meet tomorrow to discuss the project.", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -28,7 +28,7 @@ class RiskyKeywordsRuleTest {
             "Investment Opportunity",
             "investor@crypto.com", "Investor",
             "Invest in Bitcoin today for guaranteed returns!", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -41,7 +41,7 @@ class RiskyKeywordsRuleTest {
             "Payment",
             "finance@company.com", "Finance",
             "Please arrange a wire transfer to the following account.", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -54,7 +54,7 @@ class RiskyKeywordsRuleTest {
             "Gift Card Offer",
             "offers@company.com", "Offers",
             "Buy gift cards at a discount!", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -66,7 +66,7 @@ class RiskyKeywordsRuleTest {
             "Transfer",
             "agent@westernunion.com", "Western Union",
             "Send money via Western Union.", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -79,7 +79,7 @@ class RiskyKeywordsRuleTest {
             "agent@scam.com", "Agent",
             "Wire transfer required immediately. Bitcoin investment. Western Union. Gift card.",
             "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();

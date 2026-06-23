@@ -18,7 +18,7 @@ class DisplayNameBrandSpoofRuleTest {
             "Account Alert",
             "user@unknownsite.com", "Soporte de Banco",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -31,7 +31,7 @@ class DisplayNameBrandSpoofRuleTest {
             "Security Alert",
             "user@strange-domain.com", "Microsoft Security Team",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -44,7 +44,7 @@ class DisplayNameBrandSpoofRuleTest {
             "No Reply",
             "no-reply@google.com", "No Reply",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -55,7 +55,7 @@ class DisplayNameBrandSpoofRuleTest {
             "Security Alert",
             "security@microsoft.com", "Microsoft Security",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -65,7 +65,7 @@ class DisplayNameBrandSpoofRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Alert", "sender@unknown.com", null,
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }

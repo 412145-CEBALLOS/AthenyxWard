@@ -17,7 +17,7 @@ class ReplyToMismatchRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Hello", "sender@example.com", "Sender",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -27,7 +27,7 @@ class ReplyToMismatchRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Hello", "support@company.com", "Company",
             "content", "", java.util.List.of(),
-            null, null, "support@company.com", null, null, null, null
+            null, null, "support@company.com", null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -38,7 +38,7 @@ class ReplyToMismatchRuleTest {
             "Account Update",
             "noreply@paypal.com", "PayPal",
             "content", "", java.util.List.of(),
-            null, null, "support@paypal-verify.com", null, null, null, null
+            null, null, "support@paypal-verify.com", null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -51,7 +51,7 @@ class ReplyToMismatchRuleTest {
             "From Company",
             "contact@company.com", "Company Official",
             "content", "", java.util.List.of(),
-            null, null, "helper@gmail.com", null, null, null, null
+            null, null, "helper@gmail.com", null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -63,7 +63,7 @@ class ReplyToMismatchRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Hello", "sender@example.com", "Sender",
             "content", "", java.util.List.of(),
-            null, null, "", null, null, null, null
+            null, null, "", null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }

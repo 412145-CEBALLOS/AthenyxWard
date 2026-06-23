@@ -65,4 +65,26 @@ public class Email {
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime fetchedAt;
+
+    private String returnPath;
+
+    private String replyTo;
+
+    @Column(columnDefinition = "TEXT")
+    private String receivedHeaders;
+
+    private String spfStatus;
+
+    private String dkimStatus;
+
+    private String dmarcStatus;
+
+    private String listUnsubscribe;
+
+    private String xMailer;
+
+    private String originalTimezone;
+
+    @Column(columnDefinition = "TEXT")
+    private String attachmentsMeta;
 }

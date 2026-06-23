@@ -18,7 +18,7 @@ class MaliciousUrlRuleTest {
             "Check this", "sender@example.com", "Sender",
             "content", "",
             java.util.List.of("https://www.google.com/search?q=test"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -30,7 +30,7 @@ class MaliciousUrlRuleTest {
             "Please login",
             "",
             java.util.List.of("http://192.168.1.1/login"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -43,7 +43,7 @@ class MaliciousUrlRuleTest {
             "Verify", "sender@example.com", "Sender",
             "content", "",
             java.util.List.of("https://google.com@evil.com/login"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -56,7 +56,7 @@ class MaliciousUrlRuleTest {
             "Alert", "sender@secure.bank.example.com", "Secure Bank",
             "content", "",
             java.util.List.of("https://secure.bank.example.com.login.evil.com/verify"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -69,7 +69,7 @@ class MaliciousUrlRuleTest {
             "Download", "sender@example.com", "Sender",
             "content", "",
             java.util.List.of("https://file.example.zip/download"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -84,7 +84,7 @@ class MaliciousUrlRuleTest {
                 "http://1.2.3.4:8080/login",
                 "https://a.b.c.d.evil.com@attacker.com/login"
             ),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();

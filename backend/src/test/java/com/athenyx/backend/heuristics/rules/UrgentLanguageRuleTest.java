@@ -17,7 +17,7 @@ class UrgentLanguageRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Hello there", "sender@example.com", "Sender",
             "Just checking in with you.", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -27,7 +27,7 @@ class UrgentLanguageRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "URGENTE: Action required", "sender@example.com", "Sender",
             "Please verify your account immediately.", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -40,7 +40,7 @@ class UrgentLanguageRuleTest {
             "URGENTE: Cuenta suspendida",
             "sender@example.com", "Sender",
             "Su cuenta ha sido suspendida. Verificar ahora o en 24 horas será cerrada.",
-            "", java.util.List.of(), null, null, null, null, null, null, null
+            "", java.util.List.of(), null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -53,7 +53,7 @@ class UrgentLanguageRuleTest {
             "URGENTE: ACTÚE YA - 24 HORAS",
             "sender@example.com", "Sender",
             "Urgente! Inmediato! Su cuenta suspendida! Verifique ahora! Sin demora! 24 horas!",
-            "", java.util.List.of(), null, null, null, null, null, null, null
+            "", java.util.List.of(), null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -65,7 +65,7 @@ class UrgentLanguageRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "URGENTE: Su paquete", "", "",
             "Normal email body", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isPresent();
     }

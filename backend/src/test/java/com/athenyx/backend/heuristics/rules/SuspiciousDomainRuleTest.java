@@ -16,7 +16,7 @@ class SuspiciousDomainRuleTest {
     void safeEmail_returnsEmpty() {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Test", "legit@gmail.com", "John", "content", "html", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -26,7 +26,7 @@ class SuspiciousDomainRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Account Update", "support@paypal-security.com", "Someone",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -39,7 +39,7 @@ class SuspiciousDomainRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Alerta", "security@bancomer-verify.com", "Someone",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -51,7 +51,7 @@ class SuspiciousDomainRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Receipt", "service@paypal.com", "PayPal",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -60,7 +60,7 @@ class SuspiciousDomainRuleTest {
     void nullSender_returnsEmpty() {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Subject", null, null, "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -70,7 +70,7 @@ class SuspiciousDomainRuleTest {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Hello", "friend@gmail.com", "Friend",
             "content", "", java.util.List.of(),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }

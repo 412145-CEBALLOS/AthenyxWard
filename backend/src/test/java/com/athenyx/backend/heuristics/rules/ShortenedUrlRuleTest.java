@@ -18,7 +18,7 @@ class ShortenedUrlRuleTest {
             "Check this", "sender@example.com", "Sender",
             "content", "",
             java.util.List.of("https://www.google.com", "https://shop.example.com"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         assertThat(rule.apply(input)).isEmpty();
     }
@@ -31,7 +31,7 @@ class ShortenedUrlRuleTest {
             "Amazing deal for you!",
             "",
             java.util.List.of("https://bit.ly/3x7fake"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -46,7 +46,7 @@ class ShortenedUrlRuleTest {
             "Exclusive offer!",
             "",
             java.util.List.of("https://tinyurl.com/fakeoffer"),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
@@ -65,7 +65,7 @@ class ShortenedUrlRuleTest {
                 "https://tinyurl.com/fake2",
                 "https://t.co/fake3"
             ),
-            null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
