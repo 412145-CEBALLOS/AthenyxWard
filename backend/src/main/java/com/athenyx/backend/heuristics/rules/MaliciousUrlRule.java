@@ -25,7 +25,7 @@ public class MaliciousUrlRule implements HeuristicRule {
 
     @Override
     public RuleSeverity severity() {
-        return RuleSeverity.HIGH;
+        return RuleSeverity.MEDIUM;
     }
 
     @Override
@@ -55,7 +55,9 @@ public class MaliciousUrlRule implements HeuristicRule {
             }
             if (hasManySubdomains(url)) {
                 hasManySubdomains = true;
-                indicators += 2;
+                // Lower weight — CDN URLs in marketing mail commonly have 4+
+                // dots (e.g. `tracking.s.click.mails.ebay.com`).
+                indicators += 1;
             }
             for (String tld : DANGEROUS_TLDS) {
                 if (lower.contains(tld)) {

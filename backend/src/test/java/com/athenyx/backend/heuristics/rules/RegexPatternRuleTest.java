@@ -33,7 +33,8 @@ class RegexPatternRuleTest {
     }
 
     @Test
-    void validLuhnCreditCard_triggers() {
+    void validLuhnCreditCard_triggersLowScore() {
+        // Single sensitive-data match is a weak signal.
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Payment Confirmation",
             "billing@amazon.com", "Amazon",
@@ -43,11 +44,11 @@ class RegexPatternRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(70);
+        assertThat(result.get().score()).isEqualTo(25);
     }
 
     @Test
-    void ibanPattern_triggers() {
+    void ibanPattern_triggersLowScore() {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Transfer",
             "bank@secure.com", "Bank",
@@ -57,11 +58,12 @@ class RegexPatternRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(70);
+        assertThat(result.get().score()).isEqualTo(25);
     }
 
     @Test
-    void dniPattern_triggers() {
+    void dniPattern_triggersLowScore() {
+        // DNI_NIF requires 7-8 digits now, so a 7-digit ID triggers.
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Identity",
             "hr@company.com", "HR",
@@ -71,10 +73,23 @@ class RegexPatternRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
+        assertThat(result.get().score()).isEqualTo(25);
     }
 
     @Test
-    void ssnPattern_triggers() {
+    void shortDni_doesNotTrigger() {
+        // 5 digits + letter is too short to be a real DNI.
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "Order",
+            "shop@store.com", "Store",
+            "Your order code is 12345A and will ship soon.", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        assertThat(rule.apply(input)).isEmpty();
+    }
+
+    @Test
+    void ssnPattern_triggersLowScore() {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Tax Form",
             "tax@agency.com", "Tax Agency",
@@ -84,10 +99,12 @@ class RegexPatternRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
+        assertThat(result.get().score()).isEqualTo(25);
     }
 
     @Test
     void multiplePatterns_highScore() {
+        // Two or more matches keeps the original HIGH score.
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Payment",
             "bank@secure.com", "Bank",
@@ -97,6 +114,6 @@ class RegexPatternRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(95);
+        assertThat(result.get().score()).isEqualTo(85);
     }
 }

@@ -58,13 +58,30 @@ describe('EmailItemComponent', () => {
     expect(fixture.nativeElement.querySelector('.risk-bg')).toBeNull();
   });
 
-  it('renders no risk indicator when riskLevel is GREEN (US 2.3: verde sin indicador)', () => {
+  it('accessibility ON (default) + GREEN: no dot, no background', () => {
+    // Per US 2.3 spec, GREEN keeps the row clean in accessibility
+    // mode — no dot is shown.
     setInputs({ email: buildEmail({ riskLevel: 'GREEN', riskPercentage: 10 }) });
     const li = fixture.nativeElement.querySelector('li');
     expect(li.classList.contains('risk-yellow')).toBeFalse();
     expect(li.classList.contains('risk-red')).toBeFalse();
     expect(fixture.nativeElement.querySelector('.risk-dot')).toBeNull();
     expect(fixture.nativeElement.querySelector('.risk-bg')).toBeNull();
+  });
+
+  it('accessibility OFF + GREEN: renders subtle green background, no dot', () => {
+    // Extension: in non-accessibility mode, analysed safe emails
+    // also get a (subtle) colour cue so the user can distinguish
+    // "GREEN analysed" from "not yet analysed".
+    setInputs({
+      email: buildEmail({ riskLevel: 'GREEN', riskPercentage: 10 }),
+      accessibilityMode: false,
+    });
+    const bg = fixture.nativeElement.querySelector('.risk-bg.risk-bg-green');
+    expect(bg).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.risk-dot')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.risk-bg-yellow')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.risk-bg-red')).toBeNull();
   });
 
   it('accessibility ON + YELLOW: renders yellow dot, no background', () => {

@@ -34,8 +34,22 @@ export class EmailItemComponent {
 
   readonly riskLevel = computed<RiskLevel | null>(() => this.email().riskLevel ?? null);
   readonly riskPercentage = computed<number | null>(() => this.email().riskPercentage ?? null);
+  /**
+   * Drives the small coloured dot in accessibility mode. Only
+   * YELLOW / RED get a dot — GREEN keeps the row clean.
+   */
   readonly showRiskIndicator = computed<boolean>(
     () => this.riskLevel() === 'YELLOW' || this.riskLevel() === 'RED',
+  );
+  /**
+   * Drives the full-row fade-out background. Includes GREEN so that,
+   * in non-accessibility mode, analysed safe emails still show a
+   * subtle colour cue (less prominent than YELLOW/RED).
+   */
+  readonly showRiskBackground = computed<boolean>(
+    () => this.riskLevel() === 'GREEN'
+        || this.riskLevel() === 'YELLOW'
+        || this.riskLevel() === 'RED',
   );
   readonly riskAriaLabel = computed<string>(
     () => `${this.riskPercentage() ?? 0}% riesgo`,

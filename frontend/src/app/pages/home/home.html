@@ -50,7 +50,7 @@
 
   <main class="viewer" [class.ocult]="!mobileEmailDetail()">
     <div class="back-button">
-      <button (click)="this.mobileEmailDetail.set(false);">Volver</button>
+      <button (click)="goBackToList()">Volver</button>
     </div>
 
     @if (selectedEmail(); as email) {
@@ -62,6 +62,7 @@
         [canMarkImportant]="canMarkImportant()"
         [isImportant]="email.isImportant"
         [userRole]="userRole()"
+        [(analysisPanelOpen)]="analysisPanelOpen"
         (hide)="onEmailHide()"
         (delete)="onEmailDelete()"
         (markPhishing)="onEmailMarkPhishing()"

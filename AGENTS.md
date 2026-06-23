@@ -41,13 +41,16 @@ npm run serve:ssr:frontend      # Run SSR server (port 4000)
 - `security/` — JWT filters, auth providers
 - `ai/` — Spring AI + Ollama integration
 - `gmail/` — Gmail API integration
-- `heuristics/` — Rule-based threat detection
+- `heuristics/` — Rule-based threat detection (`ThreatScorer`, `HeuristicEngine`, `HeuristicAnalysisService`, 19 rules)
+- `metadata/` — MIME-header metadata layer (sender validation, auth results, mass-mailing detection, sender-trust)
 - `util/` — Shared utilities
 
 ## Frontend structure** (under `src/app/`):
 - Standalone components (no NgModules)
-- Signals for reactivity
+- Signals for reactivity (with two-way `model()` for parent-driven state)
 - SSR enabled (Express 5 server)
+- `utils/risk.util.ts` — shared `RISK_THRESHOLDS` (40/70) + `riskLevelFromPercentage()` helper
+- `services/analysis.service.ts` — HTTP wrapper for `POST /api/emails/{id}/analyze` and `GET /api/emails/{id}/analysis` (US 2.8)
 
 ## Subscription Management (Angular)
 
@@ -78,6 +81,33 @@ Key rules:
 - Always use `takeUntil(this.onDestroy)` for all subscriptions
 - Call `this.onDestroy.next()` and `this.onDestroy.complete()` in `ngOnDestroy()`
 - Disconnect any observers (ResizeObserver, MutationObserver, etc.) in `ngOnDestroy()`
+
+## Analysis Pipeline (US 2.1 / 2.2 / 2.3 / 2.8)
+
+The SPA is a thin shell over the heuristic engine. The flow for opening
+an email is:
+
+```
+email-list item click
+   └─ home.selectEmail(summary)
+        ├─ EmailService.getEmailDetail()   → EmailDetail
+        └─ bootstrapAnalysis(detail, summary)
+             ├─ TRIAL  → analysisState = 'idle'   (user must click "Analizar este correo")
+             └─ PREMIUM/ADMIN + riskLevel != null
+                └─ AnalysisService.getLatest() → cached result OR analysisState = 'idle'
+   ↓ (user clicks panel-toggle or trial button)
+home.onAnalysisRequest()
+   └─ AnalysisService.analyze()
+        ├─ 200 → analysisResult set, state = 'ready', analysisPanelOpen = true
+        ├─ 403 → state = 'unavailable-trial' (TRIAL quota exhausted)
+        └─ 5xx → state = 'error'
+```
+
+Backend (`HeuristicAnalysisService.analyze`):
+- 24 h cache via `findFirstByEmailIdOrderByAnalyzedAtDesc` + 24 h cutoff
+- Trial-limit check (`TRIAL_LIMIT = 20`) → `TrialLimitExceededException` → 403
+- `@Async("heuristicsExecutor")` — runs in dedicated thread pool
+- Persists to `EmailAnalysis` entity, increments `User.analysisCount` for TRIAL users
 
 ## Known Issues
 

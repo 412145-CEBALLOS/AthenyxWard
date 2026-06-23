@@ -32,7 +32,7 @@ class RiskyKeywordsRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(15);
+        assertThat(result.get().score()).isEqualTo(8);
     }
 
     @Test
@@ -45,7 +45,7 @@ class RiskyKeywordsRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(15);
+        assertThat(result.get().score()).isEqualTo(8);
     }
 
     @Test
@@ -73,7 +73,8 @@ class RiskyKeywordsRuleTest {
     }
 
     @Test
-    void multipleRiskyKeywords_cappedAt50() {
+    void multipleRiskyKeywords_scoreScales() {
+        // 4 keywords × 8 = 32 (was 50 with old math).
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "URGENT: Money",
             "agent@scam.com", "Agent",
@@ -83,6 +84,32 @@ class RiskyKeywordsRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(50);
+        assertThat(result.get().score()).isEqualTo(32);
+    }
+
+    @Test
+    void taxKeyword_doesNotTrigger() {
+        // 'tax' was removed from the keyword list — too many false
+        // positives in legitimate receipts and tax-season marketing.
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "Tax summary",
+            "billing@company.com", "Billing",
+            "Your 2024 tax statement is now available in your account portal.", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        assertThat(rule.apply(input)).isEmpty();
+    }
+
+    @Test
+    void invoiceAttached_doesStillTrigger() {
+        // "Invoice attached" is a stronger phish signal than just "tax".
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "Payment",
+            "billing@vendor.com", "Vendor",
+            "Invoice attached: please review and process.", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        Optional<HeuristicFinding> result = rule.apply(input);
+        assertThat(result).isPresent();
     }
 }

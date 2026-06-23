@@ -127,14 +127,16 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Risk indicator (US 2.3)
+ * Risk indicator (US 2.3 + extension for GREEN)
  *
  * Two visual modes controlled by the `accessibilityMode` input:
  *   - accessibility ON  -> small coloured dot to the right of the row
+ *                          (YELLOW/RED only — GREEN keeps the row clean)
  *   - accessibility OFF -> faded background that fades to transparent
  *                          toward the bottom of the row
- *
- * GREEN emails get no indicator at all (US 2.3 acceptance criteria).
+ *                          (YELLOW / RED / GREEN; GREEN uses a more
+ *                          subtle gradient because it conveys
+ *                          "analysed and safe" rather than "alert")
  * ------------------------------------------------------------------------- */
 
 .risk-bg {
@@ -143,6 +145,14 @@
   border-radius: 14px;
   pointer-events: none;
   z-index: 0;
+}
+
+.risk-bg-green {
+  background: linear-gradient(
+    to bottom,
+    rgba(22, 163, 74, 0.12) 0%,
+    rgba(22, 163, 74, 0) 100%
+  );
 }
 
 .risk-bg-yellow {

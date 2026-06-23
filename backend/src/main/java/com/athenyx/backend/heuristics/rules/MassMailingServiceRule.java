@@ -3,7 +3,6 @@ package com.athenyx.backend.heuristics.rules;
 import com.athenyx.backend.heuristics.*;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -29,7 +28,7 @@ public class MassMailingServiceRule implements HeuristicRule {
 
     @Override
     public RuleSeverity severity() {
-        return RuleSeverity.MEDIUM;
+        return RuleSeverity.LOW;
     }
 
     @Override
@@ -37,6 +36,11 @@ public class MassMailingServiceRule implements HeuristicRule {
         boolean hasMassMailingHeader = false;
         String reason = "";
 
+        // The presence of a `List-Unsubscribe` header is REQUIRED by RFC 8058
+        // for legitimate bulk senders — it is a STRONG signal of authenticity,
+        // not risk. We still emit a finding (score 20) so the UI can surface
+        // the fact that the email was sent in bulk, but the engine treats it
+        // as informational, not suspicious.
         if (input.listUnsubscribe() != null && !input.listUnsubscribe().isBlank()) {
             hasMassMailingHeader = true;
             reason = "List-Unsubscribe presente";
@@ -72,11 +76,10 @@ public class MassMailingServiceRule implements HeuristicRule {
             return Optional.empty();
         }
 
-        int score = reason.contains("X-Mailer") ? 60 : 50;
         return Optional.of(new HeuristicFinding(
             name(),
-            "Envío desde servicio de correo masivo (" + reason + "): posible campaña impersonando comunicación personal",
-            score
+            "Remitente usa plataforma de envío masivo (RFC 8058: " + reason + ")",
+            20
         ));
     }
 

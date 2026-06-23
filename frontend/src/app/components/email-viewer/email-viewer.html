@@ -8,6 +8,7 @@
     [isImportant]="isImportant()"
     [userRole]="userRole()"
     [trialRemaining]="null"
+    [(open)]="analysisPanelOpen"
     (hide)="hide.emit()"
     (delete)="delete.emit()"
     (markPhishing)="markPhishing.emit()"

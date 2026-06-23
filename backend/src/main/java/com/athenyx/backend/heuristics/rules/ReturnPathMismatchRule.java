@@ -1,6 +1,8 @@
 package com.athenyx.backend.heuristics.rules;
 
 import com.athenyx.backend.heuristics.*;
+import com.athenyx.backend.heuristics.whitelist.BulkSenderReturnPathDomains;
+import com.athenyx.backend.heuristics.whitelist.TrustedSenderDomains;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -15,7 +17,7 @@ public class ReturnPathMismatchRule implements HeuristicRule {
 
     @Override
     public RuleSeverity severity() {
-        return RuleSeverity.HIGH;
+        return RuleSeverity.MEDIUM;
     }
 
     @Override
@@ -30,19 +32,34 @@ public class ReturnPathMismatchRule implements HeuristicRule {
         String returnPathDomain = extractDomain(returnPath);
         String senderDomain = extractDomain(sender);
 
-        if (returnPathDomain == null || senderDomain == null || returnPathDomain.isBlank()) {
+        if (returnPathDomain == null || returnPathDomain.isBlank()
+                || senderDomain == null || senderDomain.isBlank()) {
             return Optional.empty();
         }
 
-        if (!returnPathDomain.equalsIgnoreCase(senderDomain)) {
-            return Optional.of(new HeuristicFinding(
-                name(),
-                "Return-Path ('" + returnPath + "') tiene dominio diferente al From ('" + sender + "'): posible suplantación de origen",
-                85
-            ));
+        if (returnPathDomain.equalsIgnoreCase(senderDomain)) {
+            return Optional.empty();
         }
 
-        return Optional.empty();
+        // Trusted corporate senders (Nintendo, Google, PayPal, Apple, ...)
+        // legitimately relay through Amazon SES, SendGrid, scoutcamp, etc.
+        // Their Return-Path will never match the visible From domain.
+        if (TrustedSenderDomains.matches(senderDomain)) {
+            return Optional.empty();
+        }
+
+        // If the Return-Path itself belongs to a known ESP / bulk-sender
+        // infrastructure, treat the mismatch as benign.
+        if (BulkSenderReturnPathDomains.matches(returnPathDomain)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new HeuristicFinding(
+            name(),
+            "Return-Path ('" + returnPath + "') tiene dominio diferente al From ('" + sender
+                + "'): posible suplantación de origen",
+            45
+        ));
     }
 
     private String extractDomain(String address) {

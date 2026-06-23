@@ -87,4 +87,34 @@ class SenderImpersonationRuleTest {
         );
         assertThat(rule.apply(input)).isEmpty();
     }
+
+    @Test
+    void mailPaypalWithPaypalDisplayName_doesNotTrigger() {
+        // 'PayPal' in display name on `mail.paypal.com` is the legit
+        // brand subdomain — the trusted whitelist silences it.
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "PayPal Statement",
+            "service@mail.paypal.com",
+            "PayPal",
+            "content", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        assertThat(rule.apply(input)).isEmpty();
+    }
+
+    @Test
+    void paypalLookalikeDomain_stillTriggers() {
+        // paypal-secure.com is NOT a subdomain of paypal.com (no leading
+        // dot) so the whitelist does NOT cover it. Display name "PayPal"
+        // with a fake domain must still fire.
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "PayPal: confirm account",
+            "support@paypal-secure.com",
+            "PayPal",
+            "content", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        Optional<HeuristicFinding> result = rule.apply(input);
+        assertThat(result).isPresent();
+    }
 }

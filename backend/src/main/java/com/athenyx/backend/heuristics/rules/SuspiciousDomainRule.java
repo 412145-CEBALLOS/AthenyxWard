@@ -1,6 +1,7 @@
 package com.athenyx.backend.heuristics.rules;
 
 import com.athenyx.backend.heuristics.*;
+import com.athenyx.backend.heuristics.whitelist.TrustedSenderDomains;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -43,6 +44,14 @@ public class SuspiciousDomainRule implements HeuristicRule {
 
         String normalized = senderDomain.toLowerCase();
 
+        // Trusted corporate senders (PayPal, Google, Apple, Facebook, etc.) are
+        // excluded — they legitimately own hundreds of marketing subdomains
+        // (mail.paypal.com, facebookmail.com, email.claude.com, ...) which
+        // match our `contains brand` check but are not phishing.
+        if (TrustedSenderDomains.matches(normalized)) {
+            return Optional.empty();
+        }
+
         if (isSuspiciousDomain(normalized)) {
             int score = calculateSuspiciousScore(normalized);
             return Optional.of(new HeuristicFinding(
@@ -78,7 +87,11 @@ public class SuspiciousDomainRule implements HeuristicRule {
     private int calculateSuspiciousScore(String domain) {
         for (String brand : KNOWN_BRANDS) {
             if (domain.contains(brand)) {
-                return 60;
+                // 'contains' is a weaker signal than 'one-char typo' — for example,
+                // `facebookmail.com` is a legit Facebook marketing domain that
+                // would match this branch. Score conservatively so a single
+                // finding is not enough to flip an email to RED.
+                return 35;
             }
             int dist = damerauLevenshteinDistance(domain.replace(".", ""), brand);
             if (dist == 1) return 90;

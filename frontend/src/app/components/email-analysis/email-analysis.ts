@@ -3,8 +3,8 @@ import {
   Component,
   computed,
   input,
+  model,
   output,
-  signal,
 } from '@angular/core';
 import {
   AnalysisState,
@@ -65,12 +65,18 @@ export class EmailAnalysisComponent {
    * Emitted when the user asks for a fresh analysis (PREMIUM/ADMIN
    * toggle on first click, or TRIAL via the in-body button). The
    * parent (email-viewer → home) is responsible for invoking
-   * {@code AnalysisService.analyze()} and calling
-   * {@link showAfterAnalysis} when the result is ready.
+   * {@code AnalysisService.analyze()} and flipping {@link open} to
+   * {@code true} when the result is ready.
    */
   readonly analyzeRequest = output<void>();
 
-  readonly open = signal<boolean>(false);
+  /**
+   * Two-way bound open-state. The parent (home.ts) writes
+   * {@code true} when an analysis just finished so the panel
+   * auto-reveals; the component writes back whenever the user
+   * manually toggles the header.
+   */
+  readonly open = model<boolean>(false);
 
   readonly circumference = 2 * Math.PI * 46;
 
@@ -134,9 +140,11 @@ export class EmailAnalysisComponent {
   );
 
   /**
-   * Public hook invoked by the parent (home.ts → email-viewer.ts) when
-   * the analysis has just finished and the panel should open to reveal
-   * the result. Keeps the component decoupled from the service.
+   * Public hook invoked by the parent (home.ts) when the analysis has
+   * just finished and the panel should auto-reveal. Kept for
+   * backwards compatibility with the imperative call site; the
+   * idiomatic path is to write {@link open} directly via the
+   * two-way binding.
    */
   showAfterAnalysis(): void {
     this.open.set(true);

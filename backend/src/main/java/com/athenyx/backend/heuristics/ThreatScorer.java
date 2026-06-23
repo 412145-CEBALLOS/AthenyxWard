@@ -9,25 +9,27 @@ import java.util.Map;
  * Aggregates a list of {@link HeuristicFinding}s into a single 0-100 risk
  * percentage plus a traffic-light {@link ThreatLevel}.
  *
- * <h2>Weighted aggregation</h2>
- *
- * <p>Each rule carries a {@link RuleSeverity severity} that weights its
- * contribution to the final score. The aggregation formula is:</p>
+ * <h2>Suma ponderada con boosts negativos (v2)</h2>
  *
  * <pre>
- *   weighted       = Σ ( finding.score * rule.severity.weight )
- *   maxPossible    = Σ ( 100 * rule.severity.weight )
- *   riskPercentage = round( weighted / maxPossible * 100 )      // clamped to [0, 100]
+ *   raw = Σ ( finding.score * rule.severity.weight )
+ *   pct = clamp( round(raw / 3), 0, 100 )
  * </pre>
  *
- * <h2>Severity weights</h2>
- * <table>
- *   <caption>Weights per severity</caption>
- *   <tr><th>Severity</th><th>Weight</th><th>Rationale</th></tr>
- *   <tr><td>HIGH</td><td>1.2</td><td>Strong indicators (e.g. malicious URL, attachment).</td></tr>
- *   <tr><td>MEDIUM</td><td>1.0</td><td>Default — most heuristic signals.</td></tr>
- *   <tr><td>LOW</td><td>0.7</td><td>Soft signals (e.g. minor language cues).</td></tr>
- * </table>
+ * <p>Cada hallazgo aporta {@code score × weight}, donde {@code weight}
+ * viene de su {@link RuleSeverity}. Una regla con severidad
+ * {@code TRUST} aporta un valor <em>negativo</em> (por ejemplo
+ * {@code AuthenticationPassRule} con score -10 y peso -1.0 suma
+ * +10 al "raw", que se resta del total).</p>
+ *
+ * <p>El divisor 3 normaliza el resultado para que:</p>
+ * <ul>
+ *   <li>Una sola regla HIGH con score 85 (raw=102) quede en ~34% (GREEN).</li>
+ *   <li>Tres reglas MEDIUM con score 50 (raw=150) lleguen a 50% (YELLOW).</li>
+ *   <li>Cuatro reglas MEDIUM con score 70 (raw=280) lleguen a 93% (RED).</li>
+ *   <li>Un email autenticado correctamente (raw reducido) baje a GREEN aunque
+ *       tenga varias reglas ambiguas activas.</li>
+ * </ul>
  *
  * <h2>Traffic-light thresholds</h2>
  * <table>
@@ -38,21 +40,10 @@ import java.util.Map;
  *   <tr><td>70 – 100</td><td>{@link ThreatLevel#RED}</td><td>Peligroso</td></tr>
  * </table>
  *
- * <h2>Worked example</h2>
- *
- * <p>Two findings: a HIGH rule scoring 100 and a MEDIUM rule scoring 50.</p>
- * <pre>
- *   weighted    = 100 * 1.2 + 50 * 1.0 = 170
- *   maxPossible = 100 * 1.2 + 100 * 1.0 = 220
- *   pct         = round( 170 / 220 * 100 ) = 77
- *   level       = RED  (≥ 70)
- * </pre>
- *
  * <h2>Empty findings</h2>
  *
  * <p>When the engine returns no findings the scorer short-circuits to
- * {@link HeuristicResult#safe()} (0 %, GREEN). A non-empty list of
- * low-severity findings can still produce a non-zero percentage.</p>
+ * {@link HeuristicResult#safe()} (0 %, GREEN).</p>
  *
  * @see HeuristicResult
  * @see HeuristicFinding
@@ -61,6 +52,9 @@ import java.util.Map;
  */
 @Component
 public class ThreatScorer {
+
+    /** Divisor de normalización. Tres reglas MEDIUM de score 50 → 50%. */
+    private static final int NORMALIZATION_DIVISOR = 3;
 
     /** Risk percentage below this value is considered safe (GREEN). */
     private static final int GREEN_THRESHOLD = 40;
@@ -89,16 +83,13 @@ public class ThreatScorer {
             return HeuristicResult.safe();
         }
 
-        double weighted = 0;
-        double maxPossible = 0;
-
+        double raw = 0;
         for (HeuristicFinding f : findings) {
             RuleSeverity sev = severityMap.getOrDefault(f.rule(), RuleSeverity.MEDIUM);
-            weighted += f.score() * sev.weight();
-            maxPossible += 100 * sev.weight();
+            raw += f.score() * sev.weight();
         }
 
-        int pct = (int) Math.min(100, Math.round((float) (weighted / maxPossible * 100)));
+        int pct = (int) Math.max(0, Math.min(100, Math.round(raw / NORMALIZATION_DIVISOR)));
         ThreatLevel level = determineRiskLevel(pct);
 
         return new HeuristicResult(findings, pct, level);

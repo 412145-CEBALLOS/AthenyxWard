@@ -31,7 +31,7 @@ class SuspiciousDomainRuleTest {
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
         assertThat(result.get().rule()).isEqualTo("SuspiciousDomainRule");
-        assertThat(result.get().score()).isGreaterThanOrEqualTo(60);
+        assertThat(result.get().score()).isGreaterThanOrEqualTo(35);
     }
 
     @Test
@@ -69,6 +69,38 @@ class SuspiciousDomainRuleTest {
     void gmailDomain_doesNotTrigger() {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Hello", "friend@gmail.com", "Friend",
+            "content", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        assertThat(rule.apply(input)).isEmpty();
+    }
+
+    @Test
+    void facebookmailLegitDomain_doesNotTrigger() {
+        // facebookmail.com is Facebook's real marketing domain; the
+        // trusted whitelist silences the 'contains facebook' match.
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "Update", "notification@facebookmail.com", "Facebook",
+            "content", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        assertThat(rule.apply(input)).isEmpty();
+    }
+
+    @Test
+    void nintendoWhitelisted_doesNotTrigger() {
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "Receipt", "no-reply@accounts.nintendo.com", "Nintendo",
+            "content", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        assertThat(rule.apply(input)).isEmpty();
+    }
+
+    @Test
+    void mailPaypalSubdomain_doesNotTrigger() {
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "Statement", "service@mail.paypal.com", "PayPal",
             "content", "", java.util.List.of(),
             null, null, null, null, null, null, null, null, null, null
         );

@@ -2,12 +2,14 @@
   class="email-item"
   [class.selected]="selected()"
   [class.unread]="unread()"
-  [class.risk-yellow]="showRiskIndicator() && riskLevel() === 'YELLOW'"
-  [class.risk-red]="showRiskIndicator() && riskLevel() === 'RED'"
+  [class.risk-green]="riskLevel() === 'GREEN'"
+  [class.risk-yellow]="riskLevel() === 'YELLOW'"
+  [class.risk-red]="riskLevel() === 'RED'"
   (click)="onClick()">
-  @if (showRiskIndicator() && !accessibilityMode()) {
+  @if (showRiskBackground() && !accessibilityMode()) {
     <div
       class="risk-bg"
+      [class.risk-bg-green]="riskLevel() === 'GREEN'"
       [class.risk-bg-yellow]="riskLevel() === 'YELLOW'"
       [class.risk-bg-red]="riskLevel() === 'RED'"
       aria-hidden="true">

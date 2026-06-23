@@ -12,7 +12,7 @@ import { PageShellComponent } from '../../components/page-shell/page-shell';
 import { ImportantEmailDatePipe } from '../../pipes/important-email-date.pipe';
 import { EmailService } from '../../services/email.service';
 import { EmailSummary } from '../../models/email-summary.model';
-import { computeMockAnalysis } from '../../utils/email-risk.util';
+import { RiskLevel } from '../../models/email-analysis.model';
 
 interface ImportantEmailDisplay {
   id: number;
@@ -22,7 +22,8 @@ interface ImportantEmailDisplay {
   subject: string;
   snippet: string;
   receivedAt: string;
-  risk: number;
+  risk: number | null;
+  riskLevel: RiskLevel | null;
 }
 
 @Component({
@@ -69,16 +70,13 @@ export class ImportantEmailsComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Maps the API summary to the view-model. {@code riskPercentage} and
+   * {@code riskLevel} come straight from the backend enrichment added
+   * in US 2.3 (no more mock analysis). They stay {@code null} when the
+   * email has never been analysed.
+   */
   private toDisplay(e: EmailSummary): ImportantEmailDisplay {
-    const mockAnalysis = computeMockAnalysis({
-      ...e,
-      contentForAnalysis: e.snippet,
-      htmlContent: null,
-      fetchedAt: e.fetchedAt,
-      isRead: e.isRead,
-      originalDateHeader: e.originalDateHeader,
-      isImportant: true,
-    } as import('../../models/email-summary.model').EmailDetail);
     return {
       id: e.id!,
       gmailId: e.gmailId,
@@ -87,7 +85,8 @@ export class ImportantEmailsComponent implements OnInit, OnDestroy {
       subject: e.subject,
       snippet: e.snippet,
       receivedAt: e.receivedAt,
-      risk: mockAnalysis.riskPercentage,
+      risk: e.riskPercentage ?? null,
+      riskLevel: e.riskLevel ?? null,
     };
   }
 

@@ -10,6 +10,12 @@ import java.util.regex.Pattern;
 @Component
 public class RiskyKeywordsRule implements HeuristicRule {
 
+    /**
+     * Curated list of strongly-correlated risk terms. Generic words
+     * such as "tax", "factura", "invoice" were removed because they
+     * appear in nearly every purchase receipt, bank statement or
+     * utility bill and generated widespread false positives.
+     */
     private static final List<Pattern> RISKY_PATTERNS = List.of(
         Pattern.compile("wire transfer", Pattern.CASE_INSENSITIVE),
         Pattern.compile("gift card", Pattern.CASE_INSENSITIVE),
@@ -19,10 +25,7 @@ public class RiskyKeywordsRule implements HeuristicRule {
         Pattern.compile("moneygram", Pattern.CASE_INSENSITIVE),
         Pattern.compile("invoice attached", Pattern.CASE_INSENSITIVE),
         Pattern.compile("factura adjunta", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("tax", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("impuesto", Pattern.CASE_INSENSITIVE),
         Pattern.compile("deuda", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("oaxaca", Pattern.CASE_INSENSITIVE),
         Pattern.compile("fraude", Pattern.CASE_INSENSITIVE),
         Pattern.compile("lavado de dinero", Pattern.CASE_INSENSITIVE),
         Pattern.compile("money laundering", Pattern.CASE_INSENSITIVE),
@@ -38,7 +41,7 @@ public class RiskyKeywordsRule implements HeuristicRule {
 
     @Override
     public RuleSeverity severity() {
-        return RuleSeverity.MEDIUM;
+        return RuleSeverity.LOW;
     }
 
     @Override
@@ -57,7 +60,7 @@ public class RiskyKeywordsRule implements HeuristicRule {
             return Optional.empty();
         }
 
-        int score = Math.min(50, matches * 15);
+        int score = Math.min(40, matches * 8);
         String description = matches >= 2
             ? "Múltiples palabras clave de riesgo financiero detectadas: " + matches + " indicadores"
             : "Palabra clave de riesgo financiero detectada en el correo";

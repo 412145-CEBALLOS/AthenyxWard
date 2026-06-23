@@ -48,21 +48,31 @@ public class SenderImpersonationRule implements HeuristicRule {
         String senderDomainLower = senderDomain.toLowerCase();
 
         for (String brand : KNOWN_BRANDS) {
-            if (displayLower.contains(brand) && !senderDomainLower.contains(brand.replace(" ", ""))) {
-                if (!FREE_EMAIL_PROVIDERS.contains(senderDomainLower)) {
-                    return Optional.of(new HeuristicFinding(
-                        name(),
-                        "Display name '" + displayName + "' menciona '" + brand + "' pero el email no es del dominio oficial",
-                        90
-                    ));
-                } else {
-                    return Optional.of(new HeuristicFinding(
-                        name(),
-                        "Display name '" + displayName + "' menciona '" + brand + "' pero usa cuenta gratuita",
-                        50
-                    ));
-                }
+            if (!displayLower.contains(brand)) continue;
+
+            // The sender must NOT be the brand's own domain or a
+            // legitimate subdomain of it (e.g. `mail.paypal.com`,
+            // `communications.paypal.com` are real PayPal marketing
+            // subdomains and must not be flagged).
+            String brandDomain = brand.replace(" ", "") + ".com";
+            boolean senderIsOfficialBrand =
+                senderDomainLower.equals(brandDomain) ||
+                senderDomainLower.endsWith("." + brandDomain);
+
+            if (senderIsOfficialBrand) continue;
+
+            if (FREE_EMAIL_PROVIDERS.contains(senderDomainLower)) {
+                return Optional.of(new HeuristicFinding(
+                    name(),
+                    "Display name '" + displayName + "' menciona '" + brand + "' pero usa cuenta gratuita",
+                    50
+                ));
             }
+            return Optional.of(new HeuristicFinding(
+                name(),
+                "Display name '" + displayName + "' menciona '" + brand + "' pero el email no es del dominio oficial",
+                90
+            ));
         }
 
         return Optional.empty();

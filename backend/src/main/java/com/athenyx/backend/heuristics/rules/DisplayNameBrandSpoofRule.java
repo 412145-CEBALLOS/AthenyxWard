@@ -1,6 +1,7 @@
 package com.athenyx.backend.heuristics.rules;
 
 import com.athenyx.backend.heuristics.*;
+import com.athenyx.backend.heuristics.whitelist.TrustedSenderDomains;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -26,7 +27,7 @@ public class DisplayNameBrandSpoofRule implements HeuristicRule {
 
     @Override
     public RuleSeverity severity() {
-        return RuleSeverity.MEDIUM;
+        return RuleSeverity.LOW;
     }
 
     @Override
@@ -44,6 +45,12 @@ public class DisplayNameBrandSpoofRule implements HeuristicRule {
         String displayLower = displayName.toLowerCase();
         String senderDomainLower = senderDomain.toLowerCase();
 
+        // Whitelist of trusted corporate senders — `no-reply@accounts.nintendo.com`,
+        // `communications@paypal.com`, `noreply@google.com` etc. are legitimate.
+        if (TrustedSenderDomains.matches(senderDomainLower)) {
+            return Optional.empty();
+        }
+
         for (String term : GENERIC_BRAND_TERMS) {
             if (displayLower.contains(term)) {
                 boolean isLikelyLegit = senderDomainLower.contains(term) ||
@@ -55,7 +62,7 @@ public class DisplayNameBrandSpoofRule implements HeuristicRule {
                     return Optional.of(new HeuristicFinding(
                         name(),
                         "Display name '" + displayName + "' usa término genérico de marca ('" + term + "') sin ser del dominio '" + senderDomain + "'",
-                        85
+                        35
                     ));
                 }
             }

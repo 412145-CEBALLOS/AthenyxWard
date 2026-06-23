@@ -18,13 +18,23 @@ public class RegexPatternRule implements HeuristicRule {
         Pattern.CASE_INSENSITIVE
     );
 
+    /**
+     * DNI / NIF / NIE. Original pattern {@code \b\d{1,8}[A-Z]\b} matched
+     * any invoice line with a small number + letter (e.g. order numbers
+     * in receipts). Tightened to require at least 7 digits and to avoid
+     * matches surrounded by digits on both sides.
+     */
     private static final Pattern DNI_NIF = Pattern.compile(
-        "\\b\\d{1,8}[A-Z]\\b",
+        "(?<![0-9])\\d{7,8}[A-Z](?![0-9A-Z])",
         Pattern.CASE_INSENSITIVE
     );
 
+    /**
+     * Passport. Original pattern matched order codes like "AB1234567".
+     * Tightened to require at least 7 trailing digits.
+     */
     private static final Pattern PASSPORT = Pattern.compile(
-        "\\b[A-Z]{1,2}[0-9]{6,9}\\b",
+        "\\b[A-Z]{1,2}[0-9]{7,9}\\b",
         Pattern.CASE_INSENSITIVE
     );
 
@@ -39,7 +49,7 @@ public class RegexPatternRule implements HeuristicRule {
 
     @Override
     public RuleSeverity severity() {
-        return RuleSeverity.HIGH;
+        return RuleSeverity.LOW;
     }
 
     @Override
@@ -52,14 +62,25 @@ public class RegexPatternRule implements HeuristicRule {
         boolean hasPassport = PASSPORT.matcher(content).find();
         boolean hasSSN = SSN.matcher(content).find();
 
-        int count = (hasCC ? 1 : 0) + (hasIBAN ? 1 : 0) + (hasDNI ? 1 : 0) +
-                    (hasPassport ? 1 : 0) + (hasSSN ? 1 : 0);
+        boolean[] flags = { hasCC, hasIBAN, hasDNI, hasPassport, hasSSN };
+        int count = 0;
+        for (boolean f : flags) if (f) count++;
 
         if (count == 0) {
             return Optional.empty();
         }
 
-        int score = count >= 2 ? 95 : 70;
+        // A single sensitive data match is a weak signal — order numbers
+        // and tax IDs appear in many legitimate emails. Two or more
+        // (e.g. CC + IBAN) is a much stronger indicator of a phishing
+        // payload and we keep the original HIGH severity for that.
+        int score;
+        if (count >= 2) {
+            score = 85;
+        } else {
+            score = 25;
+        }
+
         StringBuilder desc = new StringBuilder("Datos sensibles detectados en el cuerpo del correo:");
         if (hasCC) desc.append(" tarjeta de crédito,");
         if (hasIBAN) desc.append(" IBAN,");

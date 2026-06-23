@@ -35,9 +35,15 @@
             <span class="important-subject">{{ email.subject }}</span>
             <p class="important-snippet">{{ email.snippet }}</p>
             <div class="important-footer">
-              <span class="important-risk" [attr.data-low]="email.risk < 30">
-                Riesgo: {{ email.risk }}%
-              </span>
+              @if (email.risk != null && email.riskLevel) {
+                <span
+                  class="important-risk"
+                  [attr.data-level]="email.riskLevel">
+                  Riesgo: {{ email.risk }}%
+                </span>
+              } @else {
+                <span class="important-risk" data-level="NONE">Sin análisis</span>
+              }
             </div>
           </div>
           <button

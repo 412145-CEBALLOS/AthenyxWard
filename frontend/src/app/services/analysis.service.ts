@@ -9,10 +9,9 @@ import { environment } from '../../environments/environment';
  * Thin HTTP wrapper over the {@code /api/emails/{id}/analyze*} endpoints.
  *
  * <p>Created in US 2.3 (Risk Percentage + Traffic Light) as part of the
- * service-infrastructure layer. The consumer in
- * {@code home.ts} (replacing the previous {@code computeMockAnalysis}
- * mock) is intentionally out of scope for US 2.3 and is implemented in
- * US 2.8 (Real-time analysis panel).</p>
+ * service-infrastructure layer. Consumed in US 2.8 (Real-time analysis
+ * panel) by {@code home.ts}, replacing the previous in-memory mock
+ * analysis.</p>
  *
  * <p>All methods return cold observables — components are expected to
  * subscribe with the {@code takeUntil(this.onDestroy)} pattern.</p>

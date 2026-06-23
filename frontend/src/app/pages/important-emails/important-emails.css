@@ -111,9 +111,24 @@
   color: #b45309;
 }
 
-.important-risk[data-low="true"] {
+.important-risk[data-level="GREEN"] {
   background: rgba(16, 185, 129, 0.12);
   color: #047857;
+}
+
+.important-risk[data-level="YELLOW"] {
+  background: rgba(202, 138, 4, 0.15);
+  color: #b45309;
+}
+
+.important-risk[data-level="RED"] {
+  background: rgba(220, 38, 38, 0.15);
+  color: #b91c1c;
+}
+
+.important-risk[data-level="NONE"] {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
 }
 
 .important-unmark {

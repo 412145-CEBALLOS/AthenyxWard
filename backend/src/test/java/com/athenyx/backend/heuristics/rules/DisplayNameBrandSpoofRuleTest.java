@@ -22,7 +22,7 @@ class DisplayNameBrandSpoofRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(85);
+        assertThat(result.get().score()).isEqualTo(35);
     }
 
     @Test
@@ -35,7 +35,7 @@ class DisplayNameBrandSpoofRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(85);
+        assertThat(result.get().score()).isEqualTo(35);
     }
 
     @Test
@@ -64,6 +64,40 @@ class DisplayNameBrandSpoofRuleTest {
     void nullDisplayName_returnsEmpty() {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Alert", "sender@unknown.com", null,
+            "content", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        assertThat(rule.apply(input)).isEmpty();
+    }
+
+    @Test
+    void nintendoWhitelisted_doesNotTrigger() {
+        // no-reply@accounts.nintendo.com used to be a HIGH false positive;
+        // the trusted-sender whitelist now silences it.
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "Receipt", "no-reply@accounts.nintendo.com", "No Reply",
+            "content", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        assertThat(rule.apply(input)).isEmpty();
+    }
+
+    @Test
+    void paypalWhitelisted_doesNotTrigger() {
+        // communications.paypal.com is a known PayPal marketing subdomain.
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "Statement", "service@communications.paypal.com", "PayPal Service",
+            "content", "", java.util.List.of(),
+            null, null, null, null, null, null, null, null, null, null
+        );
+        assertThat(rule.apply(input)).isEmpty();
+    }
+
+    @Test
+    void claudeWhitelisted_doesNotTrigger() {
+        // email.claude.com legitimately uses "Claude Team" as display name.
+        EmailHeuristicsInput input = new EmailHeuristicsInput(
+            "Update", "noreply@email.claude.com", "Claude Team",
             "content", "", java.util.List.of(),
             null, null, null, null, null, null, null, null, null, null
         );

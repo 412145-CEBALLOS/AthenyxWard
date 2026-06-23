@@ -23,7 +23,8 @@ class MassMailingServiceRuleTest {
     }
 
     @Test
-    void listUnsubscribeHeader_triggers() {
+    void listUnsubscribeHeader_triggersWithLowScore() {
+        // List-Unsubscribe is RFC 8058 — informational, not risky.
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Newsletter", "newsletter@mailchimp.com", "Sender",
             "content", "", java.util.List.of(),
@@ -32,11 +33,11 @@ class MassMailingServiceRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(50);
+        assertThat(result.get().score()).isEqualTo(20);
     }
 
     @Test
-    void xMailerSendGrid_triggers() {
+    void xMailerSendGrid_triggersWithLowScore() {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Campaign", "campaign@company.com", "Company",
             "content", "", java.util.List.of(),
@@ -44,11 +45,11 @@ class MassMailingServiceRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(60);
+        assertThat(result.get().score()).isEqualTo(20);
     }
 
     @Test
-    void xMailerMailchimp_triggers() {
+    void xMailerMailchimp_triggersWithLowScore() {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Update", "updates@company.com", "Company",
             "content", "", java.util.List.of(),
@@ -56,11 +57,11 @@ class MassMailingServiceRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(60);
+        assertThat(result.get().score()).isEqualTo(20);
     }
 
     @Test
-    void freeEmailWithMailingKeywords_triggers() {
+    void freeEmailWithMailingKeywords_triggersWithLowScore() {
         EmailHeuristicsInput input = new EmailHeuristicsInput(
             "Mailchimp Campaign", "user@gmail.com", "User",
             "Newsletter content with campaign info", "", java.util.List.of(),
@@ -68,6 +69,6 @@ class MassMailingServiceRuleTest {
         );
         Optional<HeuristicFinding> result = rule.apply(input);
         assertThat(result).isPresent();
-        assertThat(result.get().score()).isEqualTo(50);
+        assertThat(result.get().score()).isEqualTo(20);
     }
 }
