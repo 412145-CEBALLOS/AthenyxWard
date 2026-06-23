@@ -47,4 +47,24 @@ public interface EmailAnalysisRepository extends JpaRepository<EmailAnalysis, Lo
         Pageable pageable);
 
     Page<EmailAnalysis> findByUserIdOrderByAnalyzedAtDesc(Long userId, Pageable pageable);
+
+    @Query(value = """
+        SELECT ea FROM EmailAnalysis ea
+        JOIN FETCH ea.email
+        WHERE ea.user.id = :userId
+        AND (CAST(:from AS timestamp) IS NULL OR ea.analyzedAt >= :from)
+        AND (CAST(:to   AS timestamp) IS NULL OR ea.analyzedAt <= :to)
+        ORDER BY ea.analyzedAt DESC
+        """,
+        countQuery = """
+        SELECT COUNT(ea) FROM EmailAnalysis ea
+        WHERE ea.user.id = :userId
+        AND (CAST(:from AS timestamp) IS NULL OR ea.analyzedAt >= :from)
+        AND (CAST(:to   AS timestamp) IS NULL OR ea.analyzedAt <= :to)
+        """)
+    Page<EmailAnalysis> findHistoryByUser(
+        @Param("userId") Long userId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to,
+        Pageable pageable);
 }

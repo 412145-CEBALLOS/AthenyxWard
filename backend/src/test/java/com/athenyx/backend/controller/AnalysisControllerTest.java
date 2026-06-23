@@ -1,8 +1,11 @@
 package com.athenyx.backend.controller;
 
+import com.athenyx.backend.dto.AnalysisHistoryResponse;
+import com.athenyx.backend.dto.AnalysisHistoryResponse.AnalysisHistoryItem;
 import com.athenyx.backend.dto.HeuristicAnalysisResponse;
 import com.athenyx.backend.heuristics.HeuristicAnalysisService;
 import com.athenyx.backend.heuristics.TrialLimitExceededException;
+import com.athenyx.backend.service.AnalysisHistoryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,13 +17,18 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 
 import java.lang.reflect.Method;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 
 /**
@@ -36,6 +44,9 @@ class AnalysisControllerTest {
 
     @Mock
     private HeuristicAnalysisService service;
+
+    @Mock
+    private AnalysisHistoryService historyService;
 
     @Mock
     private Authentication authentication;
@@ -64,6 +75,15 @@ class AnalysisControllerTest {
     @Test
     void trialLimit_endpoint_isAuthenticatedOnly() throws Exception {
         Method m = AnalysisController.class.getMethod("trialLimit", Authentication.class);
+        PreAuthorize annotation = m.getAnnotation(PreAuthorize.class);
+        assertThat(annotation).isNotNull();
+        assertThat(annotation.value()).isEqualTo("isAuthenticated()");
+    }
+
+    @Test
+    void getHistory_endpoint_isAuthenticatedOnly() throws Exception {
+        Method m = AnalysisController.class.getMethod("getHistory",
+            LocalDate.class, LocalDate.class, int.class, int.class, Authentication.class);
         PreAuthorize annotation = m.getAnnotation(PreAuthorize.class);
         assertThat(annotation).isNotNull();
         assertThat(annotation.value()).isEqualTo("isAuthenticated()");
@@ -149,6 +169,65 @@ class AnalysisControllerTest {
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).containsEntry("remaining", Integer.MAX_VALUE);
+    }
+
+    // --- getHistory: 200 / empty list ---
+
+    @Test
+    void getHistory_returns200WithResponseBody() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        AnalysisHistoryItem item = new AnalysisHistoryItem(
+            99L, 10L, "a@b.com", "S", 87, "RED",
+            LocalDateTime.of(2026, 6, 8, 9, 14), "Resumen");
+        AnalysisHistoryResponse response = new AnalysisHistoryResponse(
+            List.of(item), 0, 1, 1);
+        when(historyService.getHistory(eq(1L), isNull(), isNull(), eq(0), eq(20)))
+            .thenReturn(response);
+
+        ResponseEntity<AnalysisHistoryResponse> result = controller.getHistory(
+            null, null, 0, 20, authentication);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
+        assertThat(result.getBody().items()).hasSize(1);
+        assertThat(result.getBody().items().get(0).analysisId()).isEqualTo(99L);
+        assertThat(result.getBody().items().get(0).summary()).isEqualTo("Resumen");
+        assertThat(result.getBody().totalItems()).isEqualTo(1);
+    }
+
+    @Test
+    void getHistory_returnsEmptyListWhenNoAnalyses() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        AnalysisHistoryResponse response = new AnalysisHistoryResponse(
+            List.of(), 0, 0, 0);
+        when(historyService.getHistory(eq(1L), isNull(), isNull(), eq(0), eq(20)))
+            .thenReturn(response);
+
+        ResponseEntity<AnalysisHistoryResponse> result = controller.getHistory(
+            null, null, 0, 20, authentication);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).isNotNull();
+        assertThat(result.getBody().items()).isEmpty();
+        assertThat(result.getBody().totalItems()).isZero();
+    }
+
+    @Test
+    void getHistory_convertsFromDateToStartOfDay() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        LocalDate from = LocalDate.of(2026, 6, 1);
+        LocalDate to = LocalDate.of(2026, 6, 30);
+        when(historyService.getHistory(eq(1L), any(LocalDateTime.class), any(LocalDateTime.class), eq(0), eq(20)))
+            .thenReturn(new AnalysisHistoryResponse(List.of(), 0, 0, 0));
+
+        controller.getHistory(from, to, 0, 20, authentication);
+
+        org.mockito.Mockito.verify(historyService).getHistory(
+            eq(1L),
+            eq(from.atStartOfDay()),
+            eq(to.atTime(LocalTime.MAX)),
+            eq(0),
+            eq(20));
     }
 
     private HeuristicAnalysisResponse buildResponse(int pct, com.athenyx.backend.heuristics.ThreatLevel level) {

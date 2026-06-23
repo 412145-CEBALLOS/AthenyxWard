@@ -108,6 +108,35 @@ Backend (`HeuristicAnalysisService.analyze`):
 - Trial-limit check (`TRIAL_LIMIT = 20`) → `TrialLimitExceededException` → 403
 - `@Async("heuristicsExecutor")` — runs in dedicated thread pool
 - Persists to `EmailAnalysis` entity, increments `User.analysisCount` for TRIAL users
+- Re-analysis (cache miss) **always inserts a new `EmailAnalysis` row** — never updates an existing one, so the history endpoint always shows the full timeline.
+
+## Analysis History (US 2.4)
+
+`/history` page renders the timeline of every `EmailAnalysis` row for the current user. Flow:
+
+```
+/history load → AnalysisService.getHistory({ page, from?, to? })
+   └─ GET /api/analysis/history?page=0&size=20&from=YYYY-MM-DD&to=YYYY-MM-DD
+        └─ AnalysisController.getHistory → AnalysisHistoryService.getHistory
+             └─ EmailAnalysisRepository.findHistoryByUser (JOIN FETCH ea.email)
+                  ORDER BY analyzedAt DESC
+        └─ Page<EmailAnalysis> → AnalysisHistoryResponse (items, currentPage, totalPages, totalItems)
+   ├─ 200 + items → render cards (sender, subject, risk %, risk badge, summary, analyzedAt)
+   ├─ 200 + items=[] → empty state (no analyses yet / no matches in range)
+   └─ 5xx → error state
+```
+
+Backend (`AnalysisHistoryService.getHistory`):
+- Always returns 200 (never 404) — empty result is `items: []`, `totalItems: 0`.
+- `from`/`to` are `LocalDate` (`YYYY-MM-DD`); `to` is converted to end-of-day server-side.
+- Page size clamped to `[1, 100]`, default 20; `page` clamped to `>= 0`.
+- Each item includes `summary` (200-char truncated `aiExplanation`).
+
+Frontend (`AnalysisHistoryComponent`):
+- Signals: `items`, `loading`, `error`, `currentPage`, `totalPages`, `totalItems`, `from`, `to`.
+- Native `<input type="date">` controls for the range; no date library required.
+- Reuses `<app-page-shell>` and `<app-email-paginator>`.
+- Click on a card navigates to `/home?emailId={id}` so the existing viewer + analysis panel is reused.
 
 ## Known Issues
 

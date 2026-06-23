@@ -16,6 +16,7 @@ public record AnalysisHistoryResponse(
         String subject,
         int riskPercentage,
         String riskLevel,
-        LocalDateTime analyzedAt
+        LocalDateTime analyzedAt,
+        String summary
     ) {}
 }

@@ -1,93 +1,161 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
+  inject,
+  OnDestroy,
+  OnInit,
   signal,
 } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import { PageShellComponent } from '../../components/page-shell/page-shell';
-
-type RiskLevel = 'GREEN' | 'YELLOW' | 'RED';
-
-interface HistoryEntry {
-  id: string;
-  date: string;
-  sender: string;
-  subject: string;
-  risk: number;
-  level: RiskLevel;
-  summary: string;
-}
+import { EmailPaginatorComponent } from '../../components/email-paginator/email-paginator';
+import { ImportantEmailDatePipe } from '../../pipes/important-email-date.pipe';
+import { AnalysisService } from '../../services/analysis.service';
+import {
+  AnalysisHistoryItem,
+  RiskLevel,
+} from '../../models/email-analysis.model';
 
 @Component({
   selector: 'app-analysis-history',
   standalone: true,
-  imports: [PageShellComponent],
+  imports: [PageShellComponent, EmailPaginatorComponent, ImportantEmailDatePipe],
   templateUrl: './analysis-history.html',
   styleUrl: './analysis-history.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AnalysisHistoryComponent {
-  readonly entries = signal<HistoryEntry[]>([
-    {
-      id: 'h-001',
-      date: '2026-06-08 09:14',
-      sender: 'bancosantander@seguridad-cuenta.com',
-      subject: 'Verifica tu identidad urgentemente',
-      risk: 87,
-      level: 'RED',
-      summary: 'Dominio no oficial, mensaje urgente y enlace externo.',
-    },
-    {
-      id: 'h-002',
-      date: '2026-06-07 18:42',
-      sender: 'soporte@athenyx.app',
-      subject: 'Resumen semanal de actividad',
-      risk: 12,
-      level: 'GREEN',
-      summary: 'Remitente verificado, sin indicadores de riesgo.',
-    },
-    {
-      id: 'h-003',
-      date: '2026-06-07 11:05',
-      sender: 'Amazon <ofertas@amaz0n-promo.net>',
-      subject: '¡Has ganado un iPhone 15 Pro!',
-      risk: 64,
-      level: 'YELLOW',
-      summary: 'Suplantación de marca y奖品诱惑.',
-    },
-    {
-      id: 'h-004',
-      date: '2026-06-06 22:31',
-      sender: 'no-reply@accounts.google.com',
-      subject: 'Nuevo inicio de sesión detectado',
-      risk: 18,
-      level: 'GREEN',
-      summary: 'Notificación legítima de Google.',
-    },
-    {
-      id: 'h-005',
-      date: '2026-06-06 14:18',
-      sender: 'rectoria@univers1dad-edu.co',
-      subject: 'Pago de matrícula pendiente',
-      risk: 71,
-      level: 'RED',
-      summary: 'Dominio近似 y solicitud de pago a cuenta no oficial.',
-    },
-    {
-      id: 'h-006',
-      date: '2026-06-05 08:22',
-      sender: 'newsletter@github.com',
-      subject: 'Your weekly GitHub digest',
-      risk: 5,
-      level: 'GREEN',
-      summary: 'Boletín legítimo, remitente verificado.',
-    },
-  ]);
+export class AnalysisHistoryComponent implements OnInit, OnDestroy {
+  private readonly analysisService = inject(AnalysisService);
+  private readonly router = inject(Router);
+  private readonly onDestroy = new Subject<void>();
+
+  readonly items = signal<AnalysisHistoryItem[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal(false);
+  readonly currentPage = signal(0);
+  readonly totalPages = signal(0);
+  readonly totalItems = signal(0);
+  readonly from = signal<string | null>(null);
+  readonly to = signal<string | null>(null);
+
+  readonly hasNextPage = computed(
+    () => this.currentPage() < this.totalPages() - 1,
+  );
+  readonly hasFilters = computed(
+    () => this.from() !== null || this.to() !== null,
+  );
+  readonly emptyState = computed(
+    () =>
+      !this.loading() &&
+      !this.error() &&
+      this.totalItems() === 0 &&
+      !this.hasFilters(),
+  );
+  readonly emptyFilteredState = computed(
+    () =>
+      !this.loading() &&
+      !this.error() &&
+      this.totalItems() === 0 &&
+      this.hasFilters(),
+  );
+  readonly outOfRange = computed(
+    () =>
+      !this.loading() &&
+      !this.error() &&
+      this.totalItems() > 0 &&
+      this.items().length === 0,
+  );
+
+  readonly maxDate = new Date().toISOString().split('T')[0];
+
+  ngOnInit(): void {
+    this.loadHistory();
+  }
+
+  ngOnDestroy(): void {
+    this.onDestroy.next();
+    this.onDestroy.complete();
+  }
+
+  onFromChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.from.set(value || null);
+  }
+
+  onToChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.to.set(value || null);
+  }
+
+  applyFilters(): void {
+    this.currentPage.set(0);
+    this.loadHistory();
+  }
+
+  clearFilters(): void {
+    this.from.set(null);
+    this.to.set(null);
+    this.currentPage.set(0);
+    this.loadHistory();
+  }
+
+  onPageChange(page: number): void {
+    const target = this.clampPage(page);
+    if (target === this.currentPage()) {
+      return;
+    }
+    this.currentPage.set(target);
+    this.loadHistory();
+  }
+
+  openEmail(item: AnalysisHistoryItem): void {
+    this.router.navigate(['/home'], {
+      queryParams: { emailId: item.emailId },
+    });
+  }
 
   levelLabel(level: RiskLevel): string {
     switch (level) {
-      case 'GREEN': return 'Seguro';
-      case 'YELLOW': return 'Sospechoso';
-      case 'RED': return 'Peligroso';
+      case 'GREEN':
+        return 'Seguro';
+      case 'YELLOW':
+        return 'Sospechoso';
+      case 'RED':
+        return 'Peligroso';
     }
+  }
+
+  private clampPage(page: number): number {
+    const safe = Math.max(0, page);
+    const max = this.totalPages();
+    if (max <= 0) return 0;
+    return Math.min(safe, max - 1);
+  }
+
+  private loadHistory(): void {
+    this.loading.set(true);
+    this.error.set(false);
+    this.analysisService
+      .getHistory({
+        from: this.from() ?? undefined,
+        to: this.to() ?? undefined,
+        page: this.currentPage(),
+      })
+      .pipe(takeUntil(this.onDestroy))
+      .subscribe({
+        next: (response) => {
+          this.items.set(response.items);
+          this.currentPage.set(response.currentPage);
+          this.totalPages.set(response.totalPages);
+          this.totalItems.set(response.totalItems);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.error.set(true);
+          this.loading.set(false);
+        },
+      });
   }
 }

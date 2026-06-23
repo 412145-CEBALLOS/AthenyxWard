@@ -107,3 +107,43 @@ export interface EmailAnalysisResult {
   source: AnalysisSource;
   modelName?: string;
 }
+
+/**
+ * One row in the paginated analysis history. A flatter subset of
+ * {@link EmailAnalysisResult} plus the email's sender / subject so the
+ * history list can render without a second round-trip per row.
+ */
+export interface AnalysisHistoryItem {
+  analysisId: number;
+  emailId: number;
+  sender: string;
+  subject: string;
+  riskPercentage: number;
+  riskLevel: RiskLevel;
+  analyzedAt: string;
+  summary: string | null;
+}
+
+/**
+ * Paginated response for {@code GET /api/analysis/history}. Page
+ * numbers are 0-indexed; {@code totalPages} is 0 when no analyses
+ * match the filters.
+ */
+export interface AnalysisHistoryResponse {
+  items: AnalysisHistoryItem[];
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+}
+
+/**
+ * Optional filters for {@code GET /api/analysis/history}. Dates are
+ * {@code YYYY-MM-DD} strings — they map directly to native
+ * {@code <input type="date">} values without any timezone gymnastics.
+ */
+export interface AnalysisHistoryFilters {
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+}

@@ -1,17 +1,23 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { EmailAnalysisResult } from '../models/email-analysis.model';
+import {
+  AnalysisHistoryFilters,
+  AnalysisHistoryResponse,
+  EmailAnalysisResult,
+} from '../models/email-analysis.model';
 import { environment } from '../../environments/environment';
 
 /**
- * Thin HTTP wrapper over the {@code /api/emails/{id}/analyze*} endpoints.
+ * Thin HTTP wrapper over the {@code /api/emails/{id}/analyze*} and
+ * {@code /api/analysis/history} endpoints.
  *
  * <p>Created in US 2.3 (Risk Percentage + Traffic Light) as part of the
  * service-infrastructure layer. Consumed in US 2.8 (Real-time analysis
  * panel) by {@code home.ts}, replacing the previous in-memory mock
- * analysis.</p>
+ * analysis. Extended in US 2.4 (Analysis History) with
+ * {@link #getHistory} for the {@code /history} page.</p>
  *
  * <p>All methods return cold observables — components are expected to
  * subscribe with the {@code takeUntil(this.onDestroy)} pattern.</p>
@@ -48,5 +54,28 @@ export class AnalysisService {
     return this.http
       .get<EmailAnalysisResult>(`${this.baseUrl}/emails/${emailId}/analysis`)
       .pipe(catchError(() => of(null)));
+  }
+
+  /**
+   * Fetches the paginated analysis history for the current user.
+   * Returns a 200 with {@code items: []} when the user has no
+   * analyses matching the filters (never a 404).
+   */
+  getHistory(
+    filters: AnalysisHistoryFilters = {},
+  ): Observable<AnalysisHistoryResponse> {
+    let params = new HttpParams()
+      .set('page', (filters.page ?? 0).toString())
+      .set('size', (filters.size ?? 20).toString());
+    if (filters.from) {
+      params = params.set('from', filters.from);
+    }
+    if (filters.to) {
+      params = params.set('to', filters.to);
+    }
+    return this.http.get<AnalysisHistoryResponse>(
+      `${this.baseUrl}/analysis/history`,
+      { params },
+    );
   }
 }

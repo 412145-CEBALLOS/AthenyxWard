@@ -98,6 +98,45 @@ class HeuristicAnalysisServiceTest {
     }
 
     @Test
+    void reAnalysis_createsNewRecordWhenCacheStale() throws Exception {
+        EmailAnalysis stale = EmailAnalysis.builder()
+            .id(100L)
+            .email(email).user(user)
+            .origin(AnalysisOrigin.HEURISTIC)
+            .riskLevel(ThreatLevel.GREEN)
+            .riskPercentage(15)
+            .analyzedAt(LocalDateTime.now().minusHours(25))
+            .build();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+        when(emailHeaderCache.getOrAnalyze(email)).thenReturn(metadata);
+        when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
+            .thenReturn(Optional.of(stale));
+        when(engine.run(any())).thenReturn(new HeuristicResult(
+            List.of(), 88, ThreatLevel.RED
+        ));
+        when(analysisRepository.save(any(EmailAnalysis.class)))
+            .thenAnswer(inv -> {
+                EmailAnalysis a = inv.getArgument(0);
+                a.setId(200L);
+                a.setAnalyzedAt(LocalDateTime.now());
+                return a;
+            });
+
+        HeuristicAnalysisResponse result = service.analyze(1L, 10L).get();
+
+        ArgumentCaptor<EmailAnalysis> captor = ArgumentCaptor.forClass(EmailAnalysis.class);
+        verify(analysisRepository, times(1)).save(captor.capture());
+        EmailAnalysis saved = captor.getValue();
+        assertThat(saved.getId()).isEqualTo(200L);
+        assertThat(saved.getId()).isNotEqualTo(stale.getId());
+        assertThat(saved.getAnalyzedAt()).isAfter(stale.getAnalyzedAt());
+        assertThat(result.riskPercentage()).isEqualTo(88);
+        assertThat(result.riskLevel()).isEqualTo(ThreatLevel.RED);
+        assertThat(result.analysisId()).isEqualTo(200L);
+    }
+
+    @Test
     void cacheHit_returnsExistingAnalysisWithoutRunningEngine() throws Exception {
         EmailAnalysis cached = EmailAnalysis.builder()
             .id(99L)
