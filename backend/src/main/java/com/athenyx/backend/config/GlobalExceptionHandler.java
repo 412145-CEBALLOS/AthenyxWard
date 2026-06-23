@@ -1,5 +1,6 @@
 package com.athenyx.backend.config;
 
+import com.athenyx.backend.heuristics.TrialLimitExceededException;
 import com.athenyx.backend.security.RefreshTokenException;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.LazyInitializationException;
@@ -51,6 +52,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleRefreshTokenException(RefreshTokenException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TrialLimitExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleTrialLimitExceeded(TrialLimitExceededException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", ex.getMessage(), "remaining", ex.remaining(), "limit", 20));
     }
 
     @ExceptionHandler(LazyInitializationException.class)
