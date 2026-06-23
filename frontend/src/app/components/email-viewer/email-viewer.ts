@@ -10,6 +10,8 @@ import { EmailViewerHeaderComponent } from '../email-viewer-header/email-viewer-
 import { EmailAnalysisComponent } from '../email-analysis/email-analysis';
 import { EmailBodyComponent } from '../email-body/email-body';
 
+type UserRole = 'TRIAL' | 'PREMIUM' | 'ADMIN' | null;
+
 @Component({
   selector: 'app-email-viewer',
   standalone: true,
@@ -25,6 +27,7 @@ export class EmailViewerComponent {
   readonly accessibilityMode = input<boolean>(true);
   readonly canMarkImportant = input<boolean>(false);
   readonly isImportant = input<boolean>(false);
+  readonly userRole = input<UserRole>(null);
 
   readonly hide = output<void>();
   readonly delete = output<void>();
@@ -32,4 +35,12 @@ export class EmailViewerComponent {
   readonly markImportant = output<void>();
   readonly createReminder = output<void>();
   readonly retry = output<void>();
+  /**
+   * Bubbles up the {@link EmailAnalysisComponent#analyzeRequest} event.
+   * The parent (home.ts) is expected to call
+   * {@code AnalysisService.analyze()} and set
+   * {@code EmailAnalysisComponent#showAfterAnalysis()} when the result
+   * arrives.
+   */
+  readonly analyzeRequest = output<void>();
 }

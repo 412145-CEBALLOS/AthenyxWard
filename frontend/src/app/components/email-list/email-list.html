@@ -3,6 +3,7 @@
     <app-email-item
       [email]="email"
       [selected]="selectedGmailId() === email.gmailId"
+      [accessibilityMode]="accessibilityMode()"
       (select)="select.emit($event)" />
   }
 </ul>

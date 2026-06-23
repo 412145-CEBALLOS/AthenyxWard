@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface EmailAnalysisRepository extends JpaRepository<EmailAnalysis, Long> {
@@ -16,6 +18,21 @@ public interface EmailAnalysisRepository extends JpaRepository<EmailAnalysis, Lo
 
     Optional<EmailAnalysis> findFirstByEmailIdAndAnalyzedAtAfterOrderByAnalyzedAtDesc(
         Long emailId, LocalDateTime cutoff);
+
+    /**
+     * Returns the latest analysis (highest id = most recent {@code analyzedAt})
+     * for each email id in the given collection. Used to enrich email-list
+     * endpoints with risk data without triggering N+1 queries.
+     */
+    @Query("""
+        SELECT ea FROM EmailAnalysis ea
+        WHERE ea.id IN (
+            SELECT MAX(ea2.id) FROM EmailAnalysis ea2
+            WHERE ea2.email.id IN :emailIds
+            GROUP BY ea2.email.id
+        )
+        """)
+    List<EmailAnalysis> findLatestByEmailIds(@Param("emailIds") Collection<Long> emailIds);
 
     @Query("""
         SELECT ea FROM EmailAnalysis ea

@@ -2,6 +2,10 @@
  * Lightweight Gmail message — list-row payload. Excludes the body and
  * the HTML preview; the SPA fetches those lazily through
  * {@code GET /api/emails/{id}}.
+ *
+ * <p>{@code riskPercentage} and {@code riskLevel} carry the result of the
+ * most recent security analysis (if any). When null, the email has never
+ * been analysed and the list row renders no traffic-light indicator.</p>
  */
 export interface EmailSummary {
   id: number | null;
@@ -15,6 +19,8 @@ export interface EmailSummary {
   isRead: boolean;
   originalDateHeader: string | null;
   isImportant: boolean;
+  riskPercentage?: number | null;
+  riskLevel?: 'GREEN' | 'YELLOW' | 'RED' | null;
 }
 
 /**

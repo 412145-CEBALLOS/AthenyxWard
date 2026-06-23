@@ -22,12 +22,16 @@
       <div class="toggle-text">
         <span class="toggle-title">Análisis de seguridad</span>
         <span class="toggle-meta">
-          <span class="status-badge">{{ statusLabel() }}</span>
-          @if (analysis(); as a) {
-            <span class="toggle-pct">{{ a.riskPercentage }}%</span>
+          @if (state() === 'loading') {
+            <span class="status-badge">Analizando…</span>
+          } @else if (analysis(); as a) {
+            <span class="status-badge">{{ statusLabel() }}</span>
+            <span class="toggle-pct">{{ a.riskPercentage }}% riesgo</span>
             @if (analyzedLabel()) {
               <span class="toggle-time">· {{ analyzedLabel() }}</span>
             }
+          } @else {
+            <span class="status-badge">Sin analizar</span>
           }
         </span>
       </div>
@@ -75,6 +79,11 @@
         @case ('idle') {
           <div class="state-block" role="status">
             <p>{{ stateMessage() }}</p>
+            @if (isTrial()) {
+              <button type="button" class="btn-primary" (click)="onAnalyzeClick()">
+                Analizar este correo
+              </button>
+            }
           </div>
         }
 

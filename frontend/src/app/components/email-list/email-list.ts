@@ -18,6 +18,12 @@ import { EmailItemComponent } from '../email-item/email-item';
 export class EmailListComponent {
   readonly emails = input.required<ReadonlyArray<EmailSummary>>();
   readonly selectedGmailId = input<string | null>(null);
+  /**
+   * Propagated to each {@link EmailItemComponent} so the risk indicator
+   * can switch between the dot (accessibility ON) and the faded
+   * background (accessibility OFF) visual modes.
+   */
+  readonly accessibilityMode = input<boolean>(true);
   readonly select = output<EmailSummary>();
 
   trackByGmailId = (_: number, email: EmailSummary): string => email.gmailId;

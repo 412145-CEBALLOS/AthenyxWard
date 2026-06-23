@@ -86,7 +86,7 @@ public class HeuristicAnalysisService {
             .email(email)
             .user(user)
             .origin(AnalysisOrigin.HEURISTIC)
-            .threatLevel(result.threatLevel())
+            .riskLevel(result.threatLevel())
             .riskPercentage(result.riskPercentage())
             .findings(toJson(result.findings()))
             .suspiciousUrls(toJson(Collections.emptyList()))
@@ -156,7 +156,7 @@ public class HeuristicAnalysisService {
             a.getId(),
             a.getEmail().getId(),
             a.getRiskPercentage(),
-            a.getThreatLevel(),
+            a.getRiskLevel(),
             categorizeThreats(findings),
             findings,
             suspiciousUrls,

@@ -1,5 +1,6 @@
 package com.athenyx.backend.gmail;
 
+import com.athenyx.backend.repository.EmailAnalysisRepository;
 import com.athenyx.backend.repository.EmailRepository;
 import com.athenyx.backend.repository.GmailPageTokenRepository;
 import com.athenyx.backend.repository.UserRepository;
@@ -26,6 +27,8 @@ class GmailServiceParseDateTest {
     @Mock
     private GmailPageTokenRepository gmailPageTokenRepository;
     @Mock
+    private EmailAnalysisRepository emailAnalysisRepository;
+    @Mock
     private TokenEncryptionService tokenEncryptionService;
 
     private GmailService service;
@@ -33,7 +36,7 @@ class GmailServiceParseDateTest {
     @BeforeEach
     void setUp() throws Exception {
         service = new GmailService(userRepository, emailRepository,
-                gmailPageTokenRepository, tokenEncryptionService);
+                gmailPageTokenRepository, emailAnalysisRepository, tokenEncryptionService);
         setField("googleClientId", "cid");
         setField("googleClientSecret", "sec");
     }

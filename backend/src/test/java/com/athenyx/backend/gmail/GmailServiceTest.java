@@ -3,7 +3,11 @@ package com.athenyx.backend.gmail;
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
 import com.athenyx.backend.dto.EmailSummary;
 import com.athenyx.backend.entity.Email;
+import com.athenyx.backend.entity.EmailAnalysis;
 import com.athenyx.backend.entity.User;
+import com.athenyx.backend.heuristics.AnalysisOrigin;
+import com.athenyx.backend.heuristics.ThreatLevel;
+import com.athenyx.backend.repository.EmailAnalysisRepository;
 import com.athenyx.backend.repository.EmailRepository;
 import com.athenyx.backend.repository.GmailPageTokenRepository;
 import com.athenyx.backend.repository.UserRepository;
@@ -33,6 +37,8 @@ class GmailServiceTest {
     @Mock
     private GmailPageTokenRepository gmailPageTokenRepository;
     @Mock
+    private EmailAnalysisRepository emailAnalysisRepository;
+    @Mock
     private TokenEncryptionService tokenEncryptionService;
 
     private GmailService service;
@@ -42,7 +48,7 @@ class GmailServiceTest {
     @BeforeEach
     void setUp() {
         service = new GmailService(userRepository, emailRepository,
-                gmailPageTokenRepository, tokenEncryptionService);
+                gmailPageTokenRepository, emailAnalysisRepository, tokenEncryptionService);
         user = User.builder()
                 .id(1L)
                 .googleId("gid")
@@ -180,5 +186,57 @@ class GmailServiceTest {
         assertThatThrownBy(() -> service.toggleImportant(1L, 99L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Correo no encontrado");
+    }
+
+    @Test
+    void getImportantEmails_populatesRiskFromLatestAnalysis() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        Email email = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj").snippet("snip").contentForAnalysis("body")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isImportant(true).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(1L))
+                .thenReturn(List.of(email));
+        EmailAnalysis analysis = EmailAnalysis.builder()
+                .id(99L)
+                .email(email)
+                .user(user)
+                .origin(AnalysisOrigin.HEURISTIC)
+                .riskLevel(ThreatLevel.RED)
+                .riskPercentage(85)
+                .build();
+        when(emailAnalysisRepository.findLatestByEmailIds(List.of(10L)))
+                .thenReturn(List.of(analysis));
+
+        List<EmailSummary> result = service.getImportantEmails(1L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).riskPercentage()).isEqualTo(85);
+        assertThat(result.get(0).riskLevel()).isEqualTo(ThreatLevel.RED);
+    }
+
+    @Test
+    void getImportantEmails_leavesRiskNullWhenNoAnalysisExists() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        Email email = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj").snippet("snip").contentForAnalysis("body")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isImportant(true).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(1L))
+                .thenReturn(List.of(email));
+        when(emailAnalysisRepository.findLatestByEmailIds(List.of(10L)))
+                .thenReturn(List.of());
+
+        List<EmailSummary> result = service.getImportantEmails(1L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).riskPercentage()).isNull();
+        assertThat(result.get(0).riskLevel()).isNull();
     }
 }

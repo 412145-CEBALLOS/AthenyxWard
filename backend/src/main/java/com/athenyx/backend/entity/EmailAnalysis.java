@@ -35,7 +35,7 @@ public class EmailAnalysis {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ThreatLevel threatLevel;
+    private ThreatLevel riskLevel;
 
     @Column(nullable = false)
     private Integer riskPercentage;

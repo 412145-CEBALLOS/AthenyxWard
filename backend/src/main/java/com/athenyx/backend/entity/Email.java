@@ -33,11 +33,13 @@ public class Email {
     @Column(nullable = false)
     private String sender;
 
+    @Column(columnDefinition = "TEXT")
     private String senderName;
 
     @Column(nullable = false)
     private String subject;
 
+    @Column(columnDefinition = "TEXT")
     private String snippet;
 
     @Column(columnDefinition = "LONGTEXT", nullable = false)
@@ -51,6 +53,7 @@ public class Email {
 
     private LocalDateTime receivedAt;
 
+    @Column(columnDefinition = "TEXT")
     private String originalDateHeader;
 
     private boolean isRead;
@@ -66,23 +69,31 @@ public class Email {
     @Column(updatable = false)
     private LocalDateTime fetchedAt;
 
+    @Column(columnDefinition = "TEXT")
     private String returnPath;
 
+    @Column(columnDefinition = "TEXT")
     private String replyTo;
 
     @Column(columnDefinition = "TEXT")
     private String receivedHeaders;
 
+    @Column(columnDefinition = "TEXT")
     private String spfStatus;
 
+    @Column(columnDefinition = "TEXT")
     private String dkimStatus;
 
+    @Column(columnDefinition = "TEXT")
     private String dmarcStatus;
 
+    @Column(columnDefinition = "TEXT")
     private String listUnsubscribe;
 
+    @Column(columnDefinition = "TEXT")
     private String xMailer;
 
+    @Column(columnDefinition = "TEXT")
     private String originalTimezone;
 
     @Column(columnDefinition = "TEXT")

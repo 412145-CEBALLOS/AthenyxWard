@@ -109,6 +109,9 @@ describe('EmailAnalysisComponent', () => {
     fixture.componentRef.setInput('state', 'ready');
     fixture.detectChanges();
     const btn: HTMLButtonElement = fixture.nativeElement.querySelector('.panel-toggle');
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+    btn.click();
+    fixture.detectChanges();
     expect(btn.getAttribute('aria-expanded')).toBe('true');
     btn.click();
     fixture.detectChanges();
@@ -124,5 +127,106 @@ describe('EmailAnalysisComponent', () => {
       fixture.nativeElement.querySelectorAll('.btn-action-premium');
     expect(premiumButtons.length).toBeGreaterThan(0);
     premiumButtons.forEach((b) => expect(b.disabled).toBe(true));
+  });
+
+  // --- US 2.3 panel-toggle + trial button + risk format ---
+
+  it('starts closed (aria-expanded=false) by default', () => {
+    fixture.componentRef.setInput('analysis', buildAnalysis(20));
+    fixture.componentRef.setInput('state', 'ready');
+    fixture.detectChanges();
+    const btn: HTMLButtonElement = fixture.nativeElement.querySelector('.panel-toggle');
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('toggle in idle + PREMIUM emits analyzeRequest and does NOT open', () => {
+    fixture.componentRef.setInput('state', 'idle');
+    fixture.componentRef.setInput('userRole', 'PREMIUM');
+    fixture.detectChanges();
+    let emitted = false;
+    component.analyzeRequest.subscribe(() => (emitted = true));
+    const btn: HTMLButtonElement = fixture.nativeElement.querySelector('.panel-toggle');
+    btn.click();
+    fixture.detectChanges();
+    expect(emitted).toBe(true);
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('toggle in idle + TRIAL opens the panel and does NOT emit', () => {
+    fixture.componentRef.setInput('state', 'idle');
+    fixture.componentRef.setInput('userRole', 'TRIAL');
+    fixture.detectChanges();
+    let emitted = false;
+    component.analyzeRequest.subscribe(() => (emitted = true));
+    const btn: HTMLButtonElement = fixture.nativeElement.querySelector('.panel-toggle');
+    btn.click();
+    fixture.detectChanges();
+    expect(emitted).toBe(false);
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('trial button is rendered only when state=idle and userRole=TRIAL', () => {
+    fixture.componentRef.setInput('state', 'idle');
+    fixture.componentRef.setInput('userRole', 'TRIAL');
+    fixture.detectChanges();
+    const btn: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.state-block .btn-primary',
+    );
+    expect(btn).toBeTruthy();
+    expect(btn.textContent.trim()).toBe('Analizar este correo');
+  });
+
+  it('trial button emits analyzeRequest when clicked', () => {
+    fixture.componentRef.setInput('state', 'idle');
+    fixture.componentRef.setInput('userRole', 'TRIAL');
+    fixture.detectChanges();
+    let emitted = false;
+    component.analyzeRequest.subscribe(() => (emitted = true));
+    const btn: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.state-block .btn-primary',
+    );
+    btn.click();
+    expect(emitted).toBe(true);
+  });
+
+  it('does NOT render trial button for PREMIUM users in idle state', () => {
+    fixture.componentRef.setInput('state', 'idle');
+    fixture.componentRef.setInput('userRole', 'PREMIUM');
+    fixture.detectChanges();
+    const btn = fixture.nativeElement.querySelector('.state-block .btn-primary');
+    expect(btn).toBeNull();
+  });
+
+  it('shows "X% riesgo" format on the toggle when ready', () => {
+    fixture.componentRef.setInput('analysis', buildAnalysis(65));
+    fixture.componentRef.setInput('state', 'ready');
+    fixture.detectChanges();
+    const pct = fixture.nativeElement.querySelector('.toggle-pct');
+    expect(pct.textContent.trim()).toBe('65% riesgo');
+  });
+
+  it('shows "Sin analizar" badge when idle with no analysis', () => {
+    fixture.componentRef.setInput('state', 'idle');
+    fixture.detectChanges();
+    const badge = fixture.nativeElement.querySelector('.status-badge');
+    expect(badge.textContent.trim()).toBe('Sin analizar');
+  });
+
+  it('shows "Analizando…" badge while loading', () => {
+    fixture.componentRef.setInput('state', 'loading');
+    fixture.detectChanges();
+    const badge = fixture.nativeElement.querySelector('.status-badge');
+    expect(badge.textContent.trim()).toBe('Analizando…');
+  });
+
+  it('showAfterAnalysis() opens the panel from the parent', () => {
+    fixture.componentRef.setInput('state', 'ready');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.panel-toggle')
+      .getAttribute('aria-expanded')).toBe('false');
+    component.showAfterAnalysis();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.panel-toggle')
+      .getAttribute('aria-expanded')).toBe('true');
   });
 });

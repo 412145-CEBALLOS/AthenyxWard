@@ -125,3 +125,62 @@
   font-size: 0.9rem;
   vertical-align: middle;
 }
+
+/* ---------------------------------------------------------------------------
+ * Risk indicator (US 2.3)
+ *
+ * Two visual modes controlled by the `accessibilityMode` input:
+ *   - accessibility ON  -> small coloured dot to the right of the row
+ *   - accessibility OFF -> faded background that fades to transparent
+ *                          toward the bottom of the row
+ *
+ * GREEN emails get no indicator at all (US 2.3 acceptance criteria).
+ * ------------------------------------------------------------------------- */
+
+.risk-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.risk-bg-yellow {
+  background: linear-gradient(
+    to bottom,
+    rgba(202, 138, 4, 0.18) 0%,
+    rgba(202, 138, 4, 0) 100%
+  );
+}
+
+.risk-bg-red {
+  background: linear-gradient(
+    to bottom,
+    rgba(220, 38, 38, 0.22) 0%,
+    rgba(220, 38, 38, 0) 100%
+  );
+}
+
+.email-content,
+.app-sender-avatar {
+  position: relative;
+  z-index: 1;
+}
+
+.risk-dot {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  border-radius: 50%;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.risk-dot-yellow {
+  background: #ca8a04;
+}
+
+.risk-dot-red {
+  background: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25);
+}

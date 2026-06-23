@@ -5,8 +5,10 @@ import com.athenyx.backend.dto.EmailImportantToggleResponse;
 import com.athenyx.backend.dto.EmailPageResponse;
 import com.athenyx.backend.dto.EmailSummary;
 import com.athenyx.backend.entity.Email;
+import com.athenyx.backend.entity.EmailAnalysis;
 import com.athenyx.backend.entity.User;
 import com.athenyx.backend.entity.GmailPageToken;
+import com.athenyx.backend.repository.EmailAnalysisRepository;
 import com.athenyx.backend.repository.EmailRepository;
 import com.athenyx.backend.repository.UserRepository;
 import com.athenyx.backend.repository.GmailPageTokenRepository;
@@ -43,6 +45,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Gmail API integration. Responsibilities:
@@ -70,6 +73,7 @@ public class GmailService {
     private final UserRepository userRepository;
     private final EmailRepository emailRepository;
     private final GmailPageTokenRepository gmailPageTokenRepository;
+    private final EmailAnalysisRepository emailAnalysisRepository;
     private final TokenEncryptionService tokenEncryptionService;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
@@ -149,6 +153,8 @@ public class GmailService {
             }
 
             batch.execute();
+
+            enrichWithRiskData(summaries);
 
             boolean hasNextPage = nextPageToken != null;
             return new EmailPageResponse(summaries, page, MAX_RESULTS, hasNextPage);
@@ -246,19 +252,69 @@ public class GmailService {
             throw new RuntimeException("Usuario no encontrado");
         }
         List<Email> emails = emailRepository.findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(userId);
-        return emails.stream().map(email -> new EmailSummary(
-                email.getId(),
-                email.getGmailId(),
-                email.getSender(),
-                email.getSenderName(),
-                email.getSubject(),
-                email.getSnippet(),
-                email.getReceivedAt(),
-                email.getFetchedAt(),
-                email.isRead(),
-                email.getOriginalDateHeader(),
-                email.isImportant()
-        )).toList();
+        List<EmailSummary> summaries = new ArrayList<>(emails.size());
+        for (Email email : emails) {
+            summaries.add(new EmailSummary(
+                    email.getId(),
+                    email.getGmailId(),
+                    email.getSender(),
+                    email.getSenderName(),
+                    email.getSubject(),
+                    email.getSnippet(),
+                    email.getReceivedAt(),
+                    email.getFetchedAt(),
+                    email.isRead(),
+                    email.getOriginalDateHeader(),
+                    email.isImportant(),
+                    null,
+                    null
+            ));
+        }
+        enrichWithRiskData(summaries);
+        return summaries;
+    }
+
+    /**
+     * Patches each summary with the latest {@code riskPercentage} and
+     * {@code riskLevel} from {@link EmailAnalysisRepository#findLatestByEmailIds}.
+     * Single batch query for the whole list (avoids N+1).
+     */
+    private void enrichWithRiskData(List<EmailSummary> summaries) {
+        if (summaries.isEmpty()) return;
+        List<Long> emailIds = summaries.stream()
+            .map(EmailSummary::id)
+            .filter(Objects::nonNull)
+            .toList();
+        if (emailIds.isEmpty()) return;
+        Map<Long, EmailAnalysis> byEmailId = emailAnalysisRepository
+            .findLatestByEmailIds(emailIds)
+            .stream()
+            .collect(Collectors.toMap(
+                a -> a.getEmail().getId(),
+                a -> a,
+                (a, b) -> a,
+                LinkedHashMap::new
+            ));
+        for (int i = 0; i < summaries.size(); i++) {
+            EmailSummary s = summaries.get(i);
+            EmailAnalysis ea = byEmailId.get(s.id());
+            if (ea == null) continue;
+            summaries.set(i, new EmailSummary(
+                s.id(),
+                s.gmailId(),
+                s.sender(),
+                s.senderName(),
+                s.subject(),
+                s.snippet(),
+                s.receivedAt(),
+                s.fetchedAt(),
+                s.isRead(),
+                s.originalDateHeader(),
+                s.isImportant(),
+                ea.getRiskPercentage(),
+                ea.getRiskLevel()
+            ));
+        }
     }
 
     public long getImportantEmailCount(Long userId) {
@@ -426,7 +482,9 @@ public class GmailService {
                 fetchedAt,
                 email.isRead(),
                 dateStr,
-                email.isImportant()
+                email.isImportant(),
+                null,
+                null
         );
     }
 

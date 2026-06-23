@@ -70,6 +70,13 @@ export interface SenderTrust {
   displayMismatch: boolean;
   spf?: 'PASS' | 'FAIL' | 'NEUTRAL';
   dkim?: 'PASS' | 'FAIL' | 'NEUTRAL';
+  dmarc?: 'PASS' | 'FAIL' | 'NEUTRAL';
+  returnPath?: string | null;
+  replyTo?: string | null;
+  massMailingProvider?: string | null;
+  timezoneAnomaly?: boolean;
+  trustLevel?: 'TRUSTED' | 'UNKNOWN' | 'SUSPICIOUS' | null;
+  trustScore?: number;
 }
 
 /** A suggested next-step action the UI can render as a button. */

@@ -13,6 +13,7 @@ import {
   THREAT_CATEGORY_LABELS,
   ThreatCategory,
 } from '../../models/email-analysis.model';
+import { riskLevelFromPercentage } from '../../utils/risk.util';
 
 const STATUS_LABELS: Record<RiskLevel, string> = {
   GREEN: 'Seguro',
@@ -29,6 +30,8 @@ const STATE_LABELS: Record<AnalysisState, string> = {
     'Has alcanzado el límite de análisis del período de prueba.',
 };
 
+type UserRole = 'TRIAL' | 'PREMIUM' | 'ADMIN' | null;
+
 @Component({
   selector: 'app-email-analysis',
   standalone: true,
@@ -44,6 +47,13 @@ export class EmailAnalysisComponent {
   readonly canMarkImportant = input<boolean>(false);
   readonly isImportant = input<boolean>(false);
   readonly trialRemaining = input<number | null>(null);
+  /**
+   * Drives the trial-user flow: when the user is on a TRIAL plan the
+   * panel never auto-runs the analysis — they must press the explicit
+   * "Analizar este correo" button. Non-trial users (PREMIUM, ADMIN)
+   * fire the {@link analyzeRequest} output on the first toggle click.
+   */
+  readonly userRole = input<UserRole>(null);
 
   readonly hide = output<void>();
   readonly delete = output<void>();
@@ -51,8 +61,16 @@ export class EmailAnalysisComponent {
   readonly markImportant = output<void>();
   readonly createReminder = output<void>();
   readonly retry = output<void>();
+  /**
+   * Emitted when the user asks for a fresh analysis (PREMIUM/ADMIN
+   * toggle on first click, or TRIAL via the in-body button). The
+   * parent (email-viewer → home) is responsible for invoking
+   * {@code AnalysisService.analyze()} and calling
+   * {@link showAfterAnalysis} when the result is ready.
+   */
+  readonly analyzeRequest = output<void>();
 
-  readonly open = signal<boolean>(true);
+  readonly open = signal<boolean>(false);
 
   readonly circumference = 2 * Math.PI * 46;
 
@@ -63,10 +81,7 @@ export class EmailAnalysisComponent {
 
   readonly riskLevel = computed<RiskLevel>(() => {
     const a = this.analysis();
-    if (!a) return 'GREEN';
-    if (a.riskPercentage < 40) return 'GREEN';
-    if (a.riskPercentage < 70) return 'YELLOW';
-    return 'RED';
+    return riskLevelFromPercentage(a?.riskPercentage);
   });
 
   readonly riskClass = computed<'risk-safe' | 'risk-suspicious' | 'risk-dangerous'>(
@@ -85,6 +100,8 @@ export class EmailAnalysisComponent {
   readonly statusLabel = computed<string>(() => STATUS_LABELS[this.riskLevel()]);
 
   readonly stateMessage = computed<string>(() => STATE_LABELS[this.state()]);
+
+  readonly isTrial = computed<boolean>(() => this.userRole() === 'TRIAL');
 
   readonly threatLabel = (category: ThreatCategory): string =>
     THREAT_CATEGORY_LABELS[category];
@@ -116,8 +133,30 @@ export class EmailAnalysisComponent {
     () => (this.analysis()?.suspiciousUrls.length ?? 0) > 3,
   );
 
+  /**
+   * Public hook invoked by the parent (home.ts → email-viewer.ts) when
+   * the analysis has just finished and the panel should open to reveal
+   * the result. Keeps the component decoupled from the service.
+   */
+  showAfterAnalysis(): void {
+    this.open.set(true);
+  }
+
   toggle(): void {
+    const currentlyOpen = this.open();
+    if (!currentlyOpen && this.state() === 'idle' && !this.isTrial()) {
+      this.analyzeRequest.emit();
+      return;
+    }
+    if (!currentlyOpen && this.state() === 'idle' && this.isTrial()) {
+      this.open.set(true);
+      return;
+    }
     this.open.update((v) => !v);
+  }
+
+  onAnalyzeClick(): void {
+    this.analyzeRequest.emit();
   }
 
   onHide(): void {

@@ -1,5 +1,6 @@
 import { EmailAnalysisResult } from '../models/email-analysis.model';
 import { EmailDetail } from '../models/email-summary.model';
+import { riskLevelFromPercentage } from './risk.util';
 
 export function computeMockAnalysis(detail: EmailDetail): EmailAnalysisResult {
   const senderDomain = (detail.sender.split('@')[1] ?? '').toLowerCase();
@@ -8,8 +9,7 @@ export function computeMockAnalysis(detail: EmailDetail): EmailAnalysisResult {
     detail.senderName.length > 0 &&
     !detail.sender.toLowerCase().includes(displayName.toLowerCase().split(' ')[0] ?? '__');
   const riskPercentage = displayMismatch || senderDomain.includes('verify') ? 78 : 22;
-  const riskLevel: EmailAnalysisResult['riskLevel'] =
-    riskPercentage < 40 ? 'GREEN' : riskPercentage < 70 ? 'YELLOW' : 'RED';
+  const riskLevel: EmailAnalysisResult['riskLevel'] = riskLevelFromPercentage(riskPercentage);
 
   return {
     analysisId: detail.id,

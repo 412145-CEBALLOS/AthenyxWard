@@ -43,6 +43,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   readonly isPremium = computed(() => this.authService.user()?.role === 'PREMIUM');
   readonly canMarkImportant = computed(() => this.authService.user()?.role !== 'TRIAL');
   readonly accessibilityMode = computed(() => this.authService.user()?.accessibilityMode ?? true);
+  readonly userRole = computed(() => this.authService.user()?.role ?? null);
 
   readonly mobileEmailDetail = signal(false);
 
@@ -238,6 +239,16 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
   onEmailCreateReminder(): void { console.warn('TODO Sprint 3: create reminder (premium)'); }
+
+  /**
+   * Bubbled-up event from the analysis panel-toggle. US 2.8 wires this
+   * to {@code AnalysisService.analyze()} (premium/admin auto-flow) or
+   * the explicit trial button. For now we keep the existing mock-based
+   * flow intact so US 2.3 is a no-op here.
+   */
+  onAnalysisRequest(): void {
+    // Intentional no-op: real wiring lives in US 2.8.
+  }
 
   // TODO(Sprint 3): remove mock; wire to real backend retry flow.
   onEmailAnalysisRetry(): void {

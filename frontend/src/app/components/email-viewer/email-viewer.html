@@ -6,13 +6,15 @@
     [accessibilityMode]="accessibilityMode()"
     [canMarkImportant]="canMarkImportant()"
     [isImportant]="isImportant()"
+    [userRole]="userRole()"
     [trialRemaining]="null"
     (hide)="hide.emit()"
     (delete)="delete.emit()"
     (markPhishing)="markPhishing.emit()"
     (markImportant)="markImportant.emit()"
     (createReminder)="createReminder.emit()"
-    (retry)="retry.emit()" />
+    (retry)="retry.emit()"
+    (analyzeRequest)="analyzeRequest.emit()" />
   <div class="viewer-subject">
     <h2>{{ email().subject }}</h2>
   </div>

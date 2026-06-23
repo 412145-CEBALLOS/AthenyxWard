@@ -2,7 +2,17 @@
   class="email-item"
   [class.selected]="selected()"
   [class.unread]="unread()"
+  [class.risk-yellow]="showRiskIndicator() && riskLevel() === 'YELLOW'"
+  [class.risk-red]="showRiskIndicator() && riskLevel() === 'RED'"
   (click)="onClick()">
+  @if (showRiskIndicator() && !accessibilityMode()) {
+    <div
+      class="risk-bg"
+      [class.risk-bg-yellow]="riskLevel() === 'YELLOW'"
+      [class.risk-bg-red]="riskLevel() === 'RED'"
+      aria-hidden="true">
+    </div>
+  }
   <app-sender-avatar
     size="sm"
     [sender]="email().sender"
@@ -20,6 +30,15 @@
     <span class="email-subject">{{ email().subject }}</span>
     <span class="email-snippet">{{ email().snippet }}</span>
   </div>
+  @if (showRiskIndicator() && accessibilityMode()) {
+    <span
+      class="risk-dot"
+      [class.risk-dot-yellow]="riskLevel() === 'YELLOW'"
+      [class.risk-dot-red]="riskLevel() === 'RED'"
+      [attr.aria-label]="riskAriaLabel()"
+      role="img">
+    </span>
+  }
   @if (unread()) {
     <span class="unread-dot"></span>
   }

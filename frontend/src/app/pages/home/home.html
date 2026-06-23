@@ -43,6 +43,7 @@
       <app-email-list
         [emails]="emails()"
         [selectedGmailId]="selectedEmail()?.gmailId ?? null"
+        [accessibilityMode]="accessibilityMode()"
         (select)="selectEmail($event)" />
     }
   </aside>
@@ -60,12 +61,14 @@
         [accessibilityMode]="accessibilityMode()"
         [canMarkImportant]="canMarkImportant()"
         [isImportant]="email.isImportant"
+        [userRole]="userRole()"
         (hide)="onEmailHide()"
         (delete)="onEmailDelete()"
         (markPhishing)="onEmailMarkPhishing()"
         (markImportant)="onEmailMarkImportant()"
         (createReminder)="onEmailCreateReminder()"
-        (retry)="onEmailAnalysisRetry()" />
+        (retry)="onEmailAnalysisRetry()"
+        (analyzeRequest)="onAnalysisRequest()" />
     } @else {
       <div class="viewer-empty">
         <svg viewBox="0 0 24 24" fill="none">
