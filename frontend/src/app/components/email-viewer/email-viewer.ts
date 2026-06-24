@@ -46,6 +46,13 @@ export class EmailViewerComponent {
    */
   readonly reminder = input<Reminder | ReminderSummary | null>(null);
   /**
+   * Convenience flags derived from {@link reminder} on the parent
+   * side (so the analysis button can switch label and disable
+   * itself without doing the same work twice).
+   */
+  readonly hasReminder = input<boolean>(false);
+  readonly hasPendingReminder = input<boolean>(false);
+  /**
    * Two-way bound open-state for the analysis panel-toggle. The
    * parent (home.ts) writes {@code true} when an analysis finishes
    * to auto-reveal the result.

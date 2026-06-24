@@ -14,38 +14,43 @@
       </button>
     </div>
   } @else {
-    <div class="reminders-filters" role="tablist" aria-label="Filtros de recordatorios">
-      <button
-        type="button"
-        role="tab"
-        [class.active]="filter() === 'all'"
-        [attr.aria-selected]="filter() === 'all'"
-        (click)="setFilter('all')">
-        Todos <span class="filter-count">{{ items().length }}</span>
-      </button>
-      <button
-        type="button"
-        role="tab"
-        [class.active]="filter() === 'pending'"
-        [attr.aria-selected]="filter() === 'pending'"
-        (click)="setFilter('pending')">
-        Pendientes <span class="filter-count">{{ pendingCount() }}</span>
-      </button>
-      <button
-        type="button"
-        role="tab"
-        [class.active]="filter() === 'done'"
-        [attr.aria-selected]="filter() === 'done'"
-        (click)="setFilter('done')">
-        Completados <span class="filter-count">{{ doneCount() }}</span>
-      </button>
-    </div>
-
     <div class="reminders-toolbar">
-      <button type="button" class="btn-primary" (click)="openNewReminder()">
-        <i class="ti ti-plus" aria-hidden="true"></i>
-        Nuevo recordatorio
-      </button>
+      <div class="reminders-filters" role="tablist" aria-label="Filtros de recordatorios">
+        <button
+          type="button"
+          role="tab"
+          [class.active]="filter() === 'all'"
+          [attr.aria-selected]="filter() === 'all'"
+          (click)="setFilter('all')">
+          Todos <span class="filter-count">{{ items().length }}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          [class.active]="filter() === 'pending'"
+          [attr.aria-selected]="filter() === 'pending'"
+          (click)="setFilter('pending')">
+          Pendientes <span class="filter-count">{{ pendingCount() }}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          [class.active]="filter() === 'done'"
+          [attr.aria-selected]="filter() === 'done'"
+          (click)="setFilter('done')">
+          Completados <span class="filter-count">{{ doneCount() }}</span>
+        </button>
+      </div>
+      @if (canClearCompleted()) {
+        <button
+          type="button"
+          class="btn-ghost-danger"
+          (click)="openClearCompletedConfirm()"
+          title="Eliminar todos los recordatorios completados">
+          <i class="ti ti-trash" aria-hidden="true"></i>
+          Limpiar completados
+        </button>
+      }
     </div>
 
     @if (loading()) {
@@ -59,107 +64,206 @@
         <p>No se pudieron cargar los recordatorios.</p>
         <button type="button" class="btn-primary" (click)="retry()">Reintentar</button>
       </div>
-    } @else if (visibleItems().length === 0) {
+    } @else if (pendingItems().length === 0 && doneItems().length === 0) {
       <div class="reminders-empty">
         <i class="ti ti-calendar-off"></i>
-        @if (filter() === 'all') {
-          <p>No tienes recordatorios aún.</p>
-          <span>Crea uno desde aquí o desde un correo en la bandeja.</span>
-        } @else if (filter() === 'pending') {
-          <p>No tienes recordatorios pendientes.</p>
-          <span>Marca uno como hecho desde la pestaña "Completados".</span>
-        } @else {
-          <p>No tienes recordatorios completados todavía.</p>
-          <span>Marca un pendiente como hecho y aparecerá aquí.</span>
-        }
+        <p>No tienes recordatorios aún.</p>
+        <span>Abre un correo en la bandeja y pulsa el botón del recordatorio para crear uno.</span>
       </div>
     } @else {
-      <ul class="reminders-list">
-        @for (reminder of visibleItems(); track reminder.id) {
-          <li
-            class="reminder-item"
-            [class.done]="reminder.done"
-            [class.upcoming]="isUpcoming(reminder)"
-            [class.editing]="editingId() === reminder.id">
-            <button
-              type="button"
-              class="reminder-check"
-              [attr.aria-label]="reminder.done ? 'Marcar como pendiente' : 'Marcar como completado'"
-              (click)="toggleDone(reminder)">
-              <i class="ti" [class.ti-circle]="!reminder.done" [class.ti-circle-check-filled]="reminder.done"></i>
-            </button>
+      @if (pendingItems().length > 0) {
+        <h2 class="reminders-section-title">
+          <i class="ti ti-clock" aria-hidden="true"></i>
+          Pendientes
+          <span class="filter-count">{{ pendingItems().length }}</span>
+        </h2>
+        <ul class="reminders-list">
+          @for (reminder of pendingItems(); track reminder.id) {
+            <li
+              class="reminder-item"
+              [class.upcoming]="isUpcoming(reminder)"
+              [class.editing]="editingId() === reminder.id"
+              tabindex="0"
+              (click)="openEmail(reminder)"
+              (keydown.enter)="openEmail(reminder)">
+              <button
+                type="button"
+                class="reminder-check"
+                [attr.aria-label]="reminder.done ? 'Marcar como pendiente' : 'Marcar como completado'"
+                (click)="toggleDone(reminder, $event)">
+                <i class="ti" [class.ti-circle]="!reminder.done" [class.ti-circle-check-filled]="reminder.done"></i>
+              </button>
 
-            <div class="reminder-body">
-              @if (editingId() === reminder.id && editingState(); as state) {
-                <div class="reminder-edit-grid">
-                  <input
-                    type="date"
-                    class="reminder-edit-input"
-                    [value]="state.date"
-                    (input)="onEditDate($event)" />
-                  <input
-                    type="time"
-                    class="reminder-edit-input"
-                    [value]="state.time"
-                    (input)="onEditTime($event)" />
-                  <textarea
-                    class="reminder-edit-textarea"
-                    rows="2"
-                    placeholder="Mensaje (opcional)"
-                    [value]="state.message"
-                    (input)="onEditMessage($event)"></textarea>
-                </div>
-                <div class="reminder-edit-actions">
-                  <button
-                    type="button"
-                    class="btn-secondary"
-                    (click)="cancelEdit()">
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-primary"
-                    (click)="saveEdit(reminder)">
-                    Guardar
-                  </button>
-                </div>
-              } @else {
-                <span class="reminder-subject" [title]="reminder.message || ''">
-                  {{ reminder.message || 'Sin mensaje' }}
-                </span>
-                <span class="reminder-due">
-                  <i class="ti ti-clock" aria-hidden="true"></i>
-                  {{ formatDate(reminder) }}
-                  @if (isUpcoming(reminder)) {
-                    <span class="reminder-upcoming-tag">Próximo</span>
-                  }
-                </span>
-              }
-            </div>
-
-            @if (editingId() !== reminder.id) {
-              <div class="reminder-actions">
-                <button
-                  type="button"
-                  class="reminder-icon-btn"
-                  title="Editar"
-                  aria-label="Editar recordatorio"
-                  (click)="startEdit(reminder)">
-                  <i class="ti ti-pencil" aria-hidden="true"></i>
-                </button>
-                <button
-                  type="button"
-                  class="reminder-icon-btn reminder-icon-danger"
-                  title="Eliminar"
-                  aria-label="Eliminar recordatorio"
-                  (click)="openDeleteConfirm(reminder)">
-                  <i class="ti ti-x" aria-hidden="true"></i>
-                </button>
+              <div class="reminder-body">
+                @if (editingId() === reminder.id && editingState(); as state) {
+                  <div class="reminder-edit-grid">
+                    <input
+                      type="date"
+                      class="reminder-edit-input"
+                      [value]="state.date"
+                      (input)="onEditDate($event)"
+                      (click)="$event.stopPropagation()" />
+                    <input
+                      type="time"
+                      class="reminder-edit-input"
+                      [value]="state.time"
+                      (input)="onEditTime($event)"
+                      (click)="$event.stopPropagation()" />
+                    <textarea
+                      class="reminder-edit-textarea"
+                      rows="2"
+                      placeholder="Mensaje (opcional)"
+                      [value]="state.message"
+                      (input)="onEditMessage($event)"
+                      (click)="$event.stopPropagation()"></textarea>
+                  </div>
+                  <div class="reminder-edit-actions">
+                    <button
+                      type="button"
+                      class="btn-secondary"
+                      (click)="cancelEdit($event)">
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-primary"
+                      (click)="saveEdit(reminder, $event)">
+                      Guardar
+                    </button>
+                  </div>
+                } @else {
+                  <span class="reminder-subject" [title]="reminder.message || ''">
+                    {{ reminder.message || 'Sin mensaje' }}
+                  </span>
+                  <span class="reminder-due">
+                    <i class="ti ti-clock" aria-hidden="true"></i>
+                    {{ formatDate(reminder) }}
+                    @if (isUpcoming(reminder)) {
+                      <span class="reminder-upcoming-tag">Próximo</span>
+                    }
+                  </span>
+                }
               </div>
-            }
-          </li>
-        }
-      </ul>
+
+              @if (editingId() !== reminder.id) {
+                <div class="reminder-actions" (click)="$event.stopPropagation()">
+                  <button
+                    type="button"
+                    class="reminder-icon-btn"
+                    title="Editar"
+                    aria-label="Editar recordatorio"
+                    (click)="startEdit(reminder, $event)">
+                    <i class="ti ti-pencil" aria-hidden="true"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="reminder-icon-btn reminder-icon-danger"
+                    title="Eliminar"
+                    aria-label="Eliminar recordatorio"
+                    (click)="openDeleteConfirm(reminder, $event)">
+                    <i class="ti ti-x" aria-hidden="true"></i>
+                  </button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      @if (doneItems().length > 0) {
+        <h2 class="reminders-section-title">
+          <i class="ti ti-circle-check" aria-hidden="true"></i>
+          Completados
+          <span class="filter-count">{{ doneItems().length }}</span>
+        </h2>
+        <ul class="reminders-list">
+          @for (reminder of doneItems(); track reminder.id) {
+            <li
+              class="reminder-item done"
+              [class.editing]="editingId() === reminder.id"
+              tabindex="0"
+              (click)="openEmail(reminder)"
+              (keydown.enter)="openEmail(reminder)">
+              <button
+                type="button"
+                class="reminder-check"
+                [attr.aria-label]="reminder.done ? 'Marcar como pendiente' : 'Marcar como completado'"
+                (click)="toggleDone(reminder, $event)">
+                <i class="ti" [class.ti-circle]="!reminder.done" [class.ti-circle-check-filled]="reminder.done"></i>
+              </button>
+
+              <div class="reminder-body">
+                @if (editingId() === reminder.id && editingState(); as state) {
+                  <div class="reminder-edit-grid">
+                    <input
+                      type="date"
+                      class="reminder-edit-input"
+                      [value]="state.date"
+                      (input)="onEditDate($event)"
+                      (click)="$event.stopPropagation()" />
+                    <input
+                      type="time"
+                      class="reminder-edit-input"
+                      [value]="state.time"
+                      (input)="onEditTime($event)"
+                      (click)="$event.stopPropagation()" />
+                    <textarea
+                      class="reminder-edit-textarea"
+                      rows="2"
+                      placeholder="Mensaje (opcional)"
+                      [value]="state.message"
+                      (input)="onEditMessage($event)"
+                      (click)="$event.stopPropagation()"></textarea>
+                  </div>
+                  <div class="reminder-edit-actions">
+                    <button
+                      type="button"
+                      class="btn-secondary"
+                      (click)="cancelEdit($event)">
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-primary"
+                      (click)="saveEdit(reminder, $event)">
+                      Guardar
+                    </button>
+                  </div>
+                } @else {
+                  <span class="reminder-subject" [title]="reminder.message || ''">
+                    {{ reminder.message || 'Sin mensaje' }}
+                  </span>
+                  <span class="reminder-due">
+                    <i class="ti ti-clock" aria-hidden="true"></i>
+                    {{ formatDate(reminder) }}
+                  </span>
+                }
+              </div>
+
+              @if (editingId() !== reminder.id) {
+                <div class="reminder-actions" (click)="$event.stopPropagation()">
+                  <button
+                    type="button"
+                    class="reminder-icon-btn"
+                    title="Editar"
+                    aria-label="Editar recordatorio"
+                    (click)="startEdit(reminder, $event)">
+                    <i class="ti ti-pencil" aria-hidden="true"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="reminder-icon-btn reminder-icon-danger"
+                    title="Eliminar"
+                    aria-label="Eliminar recordatorio"
+                    (click)="openDeleteConfirm(reminder, $event)">
+                    <i class="ti ti-x" aria-hidden="true"></i>
+                  </button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
     }
   }
 </app-page-shell>
@@ -175,11 +279,13 @@
     (cancel)="closeDeleteConfirm()" />
 }
 
-@if (formDialogOpen()) {
-  <app-reminder-form-dialog
-    [reminder]="formEditing()"
-    [emailId]="null"
-    [defaultDate]="formEditing() ? null : (visibleItems()[0]?.reminderDate ?? null)"
-    (saved)="onFormSaved($event)"
-    (cancelled)="onFormCancelled()" />
+@if (confirmClearAll()) {
+  <app-confirm-dialog
+    title="Eliminar completados"
+    [message]="'Se eliminarán ' + doneCount() + ' recordatorio(s) completado(s). Esta acción no se puede deshacer.'"
+    confirmLabel="Eliminar todos"
+    cancelLabel="Cancelar"
+    variant="danger"
+    (confirm)="confirmClearAllCompleted()"
+    (cancel)="closeClearCompletedConfirm()" />
 }

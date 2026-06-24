@@ -2,18 +2,22 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   OnDestroy,
   OnInit,
+  PLATFORM_ID,
   signal,
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { PageShellComponent } from '../../components/page-shell/page-shell';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog';
-import { ReminderFormDialogComponent } from '../../components/reminder-form-dialog/reminder-form-dialog';
 import { ReminderService } from '../../services/reminder.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
+import { NotificationService } from '../../services/notification.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   Reminder,
@@ -32,7 +36,7 @@ interface EditingState {
 @Component({
   selector: 'app-reminders',
   standalone: true,
-  imports: [PageShellComponent, ConfirmDialogComponent, ReminderFormDialogComponent],
+  imports: [PageShellComponent, ConfirmDialogComponent],
   templateUrl: './reminders.html',
   styleUrl: './reminders.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,6 +45,9 @@ export class RemindersComponent implements OnInit, OnDestroy {
   private readonly reminderService = inject(ReminderService);
   private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly router = inject(Router);
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly onDestroy = new Subject<void>();
 
   readonly items = signal<Reminder[]>([]);
@@ -51,27 +58,58 @@ export class RemindersComponent implements OnInit, OnDestroy {
   readonly editingState = signal<EditingState | null>(null);
 
   readonly confirmDelete = signal<Reminder | null>(null);
-  readonly formDialogOpen = signal(false);
-  readonly formEditing = signal<Reminder | null>(null);
+  readonly confirmClearAll = signal(false);
 
   readonly isTrial = computed(() => this.authService.user()?.role === 'TRIAL');
 
-  readonly visibleItems = computed<Reminder[]>(() => {
+  readonly pendingItems = computed<Reminder[]>(() => {
     const all = this.items();
-    if (this.filter() === 'all') return all;
-    const wantDone = this.filter() === 'done';
-    return all.filter((r) => r.done === wantDone);
+    if (this.filter() === 'done') return [];
+    return all
+      .filter((r) => !r.done)
+      .sort((a, b) => new Date(a.reminderDate).getTime() - new Date(b.reminderDate).getTime());
+  });
+
+  readonly doneItems = computed<Reminder[]>(() => {
+    const all = this.items();
+    if (this.filter() === 'pending') return [];
+    return all
+      .filter((r) => r.done)
+      .sort((a, b) => new Date(b.reminderDate).getTime() - new Date(a.reminderDate).getTime());
   });
 
   readonly pendingCount = computed(() => this.items().filter((r) => !r.done).length);
   readonly doneCount = computed(() => this.items().filter((r) => r.done).length);
+  readonly canClearCompleted = computed(() => this.doneCount() > 0);
 
   ngOnInit(): void {
-    if (!this.isTrial()) {
-      this.loadList();
-    } else {
+    if (this.isTrial()) {
       this.loading.set(false);
+      return;
     }
+    // Skip the loader on the server — there are no cookies there
+    // and the 401 response would be toasted into the SSR'd HTML
+    // where the dismiss button can't be re-hydrated cleanly. The
+    // browser-side ngOnInit run will issue the real request.
+    if (!isPlatformBrowser(this.platformId)) {
+      this.loading.set(false);
+      return;
+    }
+    this.loadList();
+  }
+
+  constructor() {
+    // Listen to the bell's done$ stream: when the user marks a
+    // reminder done from the bell panel (or the email-viewer
+    // banner), we flip the local copy so the card moves from
+    // Pendientes to Completados without a refetch.
+    this.notificationService.done$
+      .pipe(takeUntil(this.onDestroy))
+      .subscribe((reminderId) => {
+        this.items.update((list) =>
+          list.map((r) => (r.id === reminderId ? { ...r, done: true } : r))
+        );
+      });
   }
 
   ngOnDestroy(): void {
@@ -103,7 +141,8 @@ export class RemindersComponent implements OnInit, OnDestroy {
     });
   }
 
-  toggleDone(reminder: Reminder): void {
+  toggleDone(reminder: Reminder, event?: MouseEvent): void {
+    event?.stopPropagation();
     const request: UpdateReminderRequest = { done: !reminder.done };
     this.reminderService.update(reminder.id, request)
       .pipe(takeUntil(this.onDestroy))
@@ -116,7 +155,8 @@ export class RemindersComponent implements OnInit, OnDestroy {
       });
   }
 
-  startEdit(reminder: Reminder): void {
+  startEdit(reminder: Reminder, event?: MouseEvent): void {
+    event?.stopPropagation();
     this.editingId.set(reminder.id);
     const iso = reminder.reminderDate;
     const safe = iso.length >= 16 ? iso.substring(0, 16) : iso;
@@ -128,7 +168,8 @@ export class RemindersComponent implements OnInit, OnDestroy {
     });
   }
 
-  cancelEdit(): void {
+  cancelEdit(event?: MouseEvent): void {
+    event?.stopPropagation();
     this.editingId.set(null);
     this.editingState.set(null);
   }
@@ -151,28 +192,40 @@ export class RemindersComponent implements OnInit, OnDestroy {
     if (state) this.editingState.set({ ...state, message: value });
   }
 
-  saveEdit(reminder: Reminder): void {
+  saveEdit(reminder: Reminder, event?: MouseEvent): void {
+    event?.stopPropagation();
     const state = this.editingState();
     if (!state || !state.date || !state.time) {
       this.toast.error('Fecha y hora son obligatorias.');
       return;
     }
-    const reminderDate = `${state.date}T${state.time}:00`;
+    // Build a UTC ISO with Z so the backend's UTC clock sees the
+    // same instant the user picked on their local calendar.
+    const local = new Date(`${state.date}T${state.time}:00`);
+    if (!Number.isNaN(local.getTime()) && local.getTime() < Date.now() - 60_000) {
+      this.toast.error('La fecha y hora deben ser en el futuro.');
+      return;
+    }
+    const reminderDate = Number.isNaN(local.getTime())
+      ? `${state.date}T${state.time}:00`
+      : local.toISOString();
     const message = state.message.trim() || null;
-    const request: UpdateReminderRequest = { reminderDate, message };
+    // Editing always reactivates the reminder.
+    const request: UpdateReminderRequest = { reminderDate, message, done: false };
     this.reminderService.update(reminder.id, request)
       .pipe(takeUntil(this.onDestroy))
       .subscribe({
         next: (updated) => {
           this.items.update((list) => list.map((r) => r.id === updated.id ? updated : r));
           this.cancelEdit();
-          this.toast.success('Recordatorio actualizado.');
+          this.toast.success('Recordatorio reactivado.');
         },
         error: () => this.toast.error('No se pudo actualizar el recordatorio.'),
       });
   }
 
-  openDeleteConfirm(reminder: Reminder): void {
+  openDeleteConfirm(reminder: Reminder, event?: MouseEvent): void {
+    event?.stopPropagation();
     this.confirmDelete.set(reminder);
   }
 
@@ -198,51 +251,59 @@ export class RemindersComponent implements OnInit, OnDestroy {
       });
   }
 
-  openNewReminder(): void {
-    this.formEditing.set(null);
-    this.formDialogOpen.set(true);
+  openClearCompletedConfirm(): void {
+    this.confirmClearAll.set(true);
   }
 
-  onFormSaved(saved: Reminder): void {
-    this.formDialogOpen.set(false);
-    this.formEditing.set(null);
-    this.items.update((list) => {
-      const idx = list.findIndex((r) => r.id === saved.id);
-      if (idx === -1) {
-        return [saved, ...list].sort((a, b) =>
-          new Date(a.reminderDate).getTime() - new Date(b.reminderDate).getTime()
-        );
-      }
-      const next = [...list];
-      next[idx] = saved;
-      return next;
-    });
-    this.toast.success('Recordatorio guardado.');
+  closeClearCompletedConfirm(): void {
+    this.confirmClearAll.set(false);
   }
 
-  onFormCancelled(): void {
-    this.formDialogOpen.set(false);
-    this.formEditing.set(null);
+  confirmClearAllCompleted(): void {
+    this.confirmClearAll.set(false);
+    this.reminderService.clearCompleted()
+      .pipe(takeUntil(this.onDestroy))
+      .subscribe({
+        next: (deleted) => {
+          this.items.update((list) => list.filter((r) => !r.done));
+          this.toast.success(
+            deleted === 1
+              ? 'Se eliminó 1 recordatorio completado.'
+              : `Se eliminaron ${deleted} recordatorios completados.`
+          );
+        },
+        error: () => this.toast.error('No se pudieron eliminar los recordatorios completados.'),
+      });
   }
 
   retry(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.error.set(false);
     this.loading.set(true);
     this.loadList();
   }
 
+  goToPlan(): void {
+    window.location.assign('/plan');
+  }
+
+  /**
+   * Click handler for the card body — navigates to the email
+   * viewer for the reminder's email. Action buttons inside the
+   * card stop propagation so they don't trigger this.
+   */
+  openEmail(reminder: Reminder, event?: MouseEvent): void {
+    event?.stopPropagation();
+    this.router.navigate(['/home'], { queryParams: { emailId: reminder.emailId } });
+  }
+
   /**
    * Test hook: re-runs the initial loader with whatever the
    * current {@link ReminderService.list} spy is configured to
-   * return. Hidden behind a non-private name on purpose to be
-   * reachable from the spec.
+   * return.
    */
   loadListPublic(): void {
     this.loadList();
-  }
-
-  goToPlan(): void {
-    window.location.assign('/plan');
   }
 
   private loadList(): void {

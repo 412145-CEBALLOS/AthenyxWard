@@ -8,11 +8,23 @@
   overflow-y: auto;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+.reminders-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
 .reminders-filters {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 12px;
   padding: 4px;
   background: rgba(226, 232, 240, 0.55);
   border-radius: 12px;
@@ -58,14 +70,9 @@
   color: #1d4ed8;
 }
 
-.reminders-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
-}
-
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.btn-ghost-danger {
   border: none;
   border-radius: 10px;
   padding: 8px 14px;
@@ -96,6 +103,17 @@
   background: rgba(148, 163, 184, 0.3);
 }
 
+.btn-ghost-danger {
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-ghost-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
 .reminders-loading {
   display: flex;
   flex-direction: column;
@@ -103,6 +121,28 @@
   gap: 12px;
   padding: 60px 20px;
   color: #64748b;
+}
+
+.reminders-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.reminders-section-title i {
+  color: #64748b;
+  font-size: 1.05rem;
+}
+
+.reminders-section-title .filter-count {
+  background: rgba(15, 23, 42, 0.08);
+  color: #1e293b;
 }
 
 .reminders-list {
@@ -125,15 +165,24 @@
   border: 1px solid rgba(226, 232, 240, 0.8);
   border-radius: 14px;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.04);
-  transition: opacity 0.2s ease, transform 0.15s ease, border-color 0.15s ease;
+  transition: opacity 0.2s ease, transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .reminder-item:hover {
   transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+}
+
+.reminder-item:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
 .reminder-item.done {
-  opacity: 0.55;
+  opacity: 0.65;
 }
 
 .reminder-item.done .reminder-subject {
@@ -149,6 +198,7 @@
   align-items: stretch;
   border-color: rgba(59, 130, 246, 0.5);
   box-shadow: 0 4px 16px rgba(59, 130, 246, 0.1);
+  cursor: default;
 }
 
 .reminder-check {
@@ -163,6 +213,7 @@
   justify-content: center;
   margin-top: 2px;
   transition: color 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
 }
 
 .reminder-check:hover {
@@ -180,6 +231,8 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .reminder-subject {
@@ -216,10 +269,12 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px 10px;
+  width: 100%;
 }
 
 .reminder-edit-grid textarea {
   grid-column: span 2;
+  min-width: 0;
 }
 
 .reminder-edit-input,
@@ -231,6 +286,8 @@
   font-family: inherit;
   color: #0f172a;
   background: rgba(255, 255, 255, 0.9);
+  min-width: 0;
+  width: 100%;
 }
 
 .reminder-edit-input:focus,
@@ -258,6 +315,7 @@
   gap: 4px;
   align-self: flex-start;
   margin-top: 2px;
+  flex-shrink: 0;
 }
 
 .reminder-icon-btn {
@@ -338,4 +396,75 @@
   margin: 0 0 8px 0;
   color: #475569;
   max-width: 460px;
+}
+
+@media (max-width: 640px) {
+  .reminders-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reminders-filters {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .reminders-filters button {
+    flex: 1;
+    justify-content: center;
+    padding: 6px 6px;
+    font-size: 0.78rem;
+  }
+
+  .reminders-section-title {
+    font-size: 0.85rem;
+    margin: 16px 0 8px;
+  }
+
+  .reminder-item {
+    flex-wrap: wrap;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .reminder-check {
+    margin-top: 0;
+  }
+
+  .reminder-body {
+    flex: 1 1 100%;
+    order: 1;
+  }
+
+  .reminder-actions {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .reminder-edit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reminder-edit-grid textarea {
+    grid-column: span 1;
+  }
+
+  .reminder-edit-input,
+  .reminder-edit-textarea {
+    font-size: 0.95rem;
+    padding: 8px;
+  }
+
+  .reminder-subject {
+    font-size: 0.95rem;
+  }
+
+  .reminder-due {
+    flex-wrap: wrap;
+  }
+
+  .btn-ghost-danger {
+    width: 100%;
+    justify-content: center;
+  }
 }

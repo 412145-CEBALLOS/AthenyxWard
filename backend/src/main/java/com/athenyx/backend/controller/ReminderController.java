@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST endpoints exposing the reminder CRUD to the authenticated
@@ -26,6 +27,8 @@ import java.util.List;
  *     <li>{@code PATCH /{id}}, {@code DELETE /{id}} — any
  *         authenticated user; ownership is verified in the
  *         service.</li>
+ *     <li>{@code DELETE /completed} — bulk-removes every done
+ *         reminder for the caller. Any authenticated user.</li>
  *     <li>{@code GET /} — any authenticated user; TRIAL users get
  *         an empty list (no 403) so the SPA can render the upsell
  *         state uniformly.</li>
@@ -67,6 +70,14 @@ public class ReminderController {
         Long userId = (Long) auth.getPrincipal();
         service.delete(userId, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/completed")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Integer>> clearCompleted(Authentication auth) {
+        Long userId = (Long) auth.getPrincipal();
+        int deleted = service.clearCompleted(userId);
+        return ResponseEntity.ok(Map.of("deleted", deleted));
     }
 
     @GetMapping

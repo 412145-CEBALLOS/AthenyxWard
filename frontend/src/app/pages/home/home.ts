@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
+import { Component, effect, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EmailListComponent } from '../../components/email-list/email-list';
 import { EmailPaginatorComponent } from '../../components/email-paginator/email-paginator';
@@ -11,6 +11,7 @@ import { AvatarService } from '../../services/avatar.service';
 import { ToastService } from '../../services/toast.service';
 import { AnalysisService } from '../../services/analysis.service';
 import { ReminderService } from '../../services/reminder.service';
+import { NotificationService } from '../../services/notification.service';
 import { EmailDetail, EmailSummary, EmailPageResponse } from '../../models/email-summary.model';
 import { EmailAnalysisResult, AnalysisState } from '../../models/email-analysis.model';
 import { Reminder, ReminderSummary } from '../../models/reminder.model';
@@ -43,6 +44,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly analysisService = inject(AnalysisService);
   private readonly reminderService = inject(ReminderService);
+  private readonly notificationService = inject(NotificationService);
 
   readonly emails = signal<EmailSummary[]>([]);
   readonly selectedEmail = signal<EmailDetail | null>(null);
@@ -100,6 +102,45 @@ export class HomeComponent implements OnInit, OnDestroy {
    * would re-trigger the selection flow and loop).
    */
   private currentSelectionId: number | null = null;
+
+  constructor() {
+    // Listen to the notification service's `done$` stream. The bell
+    // fires it after a successful PATCH so we can refresh the
+    // banner / chip on this side without a signal-effect cascade
+    // (which was hanging the render thread).
+    this.notificationService.done$
+      .pipe(takeUntil(this.onDestroy))
+      .subscribe((reminderId) => {
+        // The bell may have marked a reminder done that the user
+        // is currently viewing. If the open email is the one tied
+        // to that reminder, refetch the email detail so the
+        // banner updates.
+        const current = this.currentReminder();
+        if (current && current.id === reminderId && !current.done) {
+          const email = this.selectedEmail();
+          if (email) {
+            this.emailService.getEmailDetail(email.id)
+              .pipe(takeUntil(this.onDestroy))
+              .subscribe({
+                next: (detail) => {
+                  this.selectedEmail.set(detail);
+                  this.loadCurrentReminder(detail.id);
+                },
+              });
+          }
+        }
+        // Always patch the list chip so it shows the done state.
+        this.remindersByEmail.update((map) => {
+          const next = new Map(map);
+          for (const [emailId, summary] of next.entries()) {
+            if (summary.id === reminderId) {
+              next.set(emailId, { ...summary, done: true });
+            }
+          }
+          return next;
+        });
+      });
+  }
 
   ngOnInit(): void {
     const user = this.authService.user();
@@ -493,6 +534,16 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.router.navigate(['/plan']);
       return;
     }
+    // If a reminder already exists (pending or done), open it in
+    // edit mode. The form dialog's save forces done=false, so a
+    // "done" reminder comes back as pending. A "pending" reminder
+    // being re-saved is a no-op for the date/message but also
+    // useful to update the message.
+    const existing = this.currentReminder();
+    if (existing) {
+      this.openEditReminderDialog(email.id, existing);
+      return;
+    }
     this.openCreateReminderDialog(email.id, email.subject);
   }
 
@@ -509,7 +560,17 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.onReminderAction(action);
       return;
     }
-    this.openEditReminderDialog(action.reminder.emailId || action.reminder.id);
+    // List chip click — always open the dialog in edit mode so the
+    // user can tweak the date/message and (since edit reactivates)
+    // bring a done reminder back to the active list.
+    const emailId = action.reminder.emailId || this.resolveEmailIdForReminder(action.reminder);
+    if (emailId == null || emailId === 0) {
+      // Fallback: if we couldn't resolve the emailId (rare race),
+      // delegate to the generic action handler.
+      this.onReminderAction({ ...action, type: 'edit' });
+      return;
+    }
+    this.openEditReminderDialog(emailId, action.reminder);
   }
 
   /**
@@ -600,12 +661,23 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private markReminderDone(reminder: Reminder | ReminderSummary, emailId: number): void {
-    this.reminderService.update(reminder.id, { done: true })
+    // The PATCH runs synchronously inside the click handler — any
+    // deferral (e.g. setTimeout(0)) runs the HTTP call outside
+    // Angular's zone, which combined with the banner re-render
+    // inside the same tick was hanging the event loop and locking
+    // the page. Route through the notification service so the
+    // bell panel and the in-flight dedupe stay in sync —
+    // otherwise the just-done reminder would keep showing in the
+    // notification list for the rest of the polling cycle.
+    this.notificationService.markDoneById(reminder.id)
       .pipe(takeUntil(this.onDestroy))
       .subscribe({
-        next: (updated) => {
+        next: () => {
           this.toast.success('Recordatorio marcado como hecho.');
-          this.applyReminderUpdate(updated, this.findEmailById(emailId));
+          this.applyReminderUpdate(
+            { ...(reminder as Reminder), done: true },
+            this.findEmailById(emailId)
+          );
         },
         error: () => this.toast.error('No se pudo actualizar el recordatorio.'),
       });

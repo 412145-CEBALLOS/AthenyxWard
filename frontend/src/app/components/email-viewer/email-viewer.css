@@ -3,9 +3,12 @@
 }
 
 .viewer-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* Solid translucent background — removing the `backdrop-filter: blur()`
+     is required so re-renders triggered by the reminder banner's
+     "Marcar hecho" button don't lock the render thread. The banner
+     itself also has its own backdrop-filter, so the prior setup
+     produced a double compositing layer that hung the page on click. */
+  background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 24px;
   box-shadow: 0 8px 40px rgba(59, 130, 246, 0.08), 0 2px 12px rgba(0, 0, 0, 0.04);

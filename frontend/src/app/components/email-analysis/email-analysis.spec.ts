@@ -229,4 +229,52 @@ describe('EmailAnalysisComponent', () => {
     expect(fixture.nativeElement.querySelector('.panel-toggle')
       .getAttribute('aria-expanded')).toBe('true');
   });
+
+  // --- Reminder button states (hasReminder / hasPendingReminder) ---
+
+  it('renders "Crear recordatorio" by default and emits createReminder on click', () => {
+    fixture.componentRef.setInput('analysis', buildAnalysis(20));
+    fixture.componentRef.setInput('state', 'ready');
+    fixture.componentRef.setInput('canMarkImportant', true);
+    fixture.detectChanges();
+    const btn: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.actions-bar .btn-action-premium:nth-last-child(1)'
+    );
+    expect(btn.textContent.trim()).toBe('Crear recordatorio');
+    expect(btn.disabled).toBeFalse();
+    let emitted = false;
+    component.createReminder.subscribe(() => (emitted = true));
+    btn.click();
+    expect(emitted).toBeTrue();
+  });
+
+  it('disables the create-reminder button when hasPendingReminder is true', () => {
+    fixture.componentRef.setInput('analysis', buildAnalysis(20));
+    fixture.componentRef.setInput('state', 'ready');
+    fixture.componentRef.setInput('canMarkImportant', true);
+    fixture.componentRef.setInput('hasPendingReminder', true);
+    fixture.componentRef.setInput('hasReminder', true);
+    fixture.detectChanges();
+    const btn: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.actions-bar .btn-action-premium:nth-last-child(1)'
+    );
+    expect(btn.disabled).toBeTrue();
+    expect(btn.textContent.trim()).toBe('Ver recordatorio');
+    expect(btn.getAttribute('title')).toContain('pendiente');
+  });
+
+  it('switches to "Reactivar recordatorio" when the reminder is done', () => {
+    fixture.componentRef.setInput('analysis', buildAnalysis(20));
+    fixture.componentRef.setInput('state', 'ready');
+    fixture.componentRef.setInput('canMarkImportant', true);
+    fixture.componentRef.setInput('hasPendingReminder', false);
+    fixture.componentRef.setInput('hasReminder', true);
+    fixture.detectChanges();
+    const btn: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.actions-bar .btn-action-premium:nth-last-child(1)'
+    );
+    expect(btn.disabled).toBeFalse();
+    expect(btn.textContent.trim()).toBe('Reactivar recordatorio');
+    expect(btn.getAttribute('title')).toContain('Reactivar');
+  });
 });

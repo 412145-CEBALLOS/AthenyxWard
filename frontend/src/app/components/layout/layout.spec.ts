@@ -6,12 +6,19 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { LayoutComponent } from './layout';
 import { AuthService } from '../../services/auth.service';
+import { NotificationService } from '../../services/notification.service';
 
 describe('Layout', () => {
   let component: LayoutComponent;
   let fixture: ComponentFixture<LayoutComponent>;
+  let notificationServiceStub: { startPolling: jasmine.Spy; stopPolling: jasmine.Spy };
 
   beforeEach(async () => {
+    notificationServiceStub = {
+      startPolling: jasmine.createSpy('startPolling'),
+      stopPolling: jasmine.createSpy('stopPolling'),
+    };
+
     await TestBed.configureTestingModule({
       imports: [LayoutComponent],
       providers: [
@@ -26,6 +33,7 @@ describe('Layout', () => {
             logoutAll: () => undefined,
           },
         },
+        { provide: NotificationService, useValue: notificationServiceStub },
       ],
     })
     .overrideComponent(LayoutComponent, {
@@ -61,4 +69,8 @@ describe('Layout', () => {
     expect(component.sidebarOpen).toBeFalse();
     expect(component.sidebarClosing).toBeFalse();
   }));
+
+  it('does not start polling for a TRIAL user', () => {
+    expect(notificationServiceStub.startPolling).not.toHaveBeenCalled();
+  });
 });

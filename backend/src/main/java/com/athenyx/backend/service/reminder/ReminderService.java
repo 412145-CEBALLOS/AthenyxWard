@@ -15,6 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -37,9 +40,26 @@ import java.util.Map;
 @Transactional
 public class ReminderService {
 
+    /** Tolerance window so a reminder set "right now" is allowed. */
+    private static final Duration PAST_TOLERANCE = Duration.ofMinutes(1);
+
     private final ReminderRepository repository;
     private final EmailRepository emailRepository;
     private final UserRepository userRepository;
+    private final Clock clock;
+
+    /**
+     * Throws {@link IllegalArgumentException} when {@code target} is
+     * more than {@link #PAST_TOLERANCE} in the past. Returns silently
+     * for "right now" and for every future instant.
+     */
+    private void requireFuture(LocalDateTime target) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (target.isBefore(now.minus(PAST_TOLERANCE))) {
+            throw new IllegalArgumentException(
+                "La fecha del recordatorio debe ser en el futuro.");
+        }
+    }
 
     /**
      * Persists a new reminder. Throws
@@ -69,6 +89,8 @@ public class ReminderService {
                 "Ya tienes un recordatorio para este correo.");
         }
 
+        requireFuture(request.reminderDate());
+
         Reminder reminder = Reminder.builder()
             .user(user)
             .email(email)
@@ -90,6 +112,7 @@ public class ReminderService {
             .orElseThrow(() -> new ReminderNotFoundException("Recordatorio no encontrado"));
 
         if (request.reminderDate() != null) {
+            requireFuture(request.reminderDate());
             reminder.setReminderDate(request.reminderDate());
         }
         if (request.message() != null) {
@@ -111,6 +134,15 @@ public class ReminderService {
             .filter(r -> r.getUser().getId().equals(userId))
             .orElseThrow(() -> new ReminderNotFoundException("Recordatorio no encontrado"));
         repository.delete(reminder);
+    }
+
+    /**
+     * Bulk-deletes every completed reminder for the user. Returns
+     * the number of rows removed so the SPA can show "Se eliminaron
+     * N recordatorios". Pending reminders are untouched.
+     */
+    public int clearCompleted(Long userId) {
+        return (int) repository.deleteByUserIdAndDone(userId, true);
     }
 
     /**

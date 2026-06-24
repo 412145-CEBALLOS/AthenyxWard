@@ -7,6 +7,7 @@
       <input
         type="date"
         class="dialog-input"
+        [class.dialog-input-error]="isPast()"
         [value]="date()"
         (input)="onDateInput($event)"
         required />
@@ -55,5 +56,9 @@
         {{ isEdit() ? 'Guardar cambios' : 'Crear recordatorio' }}
       </button>
     </div>
+
+    @if (isPast() && date() && time()) {
+      <p class="dialog-error">La fecha y hora deben ser en el futuro.</p>
+    }
   </div>
 </div>

@@ -65,6 +65,11 @@ export class ToastService {
   dismiss(id: number): void {
     this.clearTimer(id);
     this.toasts.update((list) => list.filter((t) => t.id !== id));
+    // Bump the array reference so OnPush consumers re-render even
+    // when the id wasn't in the (client-side) signal — typically
+    // a leftover SSR-rendered toast whose id never made it into
+    // the freshly-created client signal.
+    this.toasts.set([...this.toasts()]);
   }
 
   /** Dismisses every visible toast and clears pending timers. */

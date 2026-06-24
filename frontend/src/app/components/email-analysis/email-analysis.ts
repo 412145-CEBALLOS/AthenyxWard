@@ -48,6 +48,15 @@ export class EmailAnalysisComponent {
   readonly isImportant = input<boolean>(false);
   readonly trialRemaining = input<number | null>(null);
   /**
+   * True when the email currently being viewed has a reminder
+   * (any state). Used to switch the action-button label between
+   * "Crear recordatorio", "Reactivar recordatorio" and
+   * "Ver recordatorio" — and to disable the button entirely when
+   * a pending reminder already exists.
+   */
+  readonly hasPendingReminder = input<boolean>(false);
+  readonly hasReminder = input<boolean>(false);
+  /**
    * Drives the trial-user flow: when the user is on a TRIAL plan the
    * panel never auto-runs the analysis — they must press the explicit
    * "Analizar este correo" button. Non-trial users (PREMIUM, ADMIN)

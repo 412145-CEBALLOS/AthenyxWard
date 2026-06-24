@@ -148,6 +148,55 @@ Frontend flows:
   button (label + callback) — used in 2.7 for "Marcar hecho" from
   the toast, but available to any future flow.
 
+## Reminder Notifications (US 2.7)
+
+Powers the bell-icon panel and the "your reminder just fired"
+toasts. Every 2 minutes the SPA polls
+`GET /api/notifications/upcoming` and renders the result.
+
+Endpoint (`/api/notifications`):
+- `GET /upcoming` — PREMIUM/ADMIN only. Returns the list of
+  non-done reminders for the user whose date falls inside a
+  symmetric 24 h window around `now` (i.e. due in the next 24 h
+  **plus** overdue by up to 24 h). Each entry includes
+  `isOverdue: boolean` so the frontend can decide between
+  panel-only and toast.
+
+Backend (`NotificationService.getUpcomingReminders`):
+- Reads `Clock` from the context (see `ClockConfig`) so unit
+  tests can pin "now" deterministically.
+- Single query: `ReminderRepository.findUpcomingForUser(userId, from, to)`.
+- Window: `Duration.ofHours(24)` in both directions.
+
+Frontend (`NotificationService` — singleton, `providedIn: 'root'`):
+- `startPolling(120_000)` (called by `LayoutComponent` for
+  PREMIUM/ADMIN users only). Fires once immediately, then every
+  2 minutes. Stops on `ngOnDestroy`.
+- `markShown(reminderId)` — adds the id to a memory-only
+  `Set<number>` so the toast never re-fires for the same
+  reminder in the same session. The set is reset on page
+  reload, so a refresh re-shows toasts for still-overdue
+  reminders.
+- `markDone(notification)` — PATCHes the reminder to
+  `done: true`, removes it from the local cache and adds the
+  id to `shownIds`. Wired to the bell row's check button and
+  to the toast's inline "Marcar hecho" action.
+- The bell panel always renders the latest poll (no dedupe
+  on the panel) so reopening the bell always shows the
+  same list.
+
+UI:
+- The panel lives in `HeaderComponent` — a red badge over
+  the bell shows the count. Each row shows the email
+  subject, the user message, a relative time string
+  ("en 2 h" / "hace 5 min") and a green check button to
+  mark done. Clicking the row navigates to
+  `/home?emailId=...`.
+- Toasts are `warning` type with the action button
+  (`ToastService.action`) rendered by
+  `ToastContainerComponent`. The click invokes
+  `markDone` and the toast auto-dismisses.
+
 ## Analysis History (US 2.4)
 
 `/history` page renders the timeline of every `EmailAnalysis` row for the current user. Flow:

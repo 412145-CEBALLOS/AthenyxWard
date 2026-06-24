@@ -130,6 +130,36 @@ class ReminderControllerSecurityTest {
     }
 
     @Test
+    void clearCompleted_isAuthenticated() throws Exception {
+        Method m = ReminderController.class.getMethod("clearCompleted", Authentication.class);
+        PreAuthorize a = m.getAnnotation(PreAuthorize.class);
+        assertThat(a).isNotNull();
+        assertThat(a.value()).isEqualTo("isAuthenticated()");
+    }
+
+    @Test
+    void clearCompleted_returnsDeletedCount() {
+        when(auth.getPrincipal()).thenReturn(1L);
+        when(service.clearCompleted(1L)).thenReturn(3);
+
+        ResponseEntity<java.util.Map<String, Integer>> result = controller.clearCompleted(auth);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).containsEntry("deleted", 3);
+    }
+
+    @Test
+    void clearCompleted_returnsZeroWhenNothingDone() {
+        when(auth.getPrincipal()).thenReturn(1L);
+        when(service.clearCompleted(1L)).thenReturn(0);
+
+        ResponseEntity<java.util.Map<String, Integer>> result = controller.clearCompleted(auth);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).containsEntry("deleted", 0);
+    }
+
+    @Test
     void list_delegatesToService() {
         when(auth.getPrincipal()).thenReturn(1L);
         ReminderResponse r = new ReminderResponse(

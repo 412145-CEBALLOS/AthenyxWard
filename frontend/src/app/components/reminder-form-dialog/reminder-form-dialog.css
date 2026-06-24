@@ -74,6 +74,19 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 
+.dialog-input.dialog-input-error {
+  border-color: #ef4444;
+  background: rgba(254, 242, 242, 0.6);
+}
+
+.dialog-error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #b91c1c;
+  font-weight: 500;
+  text-align: right;
+}
+
 .dialog-counter {
   font-size: 0.74rem;
   color: #94a3b8;

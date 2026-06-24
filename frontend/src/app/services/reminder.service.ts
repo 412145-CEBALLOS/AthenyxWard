@@ -74,4 +74,14 @@ export class ReminderService {
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/reminders/${id}`);
   }
+
+  /**
+   * Bulk-deletes every completed reminder for the caller.
+   * Returns the number of rows removed.
+   */
+  clearCompleted(): Observable<number> {
+    return this.http
+      .delete<{ deleted: number }>(`${this.baseUrl}/reminders/completed`)
+      .pipe(map((res) => res.deleted ?? 0));
+  }
 }

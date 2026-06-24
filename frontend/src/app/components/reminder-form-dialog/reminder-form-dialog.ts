@@ -62,10 +62,24 @@ export class ReminderFormDialogComponent {
   readonly submitting = signal(false);
 
   readonly messageTooLong = computed(() => this.message().length > MAX_MESSAGE_LENGTH);
+  /**
+   * True when the user picked a date+time that is in the past (with
+   * a 1-minute tolerance so "right now" is still allowed). The
+   * submit button disables itself when this is true.
+   */
+  readonly isPast = computed(() => {
+    const d = this.date();
+    const t = this.time();
+    if (!d || !t) return false;
+    const target = new Date(`${d}T${t}:00`).getTime();
+    if (Number.isNaN(target)) return false;
+    return target < Date.now() - 60_000;
+  });
   readonly canSubmit = computed(() => {
     if (this.submitting()) return false;
     if (!this.date() || !this.time()) return false;
     if (this.messageTooLong()) return false;
+    if (this.isPast()) return false;
     if (this.isEdit()) return true;
     return this.emailId() !== null;
   });
@@ -95,15 +109,24 @@ export class ReminderFormDialogComponent {
 
   onSubmit(): void {
     if (!this.canSubmit()) return;
-    const reminderDate = `${this.date()}T${this.time()}:00`;
+    // The <input type="date"> + <input type="time"> emit local
+    // clock values (e.g. "2026-06-24" + "15:00" → local 15:00).
+    // Convert to UTC ISO with Z so the backend (which compares
+    // against its own UTC clock) doesn't see the reminder as
+    // overdue when the user is in a non-UTC timezone.
+    const reminderDate = this.buildUtcIso(this.date(), this.time());
     const message = this.message().trim() || null;
 
     this.submitting.set(true);
 
     if (this.isEdit()) {
+      // Editing always reactivates the reminder (sets done=false).
+      // The user can re-check it from the /reminders page or the
+      // banner if they really want to keep it done.
       const request: UpdateReminderRequest = {
         reminderDate,
         message,
+        done: false,
       };
       this.reminderService.update(this.reminder()!.id, request)
         .pipe(takeUntil(this.onDestroy))
@@ -192,6 +215,18 @@ export class ReminderFormDialogComponent {
     const [datePart, timePart] = safe.split('T');
     this.date.set(datePart ?? '');
     this.time.set((timePart ?? '').substring(0, 5));
+  }
+
+  /**
+   * Combines a local date (YYYY-MM-DD) and time (HH:mm) into a
+   * UTC ISO string with the {@code Z} suffix. The browser's
+   * {@code Date} constructor treats the naive string as local
+   * time, so {@code .toISOString()} does the TZ conversion.
+   */
+  private buildUtcIso(date: string, time: string): string {
+    const local = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(local.getTime())) return `${date}T${time}:00`;
+    return local.toISOString();
   }
 
   protected readonly maxMessageLength = MAX_MESSAGE_LENGTH;

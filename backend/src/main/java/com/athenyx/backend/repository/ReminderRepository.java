@@ -2,7 +2,10 @@ package com.athenyx.backend.repository;
 
 import com.athenyx.backend.entity.Reminder;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -44,4 +47,30 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
      * Used to fill {@code EmailSummary.reminder} without an N+1.
      */
     List<Reminder> findByUserIdAndEmailIdIn(Long userId, Collection<Long> emailIds);
+
+    /**
+     * Returns every pending reminder for the user whose date falls
+     * inside {@code [from, to]}. The notification service uses
+     * this with a symmetric 24 h window around {@code now} so the
+     * frontend can render both "due soon" and "just overdue"
+     * entries in one request.
+     */
+    @Query("""
+        SELECT r FROM Reminder r
+        WHERE r.user.id = :userId
+        AND r.done = false
+        AND r.reminderDate BETWEEN :from AND :to
+        ORDER BY r.reminderDate ASC
+        """)
+    List<Reminder> findUpcomingForUser(
+        @Param("userId") Long userId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to
+    );
+
+    /**
+     * Bulk-deletes every completed reminder for the user. Returns
+     * the number of rows affected. Pending reminders are untouched.
+     */
+    long deleteByUserIdAndDone(Long userId, boolean done);
 }

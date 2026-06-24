@@ -18,7 +18,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +56,11 @@ class ReminderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReminderService(repository, emailRepository, userRepository);
+        Clock fixedClock = Clock.fixed(
+            LocalDateTime.of(2026, 6, 24, 12, 0).toInstant(ZoneOffset.UTC),
+            ZoneOffset.UTC
+        );
+        service = new ReminderService(repository, emailRepository, userRepository, fixedClock);
 
         premium = User.builder().id(1L).email("p@example.com").role(Role.PREMIUM).build();
         trial = User.builder().id(2L).email("t@example.com").role(Role.TRIAL).build();
@@ -66,7 +72,7 @@ class ReminderServiceTest {
 
         persisted = Reminder.builder()
             .id(100L).user(premium).email(email)
-            .reminderDate(LocalDateTime.of(2026, 6, 24, 10, 0))
+            .reminderDate(LocalDateTime.of(2026, 6, 24, 15, 0))
             .message("Llamar").done(false)
             .createdAt(LocalDateTime.of(2026, 6, 22, 9, 0))
             .updatedAt(LocalDateTime.of(2026, 6, 22, 9, 0))
@@ -78,7 +84,7 @@ class ReminderServiceTest {
     @Test
     void create_persistsAndReturnsResponse() {
         CreateReminderRequest req = new CreateReminderRequest(
-            10L, LocalDateTime.of(2026, 6, 24, 10, 0), "  Llamar  ");
+            10L, LocalDateTime.of(2026, 6, 24, 15, 0), "  Llamar  ");
         when(userRepository.findById(1L)).thenReturn(Optional.of(premium));
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(repository.existsByEmailIdAndUserId(10L, 1L)).thenReturn(false);
@@ -103,7 +109,7 @@ class ReminderServiceTest {
         when(userRepository.findById(2L)).thenReturn(Optional.of(trial));
 
         CreateReminderRequest req = new CreateReminderRequest(
-            10L, LocalDateTime.of(2026, 6, 24, 10, 0), null);
+            10L, LocalDateTime.of(2026, 6, 24, 15, 0), null);
 
         assertThatThrownBy(() -> service.create(2L, req))
             .isInstanceOf(ReminderPremiumRequiredException.class)
@@ -118,7 +124,7 @@ class ReminderServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.empty());
 
         CreateReminderRequest req = new CreateReminderRequest(
-            10L, LocalDateTime.of(2026, 6, 24, 10, 0), null);
+            10L, LocalDateTime.of(2026, 6, 24, 15, 0), null);
 
         assertThatThrownBy(() -> service.create(1L, req))
             .isInstanceOf(RuntimeException.class)
@@ -132,7 +138,7 @@ class ReminderServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
 
         CreateReminderRequest req = new CreateReminderRequest(
-            10L, LocalDateTime.of(2026, 6, 24, 10, 0), null);
+            10L, LocalDateTime.of(2026, 6, 24, 15, 0), null);
 
         assertThatThrownBy(() -> service.create(1L, req))
             .isInstanceOf(RuntimeException.class)
@@ -146,7 +152,7 @@ class ReminderServiceTest {
         when(repository.existsByEmailIdAndUserId(10L, 1L)).thenReturn(true);
 
         CreateReminderRequest req = new CreateReminderRequest(
-            10L, LocalDateTime.of(2026, 6, 24, 10, 0), null);
+            10L, LocalDateTime.of(2026, 6, 24, 15, 0), null);
 
         assertThatThrownBy(() -> service.create(1L, req))
             .isInstanceOf(ReminderConflictException.class)
@@ -158,7 +164,7 @@ class ReminderServiceTest {
     @Test
     void create_normalizesBlankMessageToNull() {
         CreateReminderRequest req = new CreateReminderRequest(
-            10L, LocalDateTime.of(2026, 6, 24, 10, 0), "   ");
+            10L, LocalDateTime.of(2026, 6, 24, 15, 0), "   ");
         when(userRepository.findById(1L)).thenReturn(Optional.of(premium));
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(repository.existsByEmailIdAndUserId(10L, 1L)).thenReturn(false);
@@ -169,6 +175,53 @@ class ReminderServiceTest {
         ArgumentCaptor<Reminder> captor = ArgumentCaptor.forClass(Reminder.class);
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().getMessage()).isNull();
+    }
+
+    @Test
+    void create_rejectsDateInThePast() {
+        // Fixed clock is 2026-06-24T12:00; target is 1 hour before.
+        when(userRepository.findById(1L)).thenReturn(Optional.of(premium));
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+        when(repository.existsByEmailIdAndUserId(10L, 1L)).thenReturn(false);
+
+        CreateReminderRequest req = new CreateReminderRequest(
+            10L, LocalDateTime.of(2026, 6, 24, 11, 0), null);
+
+        assertThatThrownBy(() -> service.create(1L, req))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("futuro");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void create_acceptsDateEqualToNowWithinTolerance() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(premium));
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+        when(repository.existsByEmailIdAndUserId(10L, 1L)).thenReturn(false);
+        when(repository.save(any(Reminder.class))).thenReturn(persisted);
+
+        // 30 seconds before "now" — within the 1-minute tolerance.
+        CreateReminderRequest req = new CreateReminderRequest(
+            10L, LocalDateTime.of(2026, 6, 24, 11, 59, 30), null);
+
+        ReminderResponse response = service.create(1L, req);
+
+        assertThat(response.id()).isEqualTo(100L);
+    }
+
+    @Test
+    void create_acceptsFutureDate() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(premium));
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+        when(repository.existsByEmailIdAndUserId(10L, 1L)).thenReturn(false);
+        when(repository.save(any(Reminder.class))).thenReturn(persisted);
+
+        CreateReminderRequest req = new CreateReminderRequest(
+            10L, LocalDateTime.of(2027, 1, 1, 0, 0), null);
+
+        ReminderResponse response = service.create(1L, req);
+
+        assertThat(response.id()).isEqualTo(100L);
     }
 
     // --- update ---
@@ -206,6 +259,34 @@ class ReminderServiceTest {
 
         assertThatThrownBy(() -> service.update(1L, 100L, req))
             .isInstanceOf(ReminderNotFoundException.class);
+    }
+
+    @Test
+    void update_rejectsDateInThePast() {
+        when(repository.findById(100L)).thenReturn(Optional.of(persisted));
+        UpdateReminderRequest req = new UpdateReminderRequest(
+            LocalDateTime.of(2026, 6, 24, 11, 0), null, null);
+
+        assertThatThrownBy(() -> service.update(1L, 100L, req))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("futuro");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void update_acceptsNullDateLeavingExistingValue() {
+        when(repository.findById(100L)).thenReturn(Optional.of(persisted));
+        when(repository.save(any(Reminder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // reminderDate == null means "keep the existing one".
+        UpdateReminderRequest req = new UpdateReminderRequest(null, "x", null);
+
+        ReminderResponse response = service.update(1L, 100L, req);
+
+        assertThat(response.message()).isEqualTo("x");
+        // The reminder date was already in the past in the fixture
+        // (2026-06-24T10:00) but the null check skips validation.
+        assertThat(response.reminderDate()).isEqualTo(LocalDateTime.of(2026, 6, 24, 15, 0));
     }
 
     @Test
@@ -329,6 +410,27 @@ class ReminderServiceTest {
         assertThat(ReminderService.Filter.parse("done")).isEqualTo(ReminderService.Filter.DONE);
         assertThat(ReminderService.Filter.parse("completados")).isEqualTo(ReminderService.Filter.DONE);
         assertThat(ReminderService.Filter.parse("garbage")).isEqualTo(ReminderService.Filter.ALL);
+    }
+
+    // --- clearCompleted ---
+
+    @Test
+    void clearCompleted_returnsDeletedCount() {
+        when(repository.deleteByUserIdAndDone(1L, true)).thenReturn(4L);
+
+        int deleted = service.clearCompleted(1L);
+
+        assertThat(deleted).isEqualTo(4);
+        verify(repository).deleteByUserIdAndDone(1L, true);
+    }
+
+    @Test
+    void clearCompleted_returnsZeroWhenNone() {
+        when(repository.deleteByUserIdAndDone(1L, true)).thenReturn(0L);
+
+        int deleted = service.clearCompleted(1L);
+
+        assertThat(deleted).isZero();
     }
 
     @SuppressWarnings("unused")

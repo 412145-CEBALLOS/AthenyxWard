@@ -213,10 +213,21 @@
                 }
               </button>
               <button type="button" class="btn-action btn-action-premium"
-                      [disabled]="!canMarkImportant()"
-                      [title]="canMarkImportant() ? '' : 'Disponible en plan Premium'"
+                      [disabled]="!canMarkImportant() || hasPendingReminder()"
+                      [title]="
+                        !canMarkImportant() ? 'Disponible en plan Premium' :
+                        hasPendingReminder() ? 'Ya tienes un recordatorio pendiente para este correo' :
+                        hasReminder() ? 'Reactivar este recordatorio' : ''
+                      "
                       (click)="onCreateReminder()">
-                Crear recordatorio
+                <i class="ti ti-bell" aria-hidden="true"></i>
+                @if (hasPendingReminder()) {
+                  <span>Ver recordatorio</span>
+                } @else if (hasReminder()) {
+                  <span>Reactivar recordatorio</span>
+                } @else {
+                  <span>Crear recordatorio</span>
+                }
               </button>
             </div>
           }

@@ -31,12 +31,53 @@
             aria-haspopup="true"
             aria-label="Notificaciones">
       <i class="ti ti-bell" aria-hidden="true"></i>
+      @if (badgeCount() > 0) {
+        <span class="notifications-badge" aria-label="{{ badgeCount() }} notificaciones">
+          {{ badgeCount() }}
+        </span>
+      }
     </button>
 
     @if (notificationsOpen()) {
       <div class="notifications-panel" role="dialog" aria-label="Notificaciones">
         <div class="notifications-panel-header">Notificaciones</div>
-        <p class="notifications-panel-empty">No tienes notificaciones</p>
+        @if (notifications().length === 0) {
+          <p class="notifications-panel-empty">No tienes notificaciones pendientes.</p>
+        } @else {
+          <ul class="notifications-list">
+            @for (n of notifications(); track n.reminderId) {
+              <li class="notifications-item"
+                  [class.notifications-overdue]="n.isOverdue"
+                  (click)="openEmail(n, $event)">
+                <div class="notifications-icon" aria-hidden="true">
+                  <i class="ti ti-bell"></i>
+                </div>
+                <div class="notifications-body">
+                  <span class="notifications-subject">
+                    {{ n.emailSubject || n.emailSender || 'Recordatorio' }}
+                  </span>
+                  @if (n.message) {
+                    <span class="notifications-message">{{ n.message }}</span>
+                  }
+                  <span class="notifications-time">
+                    {{ formatRelative(n.reminderDate, n.isOverdue) }}
+                    @if (n.isOverdue) {
+                      <span class="notifications-overdue-tag">Vencido</span>
+                    }
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="notifications-action"
+                  (mousedown)="markDone(n, $event)"
+                  title="Marcar como hecho"
+                  aria-label="Marcar como hecho">
+                  <i class="ti ti-check" aria-hidden="true"></i>
+                </button>
+              </li>
+            }
+          </ul>
+        }
       </div>
     }
   </div>

@@ -65,6 +65,8 @@
         [isImportant]="email.isImportant"
         [userRole]="userRole()"
         [reminder]="currentReminder()"
+        [hasReminder]="!!currentReminder()"
+        [hasPendingReminder]="!!(currentReminder() && !currentReminder()!.done)"
         [(analysisPanelOpen)]="analysisPanelOpen"
         (hide)="onEmailHide()"
         (delete)="onEmailDelete()"

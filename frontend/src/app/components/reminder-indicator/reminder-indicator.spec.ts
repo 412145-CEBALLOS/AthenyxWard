@@ -114,12 +114,16 @@ describe('ReminderIndicatorComponent', () => {
     expect(emitted[0].type).toBe('view');
   });
 
-  it('emits markDone when the primary action is clicked', () => {
+  it('emits markDone when the primary action fires mousedown (US 2.6: avoids pressed-cursor lock)', () => {
     setInputs({ reminder: buildReminder(), variant: 'banner' });
     const emitted: ReminderAction[] = [];
     fixture.componentRef.instance.action.subscribe((a) => emitted.push(a));
-    const primaryBtn = fixture.nativeElement.querySelector('.reminder-btn-primary');
-    primaryBtn.click();
+    const primaryBtn = fixture.nativeElement.querySelector('.reminder-btn-primary') as HTMLButtonElement;
+    // The template binds (mousedown), not (click) — this is the
+    // regression guard for the freeze where the click sequence
+    // left the browser in a pressed-cursor state and re-rendered
+    // the row out from under the user's mouse.
+    primaryBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     expect(emitted.length).toBe(1);
     expect(emitted[0].type).toBe('markDone');
   });
