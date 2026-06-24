@@ -2,6 +2,9 @@ package com.athenyx.backend.config;
 
 import com.athenyx.backend.heuristics.TrialLimitExceededException;
 import com.athenyx.backend.security.RefreshTokenException;
+import com.athenyx.backend.service.reminder.ReminderConflictException;
+import com.athenyx.backend.service.reminder.ReminderNotFoundException;
+import com.athenyx.backend.service.reminder.ReminderPremiumRequiredException;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.LazyInitializationException;
 import org.springframework.http.HttpStatus;
@@ -58,6 +61,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleTrialLimitExceeded(TrialLimitExceededException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("error", ex.getMessage(), "remaining", ex.remaining(), "limit", 20));
+    }
+
+    @ExceptionHandler(ReminderPremiumRequiredException.class)
+    public ResponseEntity<Map<String, String>> handleReminderPremiumRequired(ReminderPremiumRequiredException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReminderConflictException.class)
+    public ResponseEntity<Map<String, String>> handleReminderConflict(ReminderConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReminderNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleReminderNotFound(ReminderNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", ex.getMessage()));
     }
 
     @ExceptionHandler(LazyInitializationException.class)

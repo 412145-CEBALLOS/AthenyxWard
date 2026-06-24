@@ -14,6 +14,10 @@ import java.time.LocalDateTime;
  * most recent security analysis (if any). Both are {@code null} when the
  * email has never been analysed. When present, the SPA can render the
  * traffic-light indicator without a second round-trip.</p>
+ *
+ * <p>{@code reminder} is non-null when the user has a reminder
+ * configured for the email — the list row uses it to draw the
+ * small bell chip.</p>
  */
 public record EmailSummary(
     Long id,
@@ -28,5 +32,6 @@ public record EmailSummary(
     String originalDateHeader,
     boolean isImportant,
     @Nullable Integer riskPercentage,
-    @Nullable ThreatLevel riskLevel
+    @Nullable ThreatLevel riskLevel,
+    @Nullable ReminderSummary reminder
 ) {}

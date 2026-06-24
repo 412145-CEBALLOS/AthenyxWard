@@ -4,6 +4,8 @@
       [email]="email"
       [selected]="selectedGmailId() === email.gmailId"
       [accessibilityMode]="accessibilityMode()"
-      (select)="select.emit($event)" />
+      [reminder]="reminderFor(email.id)"
+      (select)="select.emit($event)"
+      (reminderAction)="reminderAction.emit($event)" />
   }
 </ul>

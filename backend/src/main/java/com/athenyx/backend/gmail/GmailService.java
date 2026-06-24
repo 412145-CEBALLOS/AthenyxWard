@@ -4,6 +4,7 @@ import com.athenyx.backend.dto.EmailDetail;
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
 import com.athenyx.backend.dto.EmailPageResponse;
 import com.athenyx.backend.dto.EmailSummary;
+import com.athenyx.backend.dto.ReminderSummary;
 import com.athenyx.backend.entity.Email;
 import com.athenyx.backend.entity.EmailAnalysis;
 import com.athenyx.backend.entity.User;
@@ -13,6 +14,7 @@ import com.athenyx.backend.repository.EmailRepository;
 import com.athenyx.backend.repository.UserRepository;
 import com.athenyx.backend.repository.GmailPageTokenRepository;
 import com.athenyx.backend.security.TokenEncryptionService;
+import com.athenyx.backend.service.reminder.ReminderService;
 import com.google.api.client.googleapis.batch.BatchRequest;
 import com.google.api.client.googleapis.batch.json.JsonBatchCallback;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -72,9 +74,10 @@ public class GmailService {
 
     private final UserRepository userRepository;
     private final EmailRepository emailRepository;
-    private final GmailPageTokenRepository gmailPageTokenRepository;
     private final EmailAnalysisRepository emailAnalysisRepository;
+    private final GmailPageTokenRepository gmailPageTokenRepository;
     private final TokenEncryptionService tokenEncryptionService;
+    private final ReminderService reminderService;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
@@ -155,6 +158,7 @@ public class GmailService {
             batch.execute();
 
             enrichWithRiskData(summaries);
+            enrichWithReminderIndicator(userId, summaries);
 
             boolean hasNextPage = nextPageToken != null;
             return new EmailPageResponse(summaries, page, MAX_RESULTS, hasNextPage);
@@ -230,6 +234,8 @@ public class GmailService {
         email.setRead(true);
         emailRepository.save(email);
 
+        ReminderSummary reminder = reminderService.findSummaryByEmail(userId, emailId);
+
         return new EmailDetail(
                 email.getId(),
                 email.getGmailId(),
@@ -243,7 +249,8 @@ public class GmailService {
                 email.getFetchedAt(),
                 email.isRead(),
                 email.getOriginalDateHeader(),
-                email.isImportant()
+                email.isImportant(),
+                reminder
         );
     }
 
@@ -267,10 +274,12 @@ public class GmailService {
                     email.getOriginalDateHeader(),
                     email.isImportant(),
                     null,
+                    null,
                     null
             ));
         }
         enrichWithRiskData(summaries);
+        enrichWithReminderIndicator(userId, summaries);
         return summaries;
     }
 
@@ -312,7 +321,46 @@ public class GmailService {
                 s.originalDateHeader(),
                 s.isImportant(),
                 ea.getRiskPercentage(),
-                ea.getRiskLevel()
+                ea.getRiskLevel(),
+                s.reminder()
+            ));
+        }
+    }
+
+    /**
+     * Same pattern as {@link #enrichWithRiskData}: single batch
+     * query, then rewrap each summary with the matching
+     * {@link ReminderSummary} (or {@code null} when the user has no
+     * reminder for that email). Skipped when the list is empty.
+     */
+    private void enrichWithReminderIndicator(Long userId, List<EmailSummary> summaries) {
+        if (summaries.isEmpty()) return;
+        List<Long> emailIds = summaries.stream()
+            .map(EmailSummary::id)
+            .filter(Objects::nonNull)
+            .toList();
+        if (emailIds.isEmpty()) return;
+        Map<Long, ReminderSummary> byEmailId = reminderService.findSummariesForEmails(userId, emailIds);
+        if (byEmailId.isEmpty()) return;
+        for (int i = 0; i < summaries.size(); i++) {
+            EmailSummary s = summaries.get(i);
+            ReminderSummary reminder = byEmailId.get(s.id());
+            if (reminder == null) continue;
+            summaries.set(i, new EmailSummary(
+                s.id(),
+                s.gmailId(),
+                s.sender(),
+                s.senderName(),
+                s.subject(),
+                s.snippet(),
+                s.receivedAt(),
+                s.fetchedAt(),
+                s.isRead(),
+                s.originalDateHeader(),
+                s.isImportant(),
+                s.riskPercentage(),
+                s.riskLevel(),
+                reminder
             ));
         }
     }
@@ -483,6 +531,7 @@ public class GmailService {
                 email.isRead(),
                 dateStr,
                 email.isImportant(),
+                null,
                 null,
                 null
         );

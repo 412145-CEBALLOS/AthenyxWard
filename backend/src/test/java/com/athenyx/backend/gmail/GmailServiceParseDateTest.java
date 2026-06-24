@@ -5,6 +5,7 @@ import com.athenyx.backend.repository.EmailRepository;
 import com.athenyx.backend.repository.GmailPageTokenRepository;
 import com.athenyx.backend.repository.UserRepository;
 import com.athenyx.backend.security.TokenEncryptionService;
+import com.athenyx.backend.service.reminder.ReminderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,13 +31,16 @@ class GmailServiceParseDateTest {
     private EmailAnalysisRepository emailAnalysisRepository;
     @Mock
     private TokenEncryptionService tokenEncryptionService;
+    @Mock
+    private ReminderService reminderService;
 
     private GmailService service;
 
     @BeforeEach
     void setUp() throws Exception {
         service = new GmailService(userRepository, emailRepository,
-                gmailPageTokenRepository, emailAnalysisRepository, tokenEncryptionService);
+                emailAnalysisRepository, gmailPageTokenRepository, tokenEncryptionService,
+                reminderService);
         setField("googleClientId", "cid");
         setField("googleClientSecret", "sec");
     }

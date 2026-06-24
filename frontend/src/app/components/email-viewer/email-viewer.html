@@ -19,6 +19,14 @@
   <div class="viewer-subject">
     <h2>{{ email().subject }}</h2>
   </div>
+  @if (reminder(); as r) {
+    <div class="viewer-reminder">
+      <app-reminder-indicator
+        [reminder]="r"
+        variant="banner"
+        (action)="reminderAction.emit($event)" />
+    </div>
+  }
   <div class="viewer-body">
     <app-email-body
       [htmlContent]="email().htmlContent"

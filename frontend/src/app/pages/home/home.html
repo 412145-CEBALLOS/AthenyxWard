@@ -44,7 +44,9 @@
         [emails]="emails()"
         [selectedGmailId]="selectedEmail()?.gmailId ?? null"
         [accessibilityMode]="accessibilityMode()"
-        (select)="selectEmail($event)" />
+        [remindersByEmail]="remindersByEmail()"
+        (select)="selectEmail($event)"
+        (reminderAction)="onEmailListReminderAction($event)" />
     }
   </aside>
 
@@ -62,6 +64,7 @@
         [canMarkImportant]="canMarkImportant()"
         [isImportant]="email.isImportant"
         [userRole]="userRole()"
+        [reminder]="currentReminder()"
         [(analysisPanelOpen)]="analysisPanelOpen"
         (hide)="onEmailHide()"
         (delete)="onEmailDelete()"
@@ -69,7 +72,8 @@
         (markImportant)="onEmailMarkImportant()"
         (createReminder)="onEmailCreateReminder()"
         (retry)="onEmailAnalysisRetry()"
-        (analyzeRequest)="onAnalysisRequest()" />
+        (analyzeRequest)="onAnalysisRequest()"
+        (reminderAction)="onReminderAction($event)" />
     } @else {
       <div class="viewer-empty">
         <svg viewBox="0 0 24 24" fill="none">
@@ -82,3 +86,22 @@
     }
   </main>
 </div>
+
+@if (reminderFormOpen()) {
+  <app-reminder-form-dialog
+    [reminder]="reminderFormEditing()"
+    [emailId]="reminderFormEmailId()"
+    (saved)="onReminderFormSaved($event)"
+    (cancelled)="onReminderFormCancelled()" />
+}
+
+@if (confirmDeleteOpen()) {
+  <app-confirm-dialog
+    title="Eliminar recordatorio"
+    message="¿Eliminar este recordatorio? Esta acción no se puede deshacer."
+    confirmLabel="Eliminar"
+    cancelLabel="Cancelar"
+    variant="danger"
+    (confirm)="onConfirmDeleteAccepted()"
+    (cancel)="onConfirmDeleteCancelled()" />
+}

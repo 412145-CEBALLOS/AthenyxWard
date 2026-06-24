@@ -1,6 +1,9 @@
 package com.athenyx.backend.config;
 
 import com.athenyx.backend.security.RefreshTokenException;
+import com.athenyx.backend.service.reminder.ReminderConflictException;
+import com.athenyx.backend.service.reminder.ReminderNotFoundException;
+import com.athenyx.backend.service.reminder.ReminderPremiumRequiredException;
 import org.hibernate.LazyInitializationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -94,5 +97,32 @@ class GlobalExceptionHandlerTest {
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(res.getBody()).containsEntry("error", "Error interno del servidor");
+    }
+
+    @Test
+    void mapsReminderPremiumRequired_to403() {
+        ResponseEntity<Map<String, String>> res = handler.handleReminderPremiumRequired(
+                new ReminderPremiumRequiredException("Premium requerido"));
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(res.getBody()).containsEntry("error", "Premium requerido");
+    }
+
+    @Test
+    void mapsReminderConflict_to409() {
+        ResponseEntity<Map<String, String>> res = handler.handleReminderConflict(
+                new ReminderConflictException("Ya tienes un recordatorio para este correo."));
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(res.getBody()).containsEntry("error", "Ya tienes un recordatorio para este correo.");
+    }
+
+    @Test
+    void mapsReminderNotFound_to404() {
+        ResponseEntity<Map<String, String>> res = handler.handleReminderNotFound(
+                new ReminderNotFoundException("Recordatorio no encontrado"));
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(res.getBody()).containsEntry("error", "Recordatorio no encontrado");
     }
 }

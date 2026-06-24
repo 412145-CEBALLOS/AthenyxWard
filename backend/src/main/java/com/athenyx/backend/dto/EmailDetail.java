@@ -1,5 +1,7 @@
 package com.athenyx.backend.dto;
 
+import jakarta.annotation.Nullable;
+
 import java.time.LocalDateTime;
 
 /**
@@ -8,6 +10,10 @@ import java.time.LocalDateTime;
  * <p>Marks the message as read on retrieval. Includes both the
  * analysis-ready plain text and the HTML preview (also truncated to
  * fit the column).</p>
+ *
+ * <p>{@code reminder} is non-null when the current user has a
+ * reminder configured for this email — the SPA uses it to render
+ * the banner inside the viewer without an extra round-trip.</p>
  */
 public record EmailDetail(
     Long id,
@@ -22,5 +28,6 @@ public record EmailDetail(
     LocalDateTime fetchedAt,
     boolean isRead,
     String originalDateHeader,
-    boolean isImportant
+    boolean isImportant,
+    @Nullable ReminderSummary reminder
 ) {}

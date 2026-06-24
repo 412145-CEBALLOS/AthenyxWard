@@ -36,6 +36,7 @@ npm run serve:ssr:frontend      # Run SSR server (port 4000)
 - `dto/` — Data transfer objects
 - `repository/` — Spring Data JPA interfaces
 - `service/` — Business logic
+  - `service/reminder/` — Reminder CRUD + Premium/Admin gating (US 2.6)
 - `controller/` — REST endpoints
 - `config/` — Spring configuration (SecurityFilterChain, CORS, etc.)
 - `security/` — JWT filters, auth providers
@@ -110,6 +111,43 @@ Backend (`HeuristicAnalysisService.analyze`):
 - Persists to `EmailAnalysis` entity, increments `User.analysisCount` for TRIAL users
 - Re-analysis (cache miss) **always inserts a new `EmailAnalysis` row** — never updates an existing one, so the history endpoint always shows the full timeline.
 
+## Reminders (US 2.6)
+
+User-defined reminders attached to a single email. One row per
+`(user, email)` pair — enforced at the DB level by the
+`uk_reminder_user_email` unique constraint and at the service
+level by `ReminderConflictException` (→ 409 Conflict on POST).
+
+Endpoints (`/api/reminders`):
+- `POST` — PREMIUM/ADMIN only (`@PreAuthorize("hasAnyRole('PREMIUM', 'ADMIN')")`). TRIAL → 403 (`ReminderPremiumRequiredException`).
+- `PATCH /{id}` — any authenticated user; ownership verified in the service. Returns 404 when missing or owned by another user (`ReminderNotFoundException`).
+- `DELETE /{id}` — same gating as PATCH.
+- `GET ?filter=all|pending|done` — any authenticated user. TRIAL users get an **empty list** (no 403) so the SPA can render the upsell state uniformly.
+- `GET /by-email/{emailId}` — used by the email viewer.
+
+DTOs: `CreateReminderRequest`, `UpdateReminderRequest`, `ReminderResponse`, `ReminderSummary`, `RemindersListResponse`.
+
+Enrichment pattern: `EmailSummary` and `EmailDetail` now carry an
+optional `reminder: ReminderSummary | null`. `GmailService` calls
+`ReminderService.findSummaryByEmail` for the detail view and
+`findSummariesForEmails` (single batch query) for the list views
+— same pattern used for risk-data enrichment, so there's no N+1.
+
+Frontend flows:
+- `ReminderService` (`/api/reminders/*`).
+- `ReminderIndicatorComponent` renders the chip in the list row
+  (`variant="list"`) and the banner inside the email viewer
+  (`variant="banner"`). Done state → muted; upcoming (<24 h) →
+  pulse + red highlight.
+- `ReminderFormDialogComponent` is the create / edit modal; the
+  service handles 409 by reopening the same dialog in edit mode
+  with the existing reminder fetched.
+- `ConfirmDialogComponent` is the reusable "are you sure?" modal
+  used before delete.
+- `ToastService` was extended with an optional inline `action`
+  button (label + callback) — used in 2.7 for "Marcar hecho" from
+  the toast, but available to any future flow.
+
 ## Analysis History (US 2.4)
 
 `/history` page renders the timeline of every `EmailAnalysis` row for the current user. Flow:
@@ -157,7 +195,7 @@ Frontend (`AnalysisHistoryComponent`):
 
 ## Testing
 
-- Backend: JUnit 5 + Mockito + Spring Security Test
+- Backend: JUnit 5 + Mockito + Spring Security Test. Integration tests use H2 (in-memory) via `src/test/resources/application-test.properties`.
 - Frontend: Jasmine + Karma (requires Chrome)
 - Run focused tests with the single-test commands above
 

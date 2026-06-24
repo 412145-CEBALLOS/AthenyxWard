@@ -12,6 +12,7 @@ import com.athenyx.backend.repository.EmailRepository;
 import com.athenyx.backend.repository.GmailPageTokenRepository;
 import com.athenyx.backend.repository.UserRepository;
 import com.athenyx.backend.security.TokenEncryptionService;
+import com.athenyx.backend.service.reminder.ReminderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +41,8 @@ class GmailServiceTest {
     private EmailAnalysisRepository emailAnalysisRepository;
     @Mock
     private TokenEncryptionService tokenEncryptionService;
+    @Mock
+    private ReminderService reminderService;
 
     private GmailService service;
 
@@ -48,7 +51,12 @@ class GmailServiceTest {
     @BeforeEach
     void setUp() {
         service = new GmailService(userRepository, emailRepository,
-                gmailPageTokenRepository, emailAnalysisRepository, tokenEncryptionService);
+                emailAnalysisRepository, gmailPageTokenRepository, tokenEncryptionService,
+                reminderService);
+        // The list endpoints always invoke the reminder enrichment as
+        // a safety net; individual tests override it as needed.
+        lenient().when(reminderService.findSummariesForEmails(any(), any()))
+                .thenReturn(java.util.Map.of());
         user = User.builder()
                 .id(1L)
                 .googleId("gid")

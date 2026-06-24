@@ -1,0 +1,59 @@
+<div class="modal-overlay" (click)="onCancel()">
+  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="reminder-dialog-title">
+    <h2 id="reminder-dialog-title" class="dialog-title">{{ title() }}</h2>
+
+    <label class="dialog-field">
+      <span class="dialog-label">Fecha</span>
+      <input
+        type="date"
+        class="dialog-input"
+        [value]="date()"
+        (input)="onDateInput($event)"
+        required />
+    </label>
+
+    <label class="dialog-field">
+      <span class="dialog-label">Hora</span>
+      <input
+        type="time"
+        class="dialog-input"
+        [value]="time()"
+        (input)="onTimeInput($event)"
+        required />
+    </label>
+
+    <label class="dialog-field">
+      <span class="dialog-label">Mensaje <span class="dialog-label-hint">(opcional)</span></span>
+      <textarea
+        class="dialog-textarea"
+        rows="3"
+        placeholder="Añade una nota sobre este recordatorio"
+        [value]="message()"
+        (input)="onMessageInput($event)"
+        [attr.maxlength]="maxMessageLength"></textarea>
+      <span class="dialog-counter" [class.dialog-counter-over]="messageTooLong()">
+        {{ message().length }} / {{ maxMessageLength }}
+      </span>
+    </label>
+
+    <div class="dialog-actions">
+      <button
+        type="button"
+        class="btn-secondary"
+        (click)="onCancel()"
+        [disabled]="submitting()">
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-primary"
+        (click)="onSubmit()"
+        [disabled]="!canSubmit()">
+        @if (submitting()) {
+          <span class="spinner small"></span>
+        }
+        {{ isEdit() ? 'Guardar cambios' : 'Crear recordatorio' }}
+      </button>
+    </div>
+  </div>
+</div>

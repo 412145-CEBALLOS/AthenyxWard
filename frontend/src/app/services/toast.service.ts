@@ -99,6 +99,7 @@ export class ToastService {
       message,
       count: 1,
       createdAt: now,
+      action: opts?.action,
     };
 
     this.toasts.update((list) => {

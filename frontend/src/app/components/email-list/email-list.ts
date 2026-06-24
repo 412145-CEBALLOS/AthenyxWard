@@ -5,7 +5,9 @@ import {
   output,
 } from '@angular/core';
 import { EmailSummary } from '../../models/email-summary.model';
+import { ReminderSummary } from '../../models/reminder.model';
 import { EmailItemComponent } from '../email-item/email-item';
+import { ReminderAction } from '../reminder-indicator/reminder-indicator';
 
 @Component({
   selector: 'app-email-list',
@@ -24,7 +26,19 @@ export class EmailListComponent {
    * background (accessibility OFF) visual modes.
    */
   readonly accessibilityMode = input<boolean>(true);
+  /**
+   * Sparse map of {@code emailId -> reminder summary}. Only emails
+   * with a configured reminder are keyed; the rest fall through to
+   * `null` in the row component.
+   */
+  readonly remindersByEmail = input<ReadonlyMap<number, ReminderSummary>>(new Map());
   readonly select = output<EmailSummary>();
+  readonly reminderAction = output<ReminderAction>();
+
+  reminderFor(emailId: number | null): ReminderSummary | null {
+    if (emailId == null) return null;
+    return this.remindersByEmail().get(emailId) ?? null;
+  }
 
   trackByGmailId = (_: number, email: EmailSummary): string => email.gmailId;
 }

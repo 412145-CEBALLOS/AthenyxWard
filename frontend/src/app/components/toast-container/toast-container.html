@@ -44,6 +44,15 @@
 
       <p class="toast__message">{{ toast.message }}</p>
 
+      @if (toast.action; as action) {
+        <button
+          type="button"
+          class="toast__action"
+          (click)="invokeAction(toast.id, action)">
+          {{ action.label }}
+        </button>
+      }
+
       @if (toast.count > 1) {
         <span class="toast__count" aria-label="Repetido {{ toast.count }} veces">×{{ toast.count }}</span>
       }

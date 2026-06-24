@@ -41,6 +41,12 @@
       role="img">
     </span>
   }
+  @if (reminder(); as r) {
+    <app-reminder-indicator
+      [reminder]="r"
+      variant="list"
+      (action)="onReminderAction($event)" />
+  }
   @if (unread()) {
     <span class="unread-dot"></span>
   }

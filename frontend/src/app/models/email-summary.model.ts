@@ -6,6 +6,10 @@
  * <p>{@code riskPercentage} and {@code riskLevel} carry the result of the
  * most recent security analysis (if any). When null, the email has never
  * been analysed and the list row renders no traffic-light indicator.</p>
+ *
+ * <p>{@code reminder} is non-null when the user has a reminder
+ * configured for the email — the list row uses it to draw the
+ * small bell chip.</p>
  */
 export interface EmailSummary {
   id: number | null;
@@ -21,11 +25,16 @@ export interface EmailSummary {
   isImportant: boolean;
   riskPercentage?: number | null;
   riskLevel?: 'GREEN' | 'YELLOW' | 'RED' | null;
+  reminder?: import('./reminder.model').ReminderSummary | null;
 }
 
 /**
  * Full Gmail message view returned by {@code GET /api/emails/{id}}.
  * Includes both the analysis-ready plain text and the HTML preview.
+ *
+ * <p>{@code reminder} is non-null when the current user has a
+ * reminder configured for this email — the viewer uses it to render
+ * the banner without an extra round-trip.</p>
  */
 export interface EmailDetail {
   id: number;
@@ -41,6 +50,7 @@ export interface EmailDetail {
   isRead: boolean;
   originalDateHeader: string | null;
   isImportant: boolean;
+  reminder?: import('./reminder.model').ReminderSummary | null;
 }
 
 /**

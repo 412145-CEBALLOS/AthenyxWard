@@ -1,0 +1,60 @@
+@if (reminder(); as r) {
+  @if (variant() === 'list') {
+    <button
+      type="button"
+      class="reminder-chip reminder-chip-list"
+      [class.reminder-done]="isDone()"
+      [class.reminder-upcoming]="isUpcoming()"
+      [attr.aria-label]="'Recordatorio: ' + reminderDateText()"
+      [title]="reminderDateText()"
+      (click)="onListClick($event)">
+      <i class="ti ti-bell" aria-hidden="true"></i>
+    </button>
+  } @else {
+    <div
+      class="reminder-banner"
+      [class.reminder-done]="isDone()"
+      [class.reminder-upcoming]="isUpcoming()">
+      <div class="reminder-banner-icon" aria-hidden="true">
+        <i class="ti ti-bell"></i>
+      </div>
+      <div class="reminder-banner-body">
+        <span class="reminder-banner-label">
+          <strong>Recordatorio:</strong> {{ reminderDateText() }}
+        </span>
+        @if (reminderTimeLabel()) {
+          <span class="reminder-banner-meta">{{ reminderTimeLabel() }}</span>
+        }
+        @if (bannerMessage()) {
+          <span class="reminder-banner-message">{{ bannerMessage() }}</span>
+        }
+      </div>
+      <div class="reminder-banner-actions">
+        @if (!isDone()) {
+          <button
+            type="button"
+            class="reminder-btn reminder-btn-primary"
+            (click)="onMarkDone()"
+            title="Marcar como hecho">
+            <i class="ti ti-check" aria-hidden="true"></i>
+            <span>Marcar hecho</span>
+          </button>
+        }
+        <button
+          type="button"
+          class="reminder-btn"
+          (click)="onEdit()"
+          title="Editar recordatorio">
+          <i class="ti ti-pencil" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          class="reminder-btn reminder-btn-danger"
+          (click)="onDelete()"
+          title="Eliminar recordatorio">
+          <i class="ti ti-trash" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+  }
+}

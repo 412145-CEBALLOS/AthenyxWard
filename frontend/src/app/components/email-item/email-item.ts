@@ -7,14 +7,19 @@ import {
   output,
 } from '@angular/core';
 import { EmailSummary } from '../../models/email-summary.model';
+import { ReminderSummary } from '../../models/reminder.model';
 import { RiskLevel } from '../../models/email-analysis.model';
 import { SenderAvatarComponent } from '../sender-avatar/sender-avatar';
 import { EmailDatePipe } from '../../pipes/email-date.pipe';
+import {
+  ReminderAction,
+  ReminderIndicatorComponent,
+} from '../reminder-indicator/reminder-indicator';
 
 @Component({
   selector: 'app-email-item',
   standalone: true,
-  imports: [SenderAvatarComponent, EmailDatePipe],
+  imports: [SenderAvatarComponent, EmailDatePipe, ReminderIndicatorComponent],
   templateUrl: './email-item.html',
   styleUrl: './email-item.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,7 +33,10 @@ export class EmailItemComponent {
    * paints the row from top to bottom (subtle fade-out).
    */
   readonly accessibilityMode = input<boolean>(true);
+  /** When set, a bell chip is rendered to the right of the row. */
+  readonly reminder = input<ReminderSummary | null>(null);
   readonly select = output<EmailSummary>();
+  readonly reminderAction = output<ReminderAction>();
 
   readonly unread = computed(() => !this.email().isRead);
 
@@ -57,5 +65,9 @@ export class EmailItemComponent {
 
   onClick(): void {
     this.select.emit(this.email());
+  }
+
+  onReminderAction(action: ReminderAction): void {
+    this.reminderAction.emit(action);
   }
 }

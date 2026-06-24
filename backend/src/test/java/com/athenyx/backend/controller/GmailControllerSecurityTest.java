@@ -80,7 +80,7 @@ class GmailControllerSecurityTest {
         when(authentication.getPrincipal()).thenReturn(1L);
         when(gmailService.getImportantEmails(1L)).thenReturn(List.of(
                 new EmailSummary(10L, "gid", "a@b.com", "A", "Subj", "snip",
-                        LocalDateTime.now(), LocalDateTime.now(), true, "now", true, null, null)
+                        LocalDateTime.now(), LocalDateTime.now(), true, "now", true, null, null, null)
         ));
 
         ResponseEntity<List<EmailSummary>> response = controller.getImportantEmails(authentication);

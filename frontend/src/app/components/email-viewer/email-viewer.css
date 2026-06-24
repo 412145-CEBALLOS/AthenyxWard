@@ -23,6 +23,10 @@
   border-bottom: 1px solid rgba(226, 232, 240, 0.4);
 }
 
+.viewer-reminder {
+  padding: 16px 28px 0;
+}
+
 .viewer-subject h2 {
   margin: 0;
   font-size: 1.25rem;
