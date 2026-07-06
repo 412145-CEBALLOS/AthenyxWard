@@ -1,7 +1,9 @@
 package com.athenyx.backend.gmail;
 
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
+import com.athenyx.backend.dto.EmailPageResponse;
 import com.athenyx.backend.dto.EmailSummary;
+import com.athenyx.backend.dto.ReminderSummary;
 import com.athenyx.backend.entity.Email;
 import com.athenyx.backend.entity.EmailAnalysis;
 import com.athenyx.backend.entity.User;
@@ -19,13 +21,23 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -246,5 +258,198 @@ class GmailServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).riskPercentage()).isNull();
         assertThat(result.get(0).riskLevel()).isNull();
+    }
+
+    // --- US 3.7 — searchEmails -------------------------------------
+
+    private Email makeEmail(long id, String subject, String sender, String senderName, String snippet) {
+        return Email.builder()
+                .id(id).gmailId("g" + id).sender(sender).senderName(senderName)
+                .subject(subject).snippet(snippet).contentForAnalysis("body" + id)
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isImportant(false).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+    }
+
+    @Test
+    void searchEmails_withQuery_callsRepositoryWithTrimmedTermAndSize20() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        Page<Email> empty = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(emailRepository.searchByUserAndTerm(eq(1L), eq("paypal"), any(Pageable.class)))
+                .thenReturn(empty);
+
+        EmailPageResponse response = service.searchEmails(1L, 0, "  paypal  ");
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(emailRepository).searchByUserAndTerm(eq(1L), eq("paypal"), captor.capture());
+        Pageable pageable = captor.getValue();
+        assertThat(pageable.getPageNumber()).isEqualTo(0);
+        assertThat(pageable.getPageSize()).isEqualTo(20);
+        assertThat(response.emails()).isEmpty();
+        assertThat(response.hasNextPage()).isFalse();
+        assertThat(response.currentPage()).isEqualTo(0);
+        assertThat(response.pageSize()).isEqualTo(20);
+    }
+
+    @Test
+    void searchEmails_blankQuery_fallsBackToGmailPath() {
+        // With a blank q, the repository is never touched and the
+        // service must attempt the Gmail live path. We can't drive
+        // the live path here without a real Gmail client, so the
+        // simplest contract we can verify is "no DB query" — the
+        // Gmail call itself will throw, which is fine.
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.searchEmails(1L, 0, "   "))
+                .isInstanceOf(RuntimeException.class);
+        verify(emailRepository, never())
+                .searchByUserAndTerm(anyLong(), anyString(), any(Pageable.class));
+    }
+
+    @Test
+    void searchEmails_nullQuery_fallsBackToGmailPath() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.searchEmails(1L, 0, (String) null))
+                .isInstanceOf(RuntimeException.class);
+        verify(emailRepository, never())
+                .searchByUserAndTerm(anyLong(), anyString(), any(Pageable.class));
+    }
+
+    @Test
+    void searchEmails_returnsPersistedResultsEnrichedWithRiskAndReminder() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        Email e1 = makeEmail(10L, "PayPal receipt", "noreply@paypal.com", "PayPal", "you got money");
+        Email e2 = makeEmail(20L, "Your invoice", "billing@acme.com", "Acme", "thanks");
+        Page<Email> page = new PageImpl<>(List.of(e1, e2),
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "receivedAt")), 2);
+        when(emailRepository.searchByUserAndTerm(eq(1L), eq("pay"), any(Pageable.class)))
+                .thenReturn(page);
+
+        EmailAnalysis analysis = EmailAnalysis.builder()
+                .id(99L).email(e1).user(user)
+                .origin(AnalysisOrigin.HEURISTIC)
+                .riskLevel(ThreatLevel.RED).riskPercentage(85)
+                .build();
+        when(emailAnalysisRepository.findLatestByEmailIds(List.of(10L, 20L)))
+                .thenReturn(List.of(analysis));
+        ReminderSummary reminder = new ReminderSummary(7L,
+                LocalDateTime.now().plusDays(1), false);
+        when(reminderService.findSummariesForEmails(eq(1L), eq(List.of(10L, 20L))))
+                .thenReturn(Map.of(10L, reminder));
+
+        EmailPageResponse response = service.searchEmails(1L, 0, "pay");
+
+        assertThat(response.emails()).hasSize(2);
+        assertThat(response.hasNextPage()).isFalse();
+        assertThat(response.currentPage()).isEqualTo(0);
+        assertThat(response.pageSize()).isEqualTo(20);
+        // e1 picked up risk + reminder from the enrichment pipeline
+        assertThat(response.emails().get(0).riskPercentage()).isEqualTo(85);
+        assertThat(response.emails().get(0).riskLevel()).isEqualTo(ThreatLevel.RED);
+        assertThat(response.emails().get(0).reminder()).isEqualTo(reminder);
+        // e2 has no analysis and no reminder — slots remain null
+        assertThat(response.emails().get(1).riskPercentage()).isNull();
+        assertThat(response.emails().get(1).riskLevel()).isNull();
+        assertThat(response.emails().get(1).reminder()).isNull();
+    }
+
+    @Test
+    void searchEmails_emptyResultReturnsEmptyListAndNoNextPage() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(emailRepository.searchByUserAndTerm(eq(1L), eq("nothing"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(),
+                        PageRequest.of(0, 20,
+                                Sort.by(Sort.Direction.DESC, "receivedAt")), 0));
+
+        EmailPageResponse response = service.searchEmails(1L, 0, "nothing");
+
+        assertThat(response.emails()).isEmpty();
+        assertThat(response.hasNextPage()).isFalse();
+    }
+
+    @Test
+    void searchEmails_hasNextTrueWhenPageHasMore() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        Email e1 = makeEmail(10L, "Foo", "a@b.com", "A", "x");
+        // PageImpl with totalElements > pageSize → hasNext() == true
+        Page<Email> page = new PageImpl<>(List.of(e1),
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "receivedAt")), 21);
+        when(emailRepository.searchByUserAndTerm(eq(1L), eq("foo"), any(Pageable.class)))
+                .thenReturn(page);
+
+        EmailPageResponse response = service.searchEmails(1L, 0, "foo");
+
+        assertThat(response.hasNextPage()).isTrue();
+    }
+
+    @Test
+    void searchEmails_throwsWhenUserNotFound() {
+        when(userRepository.existsById(99L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.searchEmails(99L, 0, "foo"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Usuario no encontrado");
+    }
+
+    @Test
+    void searchEmails_respectsRequestedSize() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(emailRepository.searchByUserAndTerm(eq(1L), eq("foo"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(),
+                        PageRequest.of(0, 8, Sort.by(Sort.Direction.DESC, "receivedAt")), 0));
+
+        EmailPageResponse response = service.searchEmails(1L, 0, "foo", 8);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(emailRepository).searchByUserAndTerm(eq(1L), eq("foo"), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(8);
+        assertThat(response.pageSize()).isEqualTo(8);
+    }
+
+    @Test
+    void searchEmails_clampsSizeAboveMaxTo50() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(emailRepository.searchByUserAndTerm(eq(1L), eq("foo"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(),
+                        PageRequest.of(0, 50, Sort.by(Sort.Direction.DESC, "receivedAt")), 0));
+
+        EmailPageResponse response = service.searchEmails(1L, 0, "foo", 999);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(emailRepository).searchByUserAndTerm(eq(1L), eq("foo"), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(50);
+        assertThat(response.pageSize()).isEqualTo(50);
+    }
+
+    @Test
+    void searchEmails_clampsSizeBelowOneToOne() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(emailRepository.searchByUserAndTerm(eq(1L), eq("foo"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(),
+                        PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "receivedAt")), 0));
+
+        EmailPageResponse response = service.searchEmails(1L, 0, "foo", 0);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(emailRepository).searchByUserAndTerm(eq(1L), eq("foo"), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(1);
+        assertThat(response.pageSize()).isEqualTo(1);
+    }
+
+    @Test
+    void searchEmails_nullSizeDefaultsTo20() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(emailRepository.searchByUserAndTerm(eq(1L), eq("foo"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(),
+                        PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "receivedAt")), 0));
+
+        EmailPageResponse response = service.searchEmails(1L, 0, "foo", null);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(emailRepository).searchByUserAndTerm(eq(1L), eq("foo"), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(20);
+        assertThat(response.pageSize()).isEqualTo(20);
     }
 }

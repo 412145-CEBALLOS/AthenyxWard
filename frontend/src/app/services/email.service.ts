@@ -18,12 +18,29 @@ export class EmailService {
   constructor(private readonly http: HttpClient) {}
 
   /**
-   * Fetches a page of up to 20 email summaries. Pages are 0-indexed.
+   * Fetches a page of email summaries. Pages are 0-indexed. The
+   * default page size is 20; pass {@code size} to override
+   * (server-side cap is 50 — out-of-range values are clamped).
+   *
+   * <p>When {@code q} is non-blank, the backend runs a case-insensitive
+   * {@code @Query} LIKE search over the persisted inbox
+   * ({@code subject}, {@code sender}, {@code senderName}, {@code snippet}).
+   * Null / undefined / whitespace-only values are dropped from the
+   * URL so the request falls back to the default Gmail listing.</p>
    *
    * @param page zero-based page index (default {@code 0})
+   * @param q optional search term (US 3.7); trimmed client-side
+   * @param size optional page size; null/undefined → server default
    */
-  fetchEmails(page: number = 0): Observable<EmailPageResponse> {
-    const params = new HttpParams().set('page', page.toString());
+  fetchEmails(page: number = 0, q?: string | null, size?: number | null): Observable<EmailPageResponse> {
+    let params = new HttpParams().set('page', page.toString());
+    const trimmed = q?.trim();
+    if (trimmed) {
+      params = params.set('q', trimmed);
+    }
+    if (size && size > 0) {
+      params = params.set('size', size.toString());
+    }
     return this.http.get<EmailPageResponse>(`${environment.apiUrl}/emails/fetch`, { params });
   }
 

@@ -30,9 +30,11 @@ public class GmailController {
     @GetMapping("/fetch")
     public ResponseEntity<EmailPageResponse> fetchEmails(
             @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer size,
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(gmailService.fetchEmails(userId, page));
+        return ResponseEntity.ok(gmailService.searchEmails(userId, page, q, size));
     }
 
     @GetMapping("/{emailId}")

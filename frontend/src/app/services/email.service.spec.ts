@@ -18,6 +18,68 @@ describe('EmailService', () => {
     httpMock.verify();
   });
 
+  describe('fetchEmails', () => {
+    it('calls GET /api/emails/fetch?page=0 when q is not provided', () => {
+      service.fetchEmails(0).subscribe();
+      const req = httpMock.expectOne((r) => r.url === '/api/emails/fetch');
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.get('page')).toBe('0');
+      expect(req.request.params.has('q')).toBeFalse();
+      req.flush({ emails: [], currentPage: 0, pageSize: 20, hasNextPage: false });
+    });
+
+    it('appends q=foo to the URL when q is provided', () => {
+      service.fetchEmails(0, 'paypal').subscribe();
+      const req = httpMock.expectOne((r) =>
+        r.url === '/api/emails/fetch'
+        && r.params.get('page') === '0'
+        && r.params.get('q') === 'paypal'
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush({ emails: [], currentPage: 0, pageSize: 20, hasNextPage: false });
+    });
+
+    it('trims q before sending', () => {
+      service.fetchEmails(0, '  paypal  ').subscribe();
+      const req = httpMock.expectOne((r) => r.params.get('q') === 'paypal');
+      req.flush({ emails: [], currentPage: 0, pageSize: 20, hasNextPage: false });
+    });
+
+    it('omits q when it is null, undefined or blank', () => {
+      service.fetchEmails(0, null).subscribe();
+      const req1 = httpMock.expectOne((r) => !r.params.has('q'));
+      req1.flush({ emails: [], currentPage: 0, pageSize: 20, hasNextPage: false });
+
+      service.fetchEmails(0, undefined).subscribe();
+      const req2 = httpMock.expectOne((r) => !r.params.has('q'));
+      req2.flush({ emails: [], currentPage: 0, pageSize: 20, hasNextPage: false });
+
+      service.fetchEmails(0, '   ').subscribe();
+      const req3 = httpMock.expectOne((r) => !r.params.has('q'));
+      req3.flush({ emails: [], currentPage: 0, pageSize: 20, hasNextPage: false });
+    });
+
+    it('appends size=N to the URL when size is provided', () => {
+      service.fetchEmails(0, 'foo', 8).subscribe();
+      const req = httpMock.expectOne((r) =>
+        r.url === '/api/emails/fetch'
+          && r.params.get('q') === 'foo'
+          && r.params.get('size') === '8',
+      );
+      req.flush({ emails: [], currentPage: 0, pageSize: 8, hasNextPage: false });
+    });
+
+    it('omits size when null, undefined, or zero/negative', () => {
+      service.fetchEmails(0, undefined, null).subscribe();
+      const req1 = httpMock.expectOne((r) => !r.params.has('size'));
+      req1.flush({ emails: [], currentPage: 0, pageSize: 20, hasNextPage: false });
+
+      service.fetchEmails(0, undefined, 0).subscribe();
+      const req2 = httpMock.expectOne((r) => !r.params.has('size'));
+      req2.flush({ emails: [], currentPage: 0, pageSize: 20, hasNextPage: false });
+    });
+  });
+
   describe('fetchImportantEmails', () => {
     it('calls GET /api/emails/important', () => {
       const mockEmails = [

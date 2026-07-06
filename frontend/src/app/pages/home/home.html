@@ -30,6 +30,14 @@
         <span class="spinner large"></span>
         <span>Cargando correos...</span>
       </div>
+    } @else if (emails().length === 0 && currentQuery().length > 0) {
+      <div class="email-empty email-empty-search">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" stroke="#cbd5e1" stroke-width="1.5" />
+          <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+        <p>No se encontraron correos para "{{ currentQuery() }}"</p>
+      </div>
     } @else if (emails().length === 0) {
       <div class="email-empty">
         <svg viewBox="0 0 24 24" fill="none">

@@ -1,4 +1,5 @@
-import { Component, effect, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
+import { Component, effect, inject, signal, OnInit, OnDestroy, computed, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EmailListComponent } from '../../components/email-list/email-list';
 import { EmailPaginatorComponent } from '../../components/email-paginator/email-paginator';
@@ -12,13 +13,16 @@ import { ToastService } from '../../services/toast.service';
 import { AnalysisService } from '../../services/analysis.service';
 import { ReminderService } from '../../services/reminder.service';
 import { NotificationService } from '../../services/notification.service';
+import { EmailSearchService } from '../../services/email-search.service';
 import { EmailDetail, EmailSummary, EmailPageResponse } from '../../models/email-summary.model';
 import { EmailAnalysisResult, AnalysisState } from '../../models/email-analysis.model';
 import { Reminder, ReminderSummary } from '../../models/reminder.model';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Subject, forkJoin, of, takeUntil } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { EMPTY, Observable, Subject, forkJoin, of, takeUntil } from 'rxjs';
+import { catchError, switchMap, tap } from 'rxjs/operators';
 import { ReminderAction } from '../../components/reminder-indicator/reminder-indicator';
+
+const MOBILE_QUERY = '(max-width: 720px)';
 
 const MAX_PAGE_CACHE = 10;
 
@@ -45,6 +49,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly analysisService = inject(AnalysisService);
   private readonly reminderService = inject(ReminderService);
   private readonly notificationService = inject(NotificationService);
+  private readonly emailSearchService = inject(EmailSearchService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   readonly emails = signal<EmailSummary[]>([]);
   readonly selectedEmail = signal<EmailDetail | null>(null);
@@ -53,6 +59,28 @@ export class HomeComponent implements OnInit, OnDestroy {
   readonly hasNextPage = signal(false);
   readonly lastKnownPage = signal<number | null>(null);
   readonly currentPage = signal(0);
+
+  /**
+   * Trimmed value of the active search. Mirrors the {@code q} URL
+   * param and the {@link EmailSearchService#term} signal. Used by
+   * {@link fetchEmails$}, {@link cachePage} and
+   * {@link prefetchNextPage} as the per-query cache key prefix and
+   * as the echo guard for the {@code debouncedTerm$} subscription.
+   * Exposed as a signal so the template can reactively render the
+   * "no se encontraron correos para X" empty state.
+   */
+  readonly currentQuery = signal('');
+
+  /**
+   * True when the viewport is ≤ 720 px wide. On mobile the home page
+   * filters the inbox live as the user types; on desktop the search
+   * input drives a dropdown of top results and the inbox only
+   * updates when the user explicitly opts in (Enter / "Ver todos").
+   *
+   * <p>Re-evaluated on every matchMedia {@code change} event so a
+   * window resize flips the behaviour without a page reload.</p>
+   */
+  readonly isMobile = signal(false);
 
   readonly analysisResult = signal<EmailAnalysisResult | null>(null);
   readonly analysisState = signal<AnalysisState>('idle');
@@ -92,7 +120,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   hasEmails = () => this.emails().length > 0;
 
   private readonly onDestroy = new Subject<void>();
-  private readonly pageCache = new Map<number, EmailPageResponse>();
+  private readonly pageCache = new Map<string, EmailPageResponse>();
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingEmailId: number | null = null;
   /**
@@ -102,8 +130,84 @@ export class HomeComponent implements OnInit, OnDestroy {
    * would re-trigger the selection flow and loop).
    */
   private currentSelectionId: number | null = null;
+  /**
+   * Monotonic counter for the most recent fetch kick-off. Used by
+   * {@link fetchEmails$} to discard responses that belong to a
+   * superseded request — e.g. when the user clears the search box
+   * (firing a fetch with {@code q=""}) and immediately types a new
+   * value (firing another fetch with {@code q="foo"}). The
+   * older, slower response is dropped even if it lands after the
+   * newer one, preventing the stale results from overwriting the
+   * fresh ones.
+   *
+   * <p>Complements the {@code switchMap} cancellation in the
+   * debounced subscription: {@code switchMap} cancels the inner
+   * observable when a NEW search term arrives; this counter
+   * additionally drops late responses from imperative callers
+   * (e.g. fast paginator clicks that race with the debounce).</p>
+   */
+  private fetchRequestId = 0;
 
   constructor() {
+    // Viewport detection (US 3.7). The matchMedia subscription only
+    // runs in the browser; on the server we default to "desktop" so
+    // SSR markup matches the most common case.
+    if (isPlatformBrowser(this.platformId)) {
+      const mql = window.matchMedia(MOBILE_QUERY);
+      this.isMobile.set(mql.matches);
+      const onChange = (e: MediaQueryListEvent): void => this.isMobile.set(e.matches);
+      mql.addEventListener('change', onChange);
+      this.onDestroy.subscribe(() => mql.removeEventListener('change', onChange));
+    }
+
+    // Debounced search pipe (US 3.7). The header pushes the raw
+    // input value into EmailSearchService, which debounces it 300 ms
+    // and trims + dedupes. Here we react to the debounced term with
+    // switchMap so a new term cancels the previous in-flight fetch
+    // — this is the fix for the "clear then type" race where the
+    // older (slower) response was overwriting the newer one.
+    this.emailSearchService.debouncedTerm$.pipe(
+      takeUntil(this.onDestroy),
+      switchMap((trimmed) => {
+        // Echo guard: the queryParamMap subscription below may have
+        // already applied this value (deep link, back/forward). Skip
+        // when the value didn't actually change from the URL's POV.
+        if (trimmed === this.currentQuery()) {
+          return EMPTY;
+        }
+        this.currentQuery.set(trimmed);
+        this.pageCache.clear();
+        this.currentPage.set(0);
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { q: trimmed || null, page: null, emailId: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+        // Desktop: the dropdown handles its own fetching. Skip the
+        // inbox fetch so the user keeps their unfiltered inbox in
+        // view. They can opt in via Enter or "Ver todos resultados".
+        if (!this.isMobile()) {
+          return EMPTY;
+        }
+        return this.fetchEmails$(0, trimmed);
+      }),
+    ).subscribe();
+
+    // "Apply to inbox" (US 3.7 desktop). The user pressed Enter on
+    // the search input, or clicked the "Ver todos los resultados"
+    // link in the dropdown. Fetch the inbox for the current term
+    // immediately (no debounce) — the caller has already committed
+    // to the action.
+    this.emailSearchService.inboxApply$.pipe(
+      takeUntil(this.onDestroy),
+    ).subscribe((term) => {
+      this.currentQuery.set(term);
+      this.pageCache.clear();
+      this.currentPage.set(0);
+      this.fetchEmails(0, term);
+    });
+
     // Listen to the notification service's `done$` stream. The bell
     // fires it after a successful PATCH so we can refresh the
     // banner / chip on this side without a signal-effect cascade
@@ -144,13 +248,15 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const user = this.authService.user();
-    if (user?.trialExpired) {
+    if (user?.role === 'TRIAL' && user.trialExpired) {
       this.showTrialExpiredModal.set(true);
     } else {
       this.fetchEmails(0);
     }
     this.route.queryParamMap.pipe(takeUntil(this.onDestroy)).subscribe((params) => {
       const emailIdParam = params.get('emailId');
+      const qParam = params.get('q') ?? '';
+
       if (emailIdParam) {
         const id = Number(emailIdParam);
         if (this.currentSelectionId === id) {
@@ -163,6 +269,21 @@ export class HomeComponent implements OnInit, OnDestroy {
       } else {
         // No emailId in URL → user navigated back to the list.
         this.clearSelection();
+      }
+
+      // q sync: independent of emailId so toggling the search box
+      // never re-triggers clearSelection(). The echo guard skips
+      // the case where the URL change came from us (the debounced
+      // subscription is the one that wrote it).
+      if (qParam !== this.currentQuery()) {
+        this.currentQuery.set(qParam);
+        // Push the URL value into the search service WITHOUT firing
+        // the debounce — we already triggered (or are about to
+        // trigger) a fetch for this term, and re-running it 300 ms
+        // later would be a duplicate request.
+        this.emailSearchService.setTerm(qParam);
+        this.pageCache.clear();
+        this.fetchEmails(this.currentPage(), qParam);
       }
     });
   }
@@ -181,8 +302,33 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.router.navigate(['/login']);
   }
 
-  fetchEmails(page: number = 0): void {
-    const cached = this.pageCache.get(page);
+  /**
+   * Imperative entry point for callers that don't want the Rx pipeline
+   * (initial load, paginator clicks, goToPage). Delegates to
+   * {@link fetchEmails$} and subscribes synchronously; the inner
+   * requestId / switchMap guards still apply, so this is safe to
+   * call from multiple places concurrently.
+   */
+  fetchEmails(page: number = 0, q?: string): void {
+    this.fetchEmails$(page, (q ?? this.currentQuery()).trim()).subscribe();
+  }
+
+  /**
+   * Returns the observable that drives a single page fetch. Used by
+   * {@link fetchEmails} (imperative callers) and directly by the
+   * debounced search subscription via {@code switchMap} — the latter
+   * is what gives us automatic cancellation when the user types
+   * a new value before the previous response lands.
+   *
+   * <p>Cache hits are served synchronously through {@code of()};
+   * cache misses issue an HTTP request whose response is filtered
+   * through the {@link fetchRequestId} counter so a stale response
+   * (e.g. from a superseded paginator click) cannot overwrite the
+   * current view.</p>
+   */
+  private fetchEmails$(page: number, q: string): Observable<EmailPageResponse> {
+    const key = this.cacheKey(page, q);
+    const cached = this.pageCache.get(key);
     if (cached) {
       this.emails.set(cached.emails);
       this.hasNextPage.set(cached.hasNextPage);
@@ -190,15 +336,21 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.refreshRemindersForPage(cached.emails);
       this.prefetchNextPage(page + 1);
       this.tryConsumePendingSelection();
-      return;
+      return of(cached);
     }
 
+    const requestId = ++this.fetchRequestId;
     this.loading.set(true);
-    this.emailService.fetchEmails(page).pipe(
-      takeUntil(this.onDestroy)
-    ).subscribe({
-      next: (response) => {
-        this.cachePage(page, response);
+    return this.emailService.fetchEmails(page, q).pipe(
+      tap((response) => {
+        // Drop the response if a newer fetch has been kicked off
+        // (paginator race, debounce emission, etc.). Without this
+        // guard, the older request could land after the newer one
+        // and silently overwrite the visible results.
+        if (requestId !== this.fetchRequestId) {
+          return;
+        }
+        this.cachePage(page, response, q);
         this.emails.set(response.emails);
         this.hasNextPage.set(response.hasNextPage);
         this.loading.set(false);
@@ -210,11 +362,14 @@ export class HomeComponent implements OnInit, OnDestroy {
         }
         this.emailService.refreshImportantCount();
         this.tryConsumePendingSelection();
-      },
-      error: () => {
-        this.loading.set(false);
-      }
-    });
+      }),
+      catchError(() => {
+        if (requestId === this.fetchRequestId) {
+          this.loading.set(false);
+        }
+        return EMPTY;
+      }),
+    );
   }
 
   /**
@@ -250,24 +405,39 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private prefetchNextPage(page: number): void {
-    if (this.pageCache.has(page)) return;
-    this.emailService.fetchEmails(page).pipe(
+    const q = this.currentQuery();
+    const key = this.cacheKey(page, q);
+    if (this.pageCache.has(key)) return;
+    this.emailService.fetchEmails(page, q).pipe(
       takeUntil(this.onDestroy)
     ).subscribe({
       next: (response) => {
-        this.cachePage(page, response);
+        this.cachePage(page, response, q);
         this.avatars.precompute(response.emails.map((e) => e.sender));
       },
       error: () => {}
     });
   }
 
-  private cachePage(page: number, response: EmailPageResponse): void {
-    this.pageCache.set(page, response);
+  /**
+   * Composite cache key that scopes a page to the current query.
+   * Without this, paginated pages from a previous search would
+   * leak into a fresh unfiltered session and vice versa.
+   */
+  private cacheKey(page: number, q: string): string {
+    return `${q}::${page}`;
+  }
+
+  private cachePage(page: number, response: EmailPageResponse, q: string): void {
+    this.pageCache.set(this.cacheKey(page, q), response);
     if (this.pageCache.size <= MAX_PAGE_CACHE) return;
     const current = this.currentPage();
-    const protectedKeys = new Set([current - 1, current, current + 1]);
-    let oldestKey: number | null = null;
+    const protectedKeys = new Set([
+      this.cacheKey(current - 1, q),
+      this.cacheKey(current, q),
+      this.cacheKey(current + 1, q),
+    ]);
+    let oldestKey: string | null = null;
     for (const key of this.pageCache.keys()) {
       if (protectedKeys.has(key)) continue;
       if (oldestKey === null || key < oldestKey) oldestKey = key;
@@ -284,7 +454,15 @@ export class HomeComponent implements OnInit, OnDestroy {
   goToPage(page: number): void {
     if (page < 0) return;
     this.clearSelection();
-    this.router.navigate(['/home'], { queryParams: {} });
+    this.router.navigate(['/home'], {
+      queryParams: {
+        q: this.currentQuery() || null,
+        emailId: null,
+        page: null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     this.currentPage.set(page);
     this.fetchEmails(page);
   }
@@ -436,9 +614,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       list.map((e) => e.id === emailId ? { ...e, ...patch } : e)
     );
     const page = this.currentPage();
-    const cached = this.pageCache.get(page);
+    const cached = this.pageCache.get(this.cacheKey(page, this.currentQuery()));
     if (cached) {
-      this.pageCache.set(page, {
+      this.pageCache.set(this.cacheKey(page, this.currentQuery()), {
         ...cached,
         emails: cached.emails.map((e) => e.id === emailId ? { ...e, ...patch } : e),
       });

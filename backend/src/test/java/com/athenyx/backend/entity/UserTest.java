@@ -27,10 +27,33 @@ class UserTest {
     @Test
     void isTrialExpired_returnsTrue_whenTrialEndDateInPast() {
         User user = User.builder()
+                .role(Role.TRIAL)
                 .trialEndDate(LocalDateTime.now().minusSeconds(1))
                 .build();
 
         assertThat(user.isTrialExpired()).isTrue();
+    }
+
+    @Test
+    void isTrialExpired_returnsFalse_forAdminEvenWhenTrialEndDateInPast() {
+        // Admin users may keep a stale trialEndDate from when they
+        // were upgraded — they must never see the trial-expired state.
+        User user = User.builder()
+                .role(Role.ADMIN)
+                .trialEndDate(LocalDateTime.now().minusSeconds(1))
+                .build();
+
+        assertThat(user.isTrialExpired()).isFalse();
+    }
+
+    @Test
+    void isTrialExpired_returnsFalse_forPremiumEvenWhenTrialEndDateInPast() {
+        User user = User.builder()
+                .role(Role.PREMIUM)
+                .trialEndDate(LocalDateTime.now().minusDays(30))
+                .build();
+
+        assertThat(user.isTrialExpired()).isFalse();
     }
 
     @Test

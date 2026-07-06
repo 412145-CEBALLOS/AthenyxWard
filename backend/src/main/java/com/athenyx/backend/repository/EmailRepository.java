@@ -1,7 +1,11 @@
 package com.athenyx.backend.repository;
 
 import com.athenyx.backend.entity.Email;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,4 +41,38 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
      * Counts emails marked as important for the user.
      */
     long countByUserIdAndIsImportantTrue(Long userId);
+
+    /**
+     * Case-insensitive substring search over {@code subject},
+     * {@code sender}, {@code senderName} and {@code snippet} for the
+     * given user. Newest first. Backs US 3.7 — the search bar in the
+     * inbox view.
+     *
+     * <p>Both sides of the {@code LIKE} are wrapped in {@code LOWER(...)}
+     * so the comparison is case-insensitive on MySQL (default
+     * {@code utf8mb4_unicode_ci} would also work, but H2 in MySQL mode
+     * is case-sensitive without the explicit cast — keeping the
+     * {@code LOWER()} makes the behaviour identical across both
+     * engines used in the project).</p>
+     *
+     * <p>The Gmail API is not consulted — the search is purely over
+     * the {@code emails} table. Newly arrived messages that have not
+     * been persisted yet will not appear in the results.</p>
+     *
+     * @param userId owner of the inbox
+     * @param q non-blank search term (the caller is expected to trim)
+     * @param pageable page request (page number, size, sort)
+     */
+    @Query("""
+        SELECT e FROM Email e
+        WHERE e.user.id = :userId
+          AND (LOWER(e.subject)     LIKE LOWER(CONCAT('%', :q, '%'))
+            OR LOWER(e.sender)      LIKE LOWER(CONCAT('%', :q, '%'))
+            OR LOWER(e.senderName)  LIKE LOWER(CONCAT('%', :q, '%'))
+            OR LOWER(e.snippet)     LIKE LOWER(CONCAT('%', :q, '%')))
+        ORDER BY e.receivedAt DESC
+        """)
+    Page<Email> searchByUserAndTerm(@Param("userId") Long userId,
+                                    @Param("q") String q,
+                                    Pageable pageable);
 }

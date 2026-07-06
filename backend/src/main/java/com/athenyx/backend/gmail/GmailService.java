@@ -15,6 +15,10 @@ import com.athenyx.backend.repository.UserRepository;
 import com.athenyx.backend.repository.GmailPageTokenRepository;
 import com.athenyx.backend.security.TokenEncryptionService;
 import com.athenyx.backend.service.reminder.ReminderService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import com.google.api.client.googleapis.batch.BatchRequest;
 import com.google.api.client.googleapis.batch.json.JsonBatchCallback;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -87,9 +91,122 @@ public class GmailService {
 
     private static final String APPLICATION_NAME = "Athenyx Ward";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
-    private static final int MAX_RESULTS = 20;
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 50;
+    /**
+     * Legacy constant kept for callers that still want the default
+     * page size. New code should pass {@code null} to
+     * {@link #searchEmails} / {@link #fetchFromGmail} and let the
+     * helper below pick the default.
+     */
+    private static final int MAX_RESULTS = DEFAULT_PAGE_SIZE;
 
+    /**
+     * Clamps the requested page size into the {@code [1, 50]} range.
+     * {@code null} falls back to the default 20. Exposed as static
+     * so the controller can pre-clamp before the service is even
+     * called (and so the test suite can pin the boundaries).
+     */
+    static int clampPageSize(Integer size) {
+        if (size == null) return DEFAULT_PAGE_SIZE;
+        if (size < 1) return 1;
+        return Math.min(size, MAX_PAGE_SIZE);
+    }
+
+    /**
+     * Backwards-compatible overload — equivalent to
+     * {@code searchEmails(userId, page, null, null)}, i.e. serves
+     * the request from the live Gmail API with the default page
+     * size. Kept so existing callers (e.g.
+     * {@link #fetchRecentEmails}) don't have to change.
+     */
     public EmailPageResponse fetchEmails(Long userId, int page) {
+        return fetchFromGmail(userId, page, null);
+    }
+
+    /**
+     * Unified entry point for {@code GET /api/emails/fetch} (US 3.7).
+     *
+     * <p>When {@code q} is null or blank the request is served from
+     * the live Gmail API (existing behaviour). When {@code q} is
+     * non-blank the persisted {@code emails} table is searched via
+     * the {@code @Query} LIKE on {@code subject} / {@code sender} /
+     * {@code senderName} / {@code snippet} (case-insensitive), and
+     * the page is returned from a {@link Page} of {@link Email}
+     * entities.</p>
+     *
+     * <p>Both branches share the same enrichment pipeline
+     * ({@link #enrichWithRiskData} + {@link #enrichWithReminderIndicator}),
+     * so the resulting summaries expose {@code riskPercentage} /
+     * {@code riskLevel} and {@code reminder} the same way the
+     * default inbox listing does.</p>
+     *
+     * @param userId owner of the inbox
+     * @param page   0-indexed page number
+     * @param q      search term; null or blank → fall back to Gmail
+     * @param size   optional page size (1–50); null → default 20
+     * @return a page of {@link EmailSummary} enriched with risk and
+     *         reminder data
+     */
+    public EmailPageResponse searchEmails(Long userId, int page, String q, Integer size) {
+        int pageSize = clampPageSize(size);
+        String trimmed = (q == null) ? null : q.trim();
+        if (trimmed == null || trimmed.isEmpty()) {
+            return fetchFromGmail(userId, page, pageSize);
+        }
+        if (!userRepository.existsById(userId)) {
+            throw new RuntimeException("Usuario no encontrado");
+        }
+        Pageable pageable = PageRequest.of(page, pageSize,
+            Sort.by(Sort.Direction.DESC, "receivedAt"));
+        Page<Email> result = emailRepository.searchByUserAndTerm(userId, trimmed, pageable);
+        List<Email> emails = result.getContent();
+        List<EmailSummary> summaries = new ArrayList<>(emails.size());
+        for (Email email : emails) {
+            summaries.add(toSummary(email));
+        }
+        enrichWithRiskData(summaries);
+        enrichWithReminderIndicator(userId, summaries);
+        return new EmailPageResponse(summaries, page, pageSize, result.hasNext());
+    }
+
+    /**
+     * Backwards-compatible overload — defaults to page size 20. Kept
+     * so existing callers (e.g. {@link #fetchRecentEmails}) don't
+     * have to change.
+     */
+    public EmailPageResponse searchEmails(Long userId, int page, String q) {
+        return searchEmails(userId, page, q, null);
+    }
+
+    /**
+     * Maps a persisted {@link Email} entity to the lightweight
+     * {@link EmailSummary} DTO used by the list endpoints. The
+     * analysis + reminder slots are left null and filled in by the
+     * enrichment pipeline (see {@link #enrichWithRiskData} and
+     * {@link #enrichWithReminderIndicator}).
+     */
+    private EmailSummary toSummary(Email email) {
+        return new EmailSummary(
+            email.getId(),
+            email.getGmailId(),
+            email.getSender(),
+            email.getSenderName(),
+            email.getSubject(),
+            email.getSnippet(),
+            email.getReceivedAt(),
+            email.getFetchedAt(),
+            email.isRead(),
+            email.getOriginalDateHeader(),
+            email.isImportant(),
+            null,
+            null,
+            null
+        );
+    }
+
+    private EmailPageResponse fetchFromGmail(Long userId, int page, Integer size) {
+        int pageSize = clampPageSize(size);
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
@@ -116,12 +233,12 @@ public class GmailService {
 
             ListMessagesResponse response = gmailService.users().messages()
                     .list("me")
-                    .setMaxResults((long) MAX_RESULTS)
+                    .setMaxResults((long) pageSize)
                     .setPageToken(pageToken)
                     .execute();
 
             if (response.getMessages() == null || response.getMessages().isEmpty()) {
-                return new EmailPageResponse(List.of(), page, MAX_RESULTS, false);
+                return new EmailPageResponse(List.of(), page, pageSize, false);
             }
 
             String nextPageToken = response.getNextPageToken();
@@ -161,7 +278,7 @@ public class GmailService {
             enrichWithReminderIndicator(userId, summaries);
 
             boolean hasNextPage = nextPageToken != null;
-            return new EmailPageResponse(summaries, page, MAX_RESULTS, hasNextPage);
+            return new EmailPageResponse(summaries, page, pageSize, hasNextPage);
 
         } catch (com.google.api.client.googleapis.json.GoogleJsonResponseException e) {
             int statusCode = e.getStatusCode();

@@ -83,7 +83,15 @@ public class User {
     @Builder.Default
     private List<Email> emails = new ArrayList<>();
 
+    /**
+     * True only when the user is on the {@link Role#TRIAL} plan and
+     * the trial window has passed. {@code PREMIUM} and {@code ADMIN}
+     * users never see a trial-expired state — even if a stale
+     * {@code trialEndDate} is left over from a previous role change.
+     */
     public boolean isTrialExpired() {
-        return trialEndDate != null && LocalDateTime.now().isAfter(trialEndDate);
+        return role == Role.TRIAL
+            && trialEndDate != null
+            && LocalDateTime.now().isAfter(trialEndDate);
     }
 }

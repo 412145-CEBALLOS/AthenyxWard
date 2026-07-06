@@ -1,0 +1,49 @@
+@if (visible()) {
+  <div class="search-results-dropdown" role="listbox" aria-label="Resultados de búsqueda">
+    @if (loading() && results().length === 0) {
+      <div class="search-results-loading">
+        <span class="spinner"></span>
+        <span>Buscando...</span>
+      </div>
+    } @else if (results().length === 0) {
+      <div class="search-results-empty">
+        No hay resultados para "{{ term() }}"
+      </div>
+    } @else {
+      <ul class="search-results-list">
+        @for (email of results(); track email.gmailId) {
+          <li
+            class="search-result-item"
+            role="option"
+            (mousedown)="onResultClick(email)">
+            <app-sender-avatar
+              size="sm"
+              [sender]="email.sender"
+              [senderName]="email.senderName" />
+            <div class="result-content">
+              <div class="result-top">
+                <span class="result-sender">
+                  {{ email.senderName || email.sender }}
+                </span>
+                <span class="result-date">{{ email | emailDate:false }}</span>
+              </div>
+              <span class="result-subject">{{ email.subject }}</span>
+              <span class="result-snippet">{{ email.snippet }}</span>
+            </div>
+            @if (email.riskLevel === 'RED') {
+              <span class="result-risk-dot result-risk-red" aria-label="Peligroso"></span>
+            } @else if (email.riskLevel === 'YELLOW') {
+              <span class="result-risk-dot result-risk-yellow" aria-label="Sospechoso"></span>
+            }
+          </li>
+        }
+      </ul>
+      <button
+        type="button"
+        class="search-results-view-all"
+        (mousedown)="onViewAll()">
+        Ver todos los resultados para "{{ term() }}"
+      </button>
+    }
+  </div>
+}

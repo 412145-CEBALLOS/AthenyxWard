@@ -2,10 +2,12 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { PLATFORM_ID } from '@angular/core';
-import { of, throwError } from 'rxjs';
+import { Event as RouterEvent, NavigationEnd, Router } from '@angular/router';
+import { Subject, of, throwError } from 'rxjs';
 import { HeaderComponent } from './header';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
+import { EmailSearchService } from '../../services/email-search.service';
 import { UserInfo } from '../../models/user-info.model';
 import { UpcomingNotification } from '../../models/notification.model';
 
@@ -21,14 +23,16 @@ const buildNotification = (overrides: Partial<UpcomingNotification> = {}): Upcom
 });
 
 class AuthServiceStub {
-  // The header reads `authService.user` as a signal call, so the
-  // stub must expose a callable. We use a getter that returns a
-  // frozen user object — no need to keep the value reactive in
-  // these unit tests.
   user = (): UserInfo => ({
     id: 1, name: 'U', email: 'u@example.com', pictureUrl: '',
     role: 'PREMIUM', trialEndDate: null, trialExpired: false, accessibilityMode: true,
   });
+}
+
+class RouterStub {
+  url = '/home';
+  events: Subject<RouterEvent> = new Subject<RouterEvent>();
+  navigate = jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true));
 }
 
 describe('HeaderComponent — bell markDone', () => {
@@ -58,6 +62,7 @@ describe('HeaderComponent — bell markDone', () => {
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: AuthService, useValue: new AuthServiceStub() },
         { provide: NotificationService, useValue: notificationService },
+        { provide: Router, useValue: new RouterStub() },
       ],
     }).compileComponents();
 
@@ -73,16 +78,12 @@ describe('HeaderComponent — bell markDone', () => {
 
   it('renders the bell done button with a mousedown handler (not click)', async () => {
     await buildModule();
-    // Open the panel
     component.notificationsOpen.set(true);
     fixture.detectChanges();
     const btn: HTMLButtonElement | null = fixture.nativeElement.querySelector(
       '.notifications-action'
     );
     expect(btn).toBeTruthy();
-    // The template must use mousedown, not click. We assert this
-    // by simulating mousedown and confirming the handler fired.
-    // A pure click should NOT fire the handler.
     notificationService.markDone.calls.reset();
     btn!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     expect(notificationService.markDone).not.toHaveBeenCalled();
@@ -129,12 +130,115 @@ describe('HeaderComponent — bell markDone', () => {
       new MouseEvent('mousedown', { bubbles: true, cancelable: true })
     );
     const elapsed = performance.now() - start;
-    // The handler must complete inside the same microtask. If the
-    // PATCH were deferred (setTimeout(0)), the call would return
-    // in <1ms but the markDone spy would not yet have been
-    // invoked — and we want to assert it WAS invoked synchronously.
     expect(notificationService.markDone).toHaveBeenCalledTimes(1);
-    // Generous bound: 50ms covers test-suite jitter on slow CI.
     expect(elapsed).toBeLessThan(50);
   });
+});
+
+describe('HeaderComponent — US 3.7 search bar', () => {
+  let fixture: ComponentFixture<HeaderComponent>;
+  let component: HeaderComponent;
+  let emailSearch: EmailSearchService;
+
+  const buildModule = async (): Promise<void> => {
+    await TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: AuthService, useValue: new AuthServiceStub() },
+        { provide: NotificationService, useValue: {
+            markDone: () => of(undefined),
+            notifications: () => [],
+            startPolling: () => {},
+            stopPolling: () => {},
+          } },
+        { provide: Router, useValue: new RouterStub() },
+      ],
+    }).compileComponents();
+
+    emailSearch = TestBed.inject(EmailSearchService);
+    fixture = TestBed.createComponent(HeaderComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  };
+
+  it('isHomeRoute is true when the active URL is /home', async () => {
+    await buildModule();
+    expect(component.isHomeRoute()).toBeTrue();
+  });
+
+  it('isHomeRoute is false when the active URL is not /home', async () => {
+    await buildModule();
+    const router = TestBed.inject(Router) as unknown as RouterStub;
+    router.url = '/plan';
+    (router.events as Subject<RouterEvent>).next(new NavigationEnd(1, '/plan', '/plan'));
+    expect(component.isHomeRoute()).toBeFalse();
+  });
+
+  it('onSearchFocus opens the search dropdown', async () => {
+    await buildModule();
+    component.onSearchFocus();
+    expect(emailSearch.isOpen()).toBeTrue();
+  });
+
+  it('onSearchBlur closes the search dropdown after a short delay', fakeAsync(async () => {
+    await buildModule();
+    component.onSearchFocus();
+    expect(emailSearch.isOpen()).toBeTrue();
+    component.onSearchBlur();
+    tick(149);
+    expect(emailSearch.isOpen()).toBeTrue();
+    tick(2);
+    expect(emailSearch.isOpen()).toBeFalse();
+  }));
+
+  it('onSearchEscape closes the search dropdown immediately and blurs the input', async () => {
+    await buildModule();
+    component.onSearchFocus();
+    const input = document.createElement('input');
+    const blurSpy = spyOn(input, 'blur');
+    const event = { preventDefault: jasmine.createSpy('preventDefault'), target: input } as unknown as globalThis.Event;
+    component.onSearchEscape(event);
+    expect(emailSearch.isOpen()).toBeFalse();
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(blurSpy).toHaveBeenCalled();
+  });
+
+  it('onSearchEnter applies the current term to the inbox and closes the dropdown', async () => {
+    await buildModule();
+    emailSearch.set('paypal');
+    component.onSearchFocus();
+    const seen: string[] = [];
+    const sub = emailSearch.inboxApply$.subscribe((v) => seen.push(v));
+    const input = document.createElement('input');
+    const blurSpy = spyOn(input, 'blur');
+    const event = { preventDefault: jasmine.createSpy('preventDefault'), target: input } as unknown as globalThis.Event;
+    component.onSearchEnter(event);
+    expect(seen).toEqual(['paypal']);
+    expect(emailSearch.isOpen()).toBeFalse();
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(blurSpy).toHaveBeenCalled();
+    sub.unsubscribe();
+  });
+
+  it('onSearchEnter with an empty term does NOT emit inboxApply$', async () => {
+    await buildModule();
+    const seen: string[] = [];
+    const sub = emailSearch.inboxApply$.subscribe((v) => seen.push(v));
+    const input = document.createElement('input');
+    const event = { preventDefault: jasmine.createSpy('preventDefault'), target: input } as unknown as globalThis.Event;
+    component.onSearchEnter(event);
+    expect(seen).toEqual([]);
+    sub.unsubscribe();
+  });
+
+  it('onClearSearch clears the term through the service', fakeAsync(async () => {
+    await buildModule();
+    emailSearch.set('paypal');
+    component.onClearSearch();
+    tick(300);
+    expect(emailSearch.term()).toBe('');
+  }));
 });

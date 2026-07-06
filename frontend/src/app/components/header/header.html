@@ -19,7 +19,31 @@
   <div class="header-actions">
     <div class="header-search">
       <i class="ti ti-search header-search-icon" aria-hidden="true"></i>
-      <input type="text" placeholder="Buscar..." aria-label="Buscar" />
+      <input
+        type="search"
+        [value]="emailSearchService.term()"
+        (input)="onSearchInput($event)"
+        (focus)="onSearchFocus()"
+        (blur)="onSearchBlur()"
+        (keydown.escape)="onSearchEscape($event)"
+        (keydown.enter)="onSearchEnter($event)"
+        placeholder="Buscar correos..."
+        aria-label="Buscar correos"
+        [attr.aria-expanded]="emailSearchService.isOpen()"
+        aria-haspopup="listbox"
+        aria-autocomplete="list" />
+      @if (emailSearchService.term().length > 0) {
+        <button
+          type="button"
+          class="header-search-clear"
+          (click)="onClearSearch()"
+          aria-label="Limpiar búsqueda">
+          <i class="ti ti-x" aria-hidden="true"></i>
+        </button>
+      }
+      @if (isHomeRoute()) {
+        <app-email-search-results />
+      }
     </div>
   </div>
 
