@@ -236,9 +236,10 @@ Frontend (`AnalysisHistoryComponent`):
 ## Development Workflow
 
 1. Start MySQL locally (port 3306)
-2. Start Ollama locally with Llama 3 model
+2. **If using AI features (Sprint 3+):** Start Ollama locally with Llama 3 model (`ollama serve && ollama pull llama3`)
 3. Configure `backend/src/main/resources/application.properties`
 4. Run backend: `./mvnw spring-boot:run`
+   - **Sin Ollama instalado:** set env var `OLLAMA_ENABLED=false` (o en `.env`) — el backend arranca igual en modo lazy sin contactar Ollama
 5. Run frontend: `npm start` (from `frontend/`)
 6. Frontend dev server proxies API calls to backend (needs `proxy.conf.json`)
 
