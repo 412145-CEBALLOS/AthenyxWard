@@ -18,13 +18,14 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
     /**
      * Lists every persisted email for the user, newest first. Used as
      * the in-database source of truth when the Gmail API is unreachable.
+     * Excludes soft-deleted emails.
      */
-    List<Email> findByUserIdOrderByReceivedAtDesc(Long userId);
+    List<Email> findByUserIdAndIsDeletedFalseOrderByReceivedAtDesc(Long userId);
 
     /**
-     * Lists persisted emails for the user that are not hidden, newest first.
+     * Lists persisted emails for the user that are not hidden and not deleted, newest first.
      */
-    List<Email> findByUserIdAndIsHiddenFalseOrderByReceivedAtDesc(Long userId);
+    List<Email> findByUserIdAndIsHiddenFalseAndIsDeletedFalseOrderByReceivedAtDesc(Long userId);
 
     /**
      * Cheap check used by {@code GmailService} to skip persisting a
@@ -39,14 +40,15 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
 
     /**
      * Lists all hidden emails for the user, newest first.
+     * Excludes soft-deleted emails.
      */
-    List<Email> findByUserIdAndIsHiddenTrueOrderByReceivedAtDesc(Long userId);
+    List<Email> findByUserIdAndIsHiddenTrueAndIsDeletedFalseOrderByReceivedAtDesc(Long userId);
 
     /**
      * Lists emails marked as important for the user, newest first.
-     * Excludes hidden emails.
+     * Excludes hidden and deleted emails.
      */
-    List<Email> findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(Long userId);
+    List<Email> findByUserIdAndIsImportantTrueAndIsHiddenFalseAndIsDeletedFalseOrderByReceivedAtDesc(Long userId);
 
     /**
      * Counts emails marked as important for the user.
@@ -83,6 +85,7 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
         SELECT e FROM Email e
         WHERE e.user.id = :userId
           AND e.isHidden = false
+          AND e.isDeleted = false
           AND (LOWER(e.subject)     LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(e.sender)      LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(e.senderName)  LIKE LOWER(CONCAT('%', :q, '%'))
@@ -92,4 +95,14 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
     Page<Email> searchByUserAndTerm(@Param("userId") Long userId,
                                     @Param("q") String q,
                                     Pageable pageable);
+
+    /**
+     * Lists soft-deleted emails for the user, newest first.
+     */
+    List<Email> findByUserIdAndIsDeletedTrueOrderByReceivedAtDesc(Long userId);
+
+    /**
+     * Counts soft-deleted emails for the user.
+     */
+    long countByUserIdAndIsDeletedTrue(Long userId);
 }

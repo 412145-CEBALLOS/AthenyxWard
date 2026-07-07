@@ -85,7 +85,7 @@ describe('EmailService', () => {
       const mockEmails = [
         { id: 1, gmailId: 'g1', sender: 'a@b.com', senderName: 'A', subject: 'S',
           snippet: 'snip', receivedAt: '2026-06-01', fetchedAt: '2026-06-01',
-          isRead: false, originalDateHeader: null, isImportant: true, isHidden: false },
+          isRead: false, originalDateHeader: null, isImportant: true, isHidden: false, isDeleted: false },
       ];
 
       service.fetchImportantEmails().subscribe((emails) => {
@@ -168,7 +168,7 @@ describe('EmailService', () => {
       const mockHidden = [
         { id: 5, gmailId: 'gid5', sender: 'x@y.com', senderName: 'X', subject: 'S5',
           snippet: 'snip5', receivedAt: '2026-07-01', fetchedAt: '2026-07-01',
-          isRead: false, originalDateHeader: null, isImportant: false, isHidden: true },
+          isRead: false, originalDateHeader: null, isImportant: false, isHidden: true, isDeleted: false },
       ];
 
       service.fetchHiddenEmails().subscribe((emails) => {
@@ -178,6 +178,48 @@ describe('EmailService', () => {
       const req = httpMock.expectOne('/api/emails/hidden');
       expect(req.request.method).toBe('GET');
       req.flush(mockHidden);
+    });
+  });
+
+  describe('softDelete', () => {
+    it('calls POST /api/emails/{id}/delete and returns isDeleted=true', () => {
+      service.softDelete(10).subscribe((res) => {
+        expect(res.emailId).toBe(10);
+        expect(res.isDeleted).toBe(true);
+      });
+
+      const req = httpMock.expectOne('/api/emails/10/delete');
+      expect(req.request.method).toBe('POST');
+      req.flush({ emailId: 10, isDeleted: true });
+    });
+  });
+
+  describe('fetchDeletedEmails', () => {
+    it('calls GET /api/emails/deleted', () => {
+      const mockDeleted = [
+        { id: 5, gmailId: 'gid5', sender: 'x@y.com', senderName: 'X', subject: 'S5',
+          snippet: 'snip5', receivedAt: '2026-07-01', fetchedAt: '2026-07-01',
+          isRead: false, originalDateHeader: null, isImportant: false, isHidden: false, isDeleted: true },
+      ];
+
+      service.fetchDeletedEmails().subscribe((emails) => {
+        expect(emails).toEqual(mockDeleted);
+      });
+
+      const req = httpMock.expectOne('/api/emails/deleted');
+      expect(req.request.method).toBe('GET');
+      req.flush(mockDeleted);
+    });
+  });
+
+  describe('refreshDeletedCount', () => {
+    it('calls GET /api/emails/deleted/count and updates signal', () => {
+      service.refreshDeletedCount();
+
+      const req = httpMock.expectOne('/api/emails/deleted/count');
+      expect(req.request.method).toBe('GET');
+      req.flush({ count: 3 });
+      expect(service.deletedCount()).toBe(3);
     });
   });
 });

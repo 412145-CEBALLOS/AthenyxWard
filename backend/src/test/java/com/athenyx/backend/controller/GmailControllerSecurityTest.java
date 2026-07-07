@@ -1,5 +1,6 @@
 package com.athenyx.backend.controller;
 
+import com.athenyx.backend.dto.EmailDeleteResponse;
 import com.athenyx.backend.dto.EmailHideResponse;
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
 import com.athenyx.backend.dto.EmailSummary;
@@ -119,7 +120,7 @@ class GmailControllerSecurityTest {
         when(authentication.getPrincipal()).thenReturn(1L);
         when(gmailService.getHiddenEmails(1L)).thenReturn(List.of(
                 new EmailSummary(10L, "gid", "a@b.com", "A", "Subj", "snip",
-                        LocalDateTime.now(), LocalDateTime.now(), true, "now", true, true, null, null, null)
+                        LocalDateTime.now(), LocalDateTime.now(), true, "now", true, true, false, null, null, null)
         ));
 
         ResponseEntity<List<EmailSummary>> response = controller.getHiddenEmails(authentication);
@@ -133,7 +134,7 @@ class GmailControllerSecurityTest {
         when(authentication.getPrincipal()).thenReturn(1L);
         when(gmailService.getImportantEmails(1L)).thenReturn(List.of(
                 new EmailSummary(10L, "gid", "a@b.com", "A", "Subj", "snip",
-                        LocalDateTime.now(), LocalDateTime.now(), true, "now", true, false, null, null, null)
+                        LocalDateTime.now(), LocalDateTime.now(), true, "now", true, false, false, null, null, null)
         ));
 
         ResponseEntity<List<EmailSummary>> response = controller.getImportantEmails(authentication);
@@ -151,5 +152,42 @@ class GmailControllerSecurityTest {
 
         assertThat(response.getBody()).isNotNull();
         assertThat(((java.util.Map<?, ?>) response.getBody()).get("count")).isEqualTo(5L);
+    }
+
+    @Test
+    void deleteEmail_delegatesToService() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        when(gmailService.softDelete(1L, 10L))
+                .thenReturn(new EmailDeleteResponse(10L, true));
+
+        ResponseEntity<EmailDeleteResponse> response = controller.deleteEmail(10L, authentication);
+
+        assertThat(response.getBody().emailId()).isEqualTo(10L);
+        assertThat(response.getBody().isDeleted()).isTrue();
+    }
+
+    @Test
+    void getDeletedEmails_returnsEmailList() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        when(gmailService.getDeletedEmails(1L)).thenReturn(List.of(
+                new EmailSummary(10L, "gid", "a@b.com", "A", "Subj", "snip",
+                        LocalDateTime.now(), LocalDateTime.now(), true, "now", false, false, true, null, null, null)
+        ));
+
+        ResponseEntity<List<EmailSummary>> response = controller.getDeletedEmails(authentication);
+
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody().get(0).isDeleted()).isTrue();
+    }
+
+    @Test
+    void getDeletedEmailCount_returnsCount() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        when(gmailService.getDeletedEmailCount(1L)).thenReturn(3L);
+
+        ResponseEntity<?> response = controller.getDeletedEmailCount(authentication);
+
+        assertThat(response.getBody()).isNotNull();
+        assertThat(((java.util.Map<?, ?>) response.getBody()).get("count")).isEqualTo(3L);
     }
 }

@@ -1,5 +1,6 @@
 package com.athenyx.backend.gmail;
 
+import com.athenyx.backend.dto.EmailDeleteResponse;
 import com.athenyx.backend.dto.EmailDetail;
 import com.athenyx.backend.dto.EmailHideResponse;
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
@@ -201,6 +202,7 @@ public class GmailService {
             email.getOriginalDateHeader(),
             email.isImportant(),
             email.isHidden(),
+            email.isDeleted(),
             null,
             null,
             null
@@ -276,7 +278,7 @@ public class GmailService {
 
             batch.execute();
 
-            summaries.removeIf(s -> s.isHidden());
+            summaries.removeIf(s -> s.isHidden() || s.isDeleted());
 
             enrichWithRiskData(summaries);
             enrichWithReminderIndicator(userId, summaries);
@@ -372,6 +374,7 @@ public class GmailService {
                 email.getOriginalDateHeader(),
                 email.isImportant(),
                 email.isHidden(),
+                email.isDeleted(),
                 reminder
         );
     }
@@ -380,7 +383,7 @@ public class GmailService {
         if (!userRepository.existsById(userId)) {
             throw new RuntimeException("Usuario no encontrado");
         }
-        List<Email> emails = emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(userId);
+        List<Email> emails = emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseAndIsDeletedFalseOrderByReceivedAtDesc(userId);
         List<EmailSummary> summaries = new ArrayList<>(emails.size());
         for (Email email : emails) {
             summaries.add(new EmailSummary(
@@ -396,6 +399,7 @@ public class GmailService {
                     email.getOriginalDateHeader(),
                     email.isImportant(),
                     email.isHidden(),
+                    email.isDeleted(),
                     null,
                     null,
                     null
@@ -410,7 +414,7 @@ public class GmailService {
         if (!userRepository.existsById(userId)) {
             throw new RuntimeException("Usuario no encontrado");
         }
-        List<Email> emails = emailRepository.findByUserIdAndIsHiddenTrueOrderByReceivedAtDesc(userId);
+        List<Email> emails = emailRepository.findByUserIdAndIsHiddenTrueAndIsDeletedFalseOrderByReceivedAtDesc(userId);
         List<EmailSummary> summaries = new ArrayList<>(emails.size());
         for (Email email : emails) {
             summaries.add(new EmailSummary(
@@ -426,6 +430,7 @@ public class GmailService {
                     email.getOriginalDateHeader(),
                     email.isImportant(),
                     email.isHidden(),
+                    email.isDeleted(),
                     null,
                     null,
                     null
@@ -434,6 +439,44 @@ public class GmailService {
         enrichWithRiskData(summaries);
         enrichWithReminderIndicator(userId, summaries);
         return summaries;
+    }
+
+    public List<EmailSummary> getDeletedEmails(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new RuntimeException("Usuario no encontrado");
+        }
+        List<Email> emails = emailRepository.findByUserIdAndIsDeletedTrueOrderByReceivedAtDesc(userId);
+        List<EmailSummary> summaries = new ArrayList<>(emails.size());
+        for (Email email : emails) {
+            summaries.add(new EmailSummary(
+                    email.getId(),
+                    email.getGmailId(),
+                    email.getSender(),
+                    email.getSenderName(),
+                    email.getSubject(),
+                    email.getSnippet(),
+                    email.getReceivedAt(),
+                    email.getFetchedAt(),
+                    email.isRead(),
+                    email.getOriginalDateHeader(),
+                    email.isImportant(),
+                    email.isHidden(),
+                    email.isDeleted(),
+                    null,
+                    null,
+                    null
+            ));
+        }
+        enrichWithRiskData(summaries);
+        enrichWithReminderIndicator(userId, summaries);
+        return summaries;
+    }
+
+    public long getDeletedEmailCount(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new RuntimeException("Usuario no encontrado");
+        }
+        return emailRepository.countByUserIdAndIsDeletedTrue(userId);
     }
 
     /**
@@ -474,6 +517,7 @@ public class GmailService {
                 s.originalDateHeader(),
                 s.isImportant(),
                 s.isHidden(),
+                s.isDeleted(),
                 ea.getRiskPercentage(),
                 ea.getRiskLevel(),
                 s.reminder()
@@ -513,6 +557,7 @@ public class GmailService {
                 s.originalDateHeader(),
                 s.isImportant(),
                 s.isHidden(),
+                s.isDeleted(),
                 s.riskPercentage(),
                 s.riskLevel(),
                 reminder
@@ -565,6 +610,17 @@ public class GmailService {
         email.setHidden(false);
         emailRepository.save(email);
         return new EmailHideResponse(emailId, false);
+    }
+
+    public EmailDeleteResponse softDelete(Long userId, Long emailId) {
+        Email email = emailRepository.findById(emailId)
+                .orElseThrow(() -> new RuntimeException("Correo no encontrado"));
+        if (!email.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Acceso denegado");
+        }
+        email.setDeleted(true);
+        emailRepository.save(email);
+        return new EmailDeleteResponse(emailId, true);
     }
 
     private Gmail buildGmailService(User user) throws GeneralSecurityException, IOException {
@@ -716,6 +772,7 @@ public class GmailService {
                 dateStr,
                 email.isImportant(),
                 email.isHidden(),
+                email.isDeleted(),
                 null,
                 null,
                 null

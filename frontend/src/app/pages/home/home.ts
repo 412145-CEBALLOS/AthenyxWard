@@ -114,6 +114,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   /** Delete confirmation state. */
   readonly confirmDeleteOpen = signal(false);
   readonly confirmDeleteReminder = signal<Reminder | ReminderSummary | null>(null);
+  readonly confirmEmailDeleteOpen = signal(false);
 
   readonly mobileEmailDetail = signal(false);
 
@@ -704,7 +705,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.onHideEmail();
         return;
       case 'delete':
-        console.warn('TODO Sprint 3: delete email — wire to EmailService.softDelete() + ConfirmDialogComponent');
+        this.confirmEmailDeleteOpen.set(true);
         return;
     }
   }
@@ -888,6 +889,30 @@ export class HomeComponent implements OnInit, OnDestroy {
         },
         error: () => this.toast.error('No se pudo eliminar el recordatorio.'),
       });
+  }
+
+  onConfirmEmailDeleteCancelled(): void {
+    this.confirmEmailDeleteOpen.set(false);
+  }
+
+  onConfirmEmailDeleteAccepted(): void {
+    const email = this.selectedEmail();
+    if (!email) return;
+    this.confirmEmailDeleteOpen.set(false);
+    this.emailService.softDelete(email.id).pipe(
+      takeUntil(this.onDestroy)
+    ).subscribe({
+      next: (res) => {
+        this.emails.update((list) => list.filter((e) => e.id !== email.id));
+        this.mutateOnPage(email.id, { isDeleted: res.isDeleted });
+        this.clearSelection();
+        this.emailService.refreshDeletedCount();
+        this.toast.success('Correo eliminado.');
+      },
+      error: () => {
+        this.toast.error('No se pudo eliminar el correo. Intenta de nuevo.');
+      },
+    });
   }
 
   private markReminderDone(reminder: Reminder | ReminderSummary, emailId: number): void {

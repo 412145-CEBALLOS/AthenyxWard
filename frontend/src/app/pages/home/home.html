@@ -103,3 +103,14 @@
     (confirm)="onConfirmDeleteAccepted()"
     (cancel)="onConfirmDeleteCancelled()" />
 }
+
+@if (confirmEmailDeleteOpen()) {
+  <app-confirm-dialog
+    title="Eliminar correo"
+    message="Podrás verlo desde Correos eliminados, pero no restaurarlo."
+    confirmLabel="Eliminar"
+    cancelLabel="Cancelar"
+    variant="danger"
+    (confirm)="onConfirmEmailDeleteAccepted()"
+    (cancel)="onConfirmEmailDeleteCancelled()" />
+}

@@ -95,7 +95,7 @@ class GmailServiceTest {
                 .isRead(false).isImportant(true).user(user)
                 .fetchedAt(LocalDateTime.now())
                 .build();
-        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseAndIsDeletedFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of(email1, email2));
 
         List<EmailSummary> result = service.getImportantEmails(1L);
@@ -110,7 +110,7 @@ class GmailServiceTest {
     @Test
     void getImportantEmails_emptyListWhenNoneFlagged() {
         when(userRepository.existsById(1L)).thenReturn(true);
-        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseAndIsDeletedFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of());
 
         List<EmailSummary> result = service.getImportantEmails(1L);
@@ -318,7 +318,7 @@ class GmailServiceTest {
                 .isRead(true).isHidden(true).user(user)
                 .fetchedAt(LocalDateTime.now())
                 .build();
-        when(emailRepository.findByUserIdAndIsHiddenTrueOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsHiddenTrueAndIsDeletedFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of(email1, email2));
 
         var result = service.getHiddenEmails(1L);
@@ -331,7 +331,7 @@ class GmailServiceTest {
     @Test
     void getHiddenEmails_returnsEmptyListWhenNoneHidden() {
         when(userRepository.existsById(1L)).thenReturn(true);
-        when(emailRepository.findByUserIdAndIsHiddenTrueOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsHiddenTrueAndIsDeletedFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of());
 
         var result = service.getHiddenEmails(1L);
@@ -349,6 +349,117 @@ class GmailServiceTest {
     }
 
     @Test
+    void softDelete_setsIsDeletedTrue() {
+        Email email = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj").snippet("snip").contentForAnalysis("body")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isDeleted(false).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+
+        var result = service.softDelete(1L, 10L);
+
+        assertThat(result.emailId()).isEqualTo(10L);
+        assertThat(result.isDeleted()).isTrue();
+        ArgumentCaptor<Email> captor = ArgumentCaptor.forClass(Email.class);
+        verify(emailRepository).save(captor.capture());
+        assertThat(captor.getValue().isDeleted()).isTrue();
+    }
+
+    @Test
+    void softDelete_throwsWhenEmailBelongsToAnotherUser() {
+        Email email = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj").snippet("snip").contentForAnalysis("body")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isDeleted(false).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+
+        assertThatThrownBy(() -> service.softDelete(99L, 10L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Acceso denegado");
+    }
+
+    @Test
+    void softDelete_throwsWhenEmailNotFound() {
+        when(emailRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.softDelete(1L, 99L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Correo no encontrado");
+    }
+
+    @Test
+    void getDeletedEmails_returnsDeletedEmails() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        Email email1 = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj1").snippet("snip1").contentForAnalysis("body1")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isDeleted(true).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        Email email2 = Email.builder()
+                .id(20L).gmailId("gid2").sender("c@d.com").senderName("C")
+                .subject("Subj2").snippet("snip2").contentForAnalysis("body2")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(true).isDeleted(true).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findByUserIdAndIsDeletedTrueOrderByReceivedAtDesc(1L))
+                .thenReturn(List.of(email1, email2));
+
+        var result = service.getDeletedEmails(1L);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).isDeleted()).isTrue();
+        assertThat(result.get(1).isDeleted()).isTrue();
+    }
+
+    @Test
+    void getDeletedEmails_returnsEmptyListWhenNoneDeleted() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(emailRepository.findByUserIdAndIsDeletedTrueOrderByReceivedAtDesc(1L))
+                .thenReturn(List.of());
+
+        var result = service.getDeletedEmails(1L);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void getDeletedEmails_throwsWhenUserNotFound() {
+        when(userRepository.existsById(99L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.getDeletedEmails(99L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Usuario no encontrado");
+    }
+
+    @Test
+    void getDeletedEmailCount_returnsCount() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(emailRepository.countByUserIdAndIsDeletedTrue(1L)).thenReturn(5L);
+
+        var result = service.getDeletedEmailCount(1L);
+
+        assertThat(result).isEqualTo(5L);
+    }
+
+    @Test
+    void getDeletedEmailCount_throwsWhenUserNotFound() {
+        when(userRepository.existsById(99L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.getDeletedEmailCount(99L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Usuario no encontrado");
+    }
+
+    @Test
     void getImportantEmails_populatesRiskFromLatestAnalysis() {
         when(userRepository.existsById(1L)).thenReturn(true);
         Email email = Email.builder()
@@ -358,7 +469,7 @@ class GmailServiceTest {
                 .isRead(false).isImportant(true).user(user)
                 .fetchedAt(LocalDateTime.now())
                 .build();
-        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseAndIsDeletedFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of(email));
         EmailAnalysis analysis = EmailAnalysis.builder()
                 .id(99L)
@@ -388,7 +499,7 @@ class GmailServiceTest {
                 .isRead(false).isImportant(true).user(user)
                 .fetchedAt(LocalDateTime.now())
                 .build();
-        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseAndIsDeletedFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of(email));
         when(emailAnalysisRepository.findLatestByEmailIds(List.of(10L)))
                 .thenReturn(List.of());

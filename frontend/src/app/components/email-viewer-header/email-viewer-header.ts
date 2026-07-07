@@ -30,6 +30,7 @@ export class EmailViewerHeaderComponent {
   readonly hasReminder = input<boolean>(false);
   readonly hasPendingReminder = input<boolean>(false);
   readonly isHidden = input<boolean>(false);
+  readonly isDeleted = input<boolean>(false);
 
   readonly action = output<EmailAction>();
 
@@ -51,6 +52,7 @@ export class EmailViewerHeaderComponent {
 
   readonly items = computed<MenuItem[]>(() => {
     const isTrial = this.isTrial();
+    const deleted = this.isDeleted();
     return [
       {
         id: 'explain-ai',
@@ -62,33 +64,39 @@ export class EmailViewerHeaderComponent {
         id: 'mark-important',
         label: this.importantLabel(),
         icon: 'ti ti-flag-3',
-        disabled: isTrial,
+        disabled: isTrial || deleted,
         active: this.isImportant(),
-        disabledTooltip: 'Disponible en plan Premium',
+        disabledTooltip: deleted
+          ? 'No disponible para correos eliminados'
+          : 'Disponible en plan Premium',
       },
       {
         id: 'create-reminder',
         label: this.reminderLabel(),
         icon: 'ti ti-bell',
-        disabled: isTrial || this.hasPendingReminder(),
-        disabledTooltip: isTrial
-          ? 'Disponible en plan Premium'
-          : this.hasPendingReminder()
-            ? 'Ya tienes un recordatorio pendiente para este correo'
-            : undefined,
+        disabled: isTrial || this.hasPendingReminder() || deleted,
+        disabledTooltip: deleted
+          ? 'No disponible para correos eliminados'
+          : isTrial
+            ? 'Disponible en plan Premium'
+            : this.hasPendingReminder()
+              ? 'Ya tienes un recordatorio pendiente para este correo'
+              : undefined,
       },
       {
         id: 'hide',
         label: this.hideLabel(),
         icon: 'ti ti-eye-off',
-        disabled: false,
+        disabled: deleted,
+        disabledTooltip: deleted ? 'No disponible para correos eliminados' : undefined,
       },
       {
         id: 'delete',
         label: 'Eliminar correo',
         icon: 'ti ti-trash',
         variant: 'destructive',
-        disabled: false,
+        disabled: deleted,
+        disabledTooltip: deleted ? 'Este correo ya fue eliminado' : undefined,
       },
     ];
   });

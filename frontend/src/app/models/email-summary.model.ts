@@ -24,6 +24,7 @@ export interface EmailSummary {
   originalDateHeader: string | null;
   isImportant: boolean;
   isHidden: boolean;
+  isDeleted: boolean;
   riskPercentage?: number | null;
   riskLevel?: 'GREEN' | 'YELLOW' | 'RED' | null;
   reminder?: import('./reminder.model').ReminderSummary | null;
@@ -52,6 +53,7 @@ export interface EmailDetail {
   originalDateHeader: string | null;
   isImportant: boolean;
   isHidden: boolean;
+  isDeleted: boolean;
   reminder?: import('./reminder.model').ReminderSummary | null;
 }
 
@@ -69,4 +71,9 @@ export interface EmailPageResponse {
 export interface ImportantToggleResponse {
   emailId: number;
   isImportant: boolean;
+}
+
+export interface EmailDeleteResponse {
+  emailId: number;
+  isDeleted: boolean;
 }

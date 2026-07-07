@@ -30,5 +30,6 @@ public record EmailDetail(
     String originalDateHeader,
     boolean isImportant,
     boolean isHidden,
+    boolean isDeleted,
     @Nullable ReminderSummary reminder
 ) {}

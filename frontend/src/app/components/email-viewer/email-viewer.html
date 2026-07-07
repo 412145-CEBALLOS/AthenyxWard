@@ -1,4 +1,10 @@
 <div class="viewer-card">
+  @if (email().isDeleted) {
+    <div class="deleted-banner">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      <span>Este correo fue eliminado</span>
+    </div>
+  }
   <app-email-viewer-header
     [email]="email()"
     [userRole]="userRole()"
@@ -7,6 +13,7 @@
     [hasReminder]="!!reminder()"
     [hasPendingReminder]="reminder()?.done === false"
     [isHidden]="isHidden()"
+    [isDeleted]="email().isDeleted"
     (action)="action.emit($event)" />
   <app-email-analysis
     [analysis]="analysis()"

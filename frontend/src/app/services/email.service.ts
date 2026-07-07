@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
-import { EmailDetail, EmailPageResponse, EmailSummary, ImportantToggleResponse } from '../models/email-summary.model';
+import { EmailDeleteResponse, EmailDetail, EmailPageResponse, EmailSummary, ImportantToggleResponse } from '../models/email-summary.model';
 import { environment } from '../../environments/environment';
 
 /**
@@ -15,6 +15,7 @@ import { environment } from '../../environments/environment';
 export class EmailService {
   readonly importantCount = signal<number>(0);
   readonly hiddenCount = signal<number>(0);
+  readonly deletedCount = signal<number>(0);
 
   constructor(private readonly http: HttpClient) {}
 
@@ -116,6 +117,27 @@ export class EmailService {
   refreshHiddenCount(): void {
     this.http.get<{ count: number }>(`${environment.apiUrl}/emails/hidden/count`).pipe(
       tap((res) => this.hiddenCount.set(res.count))
+    ).subscribe();
+  }
+
+  softDelete(emailId: number): Observable<EmailDeleteResponse> {
+    return this.http.post<EmailDeleteResponse>(
+      `${environment.apiUrl}/emails/${emailId}/delete`,
+      {}
+    ).pipe(
+      tap((res) => {
+        this.deletedCount.update((c) => res.isDeleted ? c + 1 : c - 1);
+      })
+    );
+  }
+
+  fetchDeletedEmails(): Observable<EmailSummary[]> {
+    return this.http.get<EmailSummary[]>(`${environment.apiUrl}/emails/deleted`);
+  }
+
+  refreshDeletedCount(): void {
+    this.http.get<{ count: number }>(`${environment.apiUrl}/emails/deleted/count`).pipe(
+      tap((res) => this.deletedCount.set(res.count))
     ).subscribe();
   }
 }

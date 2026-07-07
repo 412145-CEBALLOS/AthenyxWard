@@ -18,6 +18,7 @@ function makeDetail(overrides: Partial<EmailDetail> = {}): EmailDetail {
     originalDateHeader: null,
     isImportant: false,
     isHidden: false,
+    isDeleted: false,
     ...overrides,
   };
 }
@@ -152,5 +153,20 @@ describe('EmailViewerHeaderComponent', () => {
   it('delete item has variant destructive', () => {
     const items = component.items();
     expect(items[4].variant).toBe('destructive');
+  });
+
+  it('isDeleted=true disables all items except explain-ai', () => {
+    fixture.componentRef.setInput('userRole', 'PREMIUM');
+    fixture.componentRef.setInput('isDeleted', true);
+    fixture.detectChanges();
+    const items = component.items();
+    expect(items[0].id).toBe('explain-ai');
+    expect(items[0].disabled).toBeFalse();
+    expect(items[1].disabled).toBeTrue();
+    expect(items[1].disabledTooltip).toContain('eliminados');
+    expect(items[2].disabled).toBeTrue();
+    expect(items[3].disabled).toBeTrue();
+    expect(items[4].disabled).toBeTrue();
+    expect(items[4].disabledTooltip).toContain('ya fue eliminado');
   });
 });

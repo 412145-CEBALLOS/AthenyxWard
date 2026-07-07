@@ -4,6 +4,7 @@ import com.athenyx.backend.dto.EmailPageResponse;
 import com.athenyx.backend.dto.EmailDetail;
 import com.athenyx.backend.dto.EmailSummary;
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
+import com.athenyx.backend.dto.EmailDeleteResponse;
 import com.athenyx.backend.dto.EmailHideResponse;
 import com.athenyx.backend.gmail.GmailService;
 import lombok.RequiredArgsConstructor;
@@ -95,5 +96,25 @@ public class GmailController {
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         return ResponseEntity.ok(gmailService.unhide(userId, id));
+    }
+
+    @PostMapping("/{id}/delete")
+    public ResponseEntity<EmailDeleteResponse> deleteEmail(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(gmailService.softDelete(userId, id));
+    }
+
+    @GetMapping("/deleted")
+    public ResponseEntity<List<EmailSummary>> getDeletedEmails(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(gmailService.getDeletedEmails(userId));
+    }
+
+    @GetMapping("/deleted/count")
+    public ResponseEntity<Map<String, Long>> getDeletedEmailCount(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(Map.of("count", gmailService.getDeletedEmailCount(userId)));
     }
 }

@@ -32,6 +32,7 @@ public record EmailSummary(
     String originalDateHeader,
     boolean isImportant,
     boolean isHidden,
+    boolean isDeleted,
     @Nullable Integer riskPercentage,
     @Nullable ThreatLevel riskLevel,
     @Nullable ReminderSummary reminder

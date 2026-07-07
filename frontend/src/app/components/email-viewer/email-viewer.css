@@ -43,6 +43,24 @@
   padding: 24px 28px 28px;
 }
 
+.deleted-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  margin: 16px 16px 0;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.deleted-banner i {
+  font-size: 16px;
+}
+
 @media (max-width: 720px) {
   .viewer-body {
     padding: 0;

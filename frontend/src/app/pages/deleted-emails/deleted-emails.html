@@ -1,0 +1,52 @@
+<app-page-shell
+  icon="ti ti-trash"
+  pageTitle="Correos eliminados"
+  subtitle="Mensajes que has eliminado de la bandeja de entrada.">
+
+  @if (loading()) {
+    <div class="deleted-loading">
+      <span class="spinner large"></span>
+      <span>Cargando correos eliminados…</span>
+    </div>
+  } @else if (error()) {
+    <div class="deleted-empty">
+      <i class="ti ti-alert-circle"></i>
+      <p>No se pudieron cargar los correos.</p>
+      <span>Intenta de nuevo más tarde.</span>
+    </div>
+  } @else if (emails().length === 0) {
+    <div class="deleted-empty">
+      <i class="ti ti-trash"></i>
+      <p>No hay correos eliminados.</p>
+      <span>Los correos que elimines aparecerán aquí.</span>
+    </div>
+  } @else {
+    <ul class="deleted-list">
+      @for (email of emails(); track email.id) {
+        <li class="deleted-item" (click)="goToEmail(email)">
+          <div class="deleted-icon">
+            <i class="ti ti-trash"></i>
+          </div>
+          <div class="deleted-body">
+            <div class="deleted-top-row">
+              <span class="deleted-sender">{{ email.senderName || email.sender }}</span>
+            </div>
+            <span class="deleted-subject">{{ email.subject }}</span>
+            <p class="deleted-snippet">{{ email.snippet }}</p>
+            <div class="deleted-footer">
+              @if (email.risk != null && email.riskLevel) {
+                <span
+                  class="deleted-risk"
+                  [attr.data-level]="email.riskLevel">
+                  Riesgo: {{ email.risk }}%
+                </span>
+              } @else {
+                <span class="deleted-risk" data-level="NONE">Sin análisis</span>
+              }
+            </div>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</app-page-shell>

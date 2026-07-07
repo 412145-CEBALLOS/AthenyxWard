@@ -59,6 +59,12 @@ export const routes: Routes = [
         canActivate: [authGuard],
       },
       {
+        path: 'deleted',
+        loadComponent: () =>
+          import('./pages/deleted-emails/deleted-emails').then((m) => m.DeletedEmailsComponent),
+        canActivate: [authGuard],
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('./pages/settings/settings').then((m) => m.SettingsComponent),

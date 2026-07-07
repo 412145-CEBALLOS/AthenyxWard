@@ -16,6 +16,7 @@ export class SidebarComponent {
   readonly user = this.authService.user;
   readonly importantCount = this.emailService.importantCount;
   readonly hiddenCount = this.emailService.hiddenCount;
+  readonly deletedCount = this.emailService.deletedCount;
 
   isOpen = input<boolean>(false);
   isClosing = input<boolean>(false);
@@ -27,6 +28,7 @@ export class SidebarComponent {
         this.emailService.refreshImportantCount();
         this.emailService.refreshHiddenCount();
       }
+      this.emailService.refreshDeletedCount();
     });
   }
 
