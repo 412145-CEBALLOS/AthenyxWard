@@ -1,0 +1,59 @@
+<app-page-shell
+  icon="ti ti-eye-off"
+  pageTitle="Correos ocultos"
+  subtitle="Mensajes que has ocultado de la bandeja de entrada.">
+
+  @if (loading()) {
+    <div class="hidden-loading">
+      <span class="spinner large"></span>
+      <span>Cargando correos ocultos…</span>
+    </div>
+  } @else if (error()) {
+    <div class="hidden-empty">
+      <i class="ti ti-alert-circle"></i>
+      <p>No se pudieron cargar los correos.</p>
+      <span>Intenta de nuevo más tarde.</span>
+    </div>
+  } @else if (emails().length === 0) {
+    <div class="hidden-empty">
+      <i class="ti ti-eye-off"></i>
+      <p>No hay correos ocultos.</p>
+      <span>Oculta mensajes desde la bandeja para que aparezcan aquí.</span>
+    </div>
+  } @else {
+    <ul class="hidden-list">
+      @for (email of emails(); track email.id) {
+        <li class="hidden-item" (click)="goToEmail(email)">
+          <div class="hidden-icon">
+            <i class="ti ti-eye-off"></i>
+          </div>
+          <div class="hidden-body">
+            <div class="hidden-top-row">
+              <span class="hidden-sender">{{ email.senderName || email.sender }}</span>
+            </div>
+            <span class="hidden-subject">{{ email.subject }}</span>
+            <p class="hidden-snippet">{{ email.snippet }}</p>
+            <div class="hidden-footer">
+              @if (email.risk != null && email.riskLevel) {
+                <span
+                  class="hidden-risk"
+                  [attr.data-level]="email.riskLevel">
+                  Riesgo: {{ email.risk }}%
+                </span>
+              } @else {
+                <span class="hidden-risk" data-level="NONE">Sin análisis</span>
+              }
+            </div>
+          </div>
+          <button
+            type="button"
+            class="hidden-unhide"
+            title="Mostrar correo"
+            (click)="unhide(email); $event.stopPropagation()">
+            <i class="ti ti-eye"></i>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</app-page-shell>

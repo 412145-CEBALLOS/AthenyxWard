@@ -26,11 +26,6 @@
     }
 
     @if (loading()) {
-      <div class="email-loading">
-        <span class="spinner large"></span>
-        <span>Cargando correos...</span>
-      </div>
-    } @else if (emails().length === 0 && currentQuery().length > 0) {
       <div class="email-empty email-empty-search">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="11" cy="11" r="7" stroke="#cbd5e1" stroke-width="1.5" />
@@ -71,6 +66,7 @@
         [accessibilityMode]="accessibilityMode()"
         [userRole]="userRole()"
         [reminder]="currentReminder()"
+        [isHidden]="isHidden()"
         [(analysisPanelOpen)]="analysisPanelOpen"
         (action)="onEmailAction($event)"
         (retry)="onEmailAnalysisRetry()"

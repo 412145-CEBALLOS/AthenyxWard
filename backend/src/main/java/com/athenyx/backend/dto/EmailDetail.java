@@ -29,5 +29,6 @@ public record EmailDetail(
     boolean isRead,
     String originalDateHeader,
     boolean isImportant,
+    boolean isHidden,
     @Nullable ReminderSummary reminder
 ) {}

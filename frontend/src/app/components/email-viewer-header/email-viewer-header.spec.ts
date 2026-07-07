@@ -17,6 +17,7 @@ function makeDetail(overrides: Partial<EmailDetail> = {}): EmailDetail {
     isRead: false,
     originalDateHeader: null,
     isImportant: false,
+    isHidden: false,
     ...overrides,
   };
 }
@@ -138,6 +139,14 @@ describe('EmailViewerHeaderComponent', () => {
     const items = component.items();
     expect(items[2].disabled).toBeTrue();
     expect(items[2].disabledTooltip).toContain('pendiente');
+  });
+
+  it('isHidden=true changes hide label to "Mostrar correo"', () => {
+    fixture.componentRef.setInput('isHidden', true);
+    fixture.detectChanges();
+    expect(component.hideLabel()).toBe('Mostrar correo');
+    const hideItem = component.items().find((i) => i.id === 'hide');
+    expect(hideItem?.label).toBe('Mostrar correo');
   });
 
   it('delete item has variant destructive', () => {

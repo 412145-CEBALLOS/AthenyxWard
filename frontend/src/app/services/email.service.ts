@@ -14,6 +14,7 @@ import { environment } from '../../environments/environment';
 })
 export class EmailService {
   readonly importantCount = signal<number>(0);
+  readonly hiddenCount = signal<number>(0);
 
   constructor(private readonly http: HttpClient) {}
 
@@ -84,5 +85,37 @@ export class EmailService {
         this.importantCount.update((c) => res.isImportant ? c + 1 : c - 1);
       })
     );
+  }
+
+  hide(emailId: number): Observable<{ emailId: number; isHidden: boolean }> {
+    return this.http.post<{ emailId: number; isHidden: boolean }>(
+      `${environment.apiUrl}/emails/${emailId}/hide`,
+      {}
+    ).pipe(
+      tap((res) => {
+        this.hiddenCount.update((c) => res.isHidden ? c + 1 : c - 1);
+      })
+    );
+  }
+
+  unhide(emailId: number): Observable<{ emailId: number; isHidden: boolean }> {
+    return this.http.post<{ emailId: number; isHidden: boolean }>(
+      `${environment.apiUrl}/emails/${emailId}/unhide`,
+      {}
+    ).pipe(
+      tap((res) => {
+        this.hiddenCount.update((c) => res.isHidden ? c + 1 : c - 1);
+      })
+    );
+  }
+
+  fetchHiddenEmails(): Observable<EmailSummary[]> {
+    return this.http.get<EmailSummary[]>(`${environment.apiUrl}/emails/hidden`);
+  }
+
+  refreshHiddenCount(): void {
+    this.http.get<{ count: number }>(`${environment.apiUrl}/emails/hidden/count`).pipe(
+      tap((res) => this.hiddenCount.set(res.count))
+    ).subscribe();
   }
 }

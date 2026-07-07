@@ -53,6 +53,12 @@ export const routes: Routes = [
         canActivate: [authGuard],
       },
       {
+        path: 'hidden',
+        loadComponent: () =>
+          import('./pages/hidden-emails/hidden-emails').then((m) => m.HiddenEmailsComponent),
+        canActivate: [authGuard],
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('./pages/settings/settings').then((m) => m.SettingsComponent),

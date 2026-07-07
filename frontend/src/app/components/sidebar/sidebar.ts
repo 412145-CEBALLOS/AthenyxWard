@@ -15,6 +15,7 @@ export class SidebarComponent {
   private readonly emailService = inject(EmailService);
   readonly user = this.authService.user;
   readonly importantCount = this.emailService.importantCount;
+  readonly hiddenCount = this.emailService.hiddenCount;
 
   isOpen = input<boolean>(false);
   isClosing = input<boolean>(false);
@@ -24,6 +25,7 @@ export class SidebarComponent {
     afterNextRender(() => {
       if (this.user()?.role !== 'TRIAL') {
         this.emailService.refreshImportantCount();
+        this.emailService.refreshHiddenCount();
       }
     });
   }

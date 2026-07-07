@@ -4,6 +4,7 @@ import com.athenyx.backend.dto.EmailPageResponse;
 import com.athenyx.backend.dto.EmailDetail;
 import com.athenyx.backend.dto.EmailSummary;
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
+import com.athenyx.backend.dto.EmailHideResponse;
 import com.athenyx.backend.gmail.GmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -57,6 +58,18 @@ public class GmailController {
         return ResponseEntity.ok(Map.of("count", gmailService.getImportantEmailCount(userId)));
     }
 
+    @GetMapping("/hidden")
+    public ResponseEntity<List<EmailSummary>> getHiddenEmails(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(gmailService.getHiddenEmails(userId));
+    }
+
+    @GetMapping("/hidden/count")
+    public ResponseEntity<Map<String, Long>> getHiddenEmailCount(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(Map.of("count", gmailService.getHiddenEmailCount(userId)));
+    }
+
     @PostMapping("/{id}/important")
     @PreAuthorize("hasAnyRole('PREMIUM', 'ADMIN')")
     public ResponseEntity<EmailImportantToggleResponse> toggleImportant(
@@ -64,5 +77,23 @@ public class GmailController {
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         return ResponseEntity.ok(gmailService.toggleImportant(userId, id));
+    }
+
+    @PostMapping("/{id}/hide")
+    @PreAuthorize("hasAnyRole('PREMIUM', 'ADMIN')")
+    public ResponseEntity<EmailHideResponse> hideEmail(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(gmailService.hide(userId, id));
+    }
+
+    @PostMapping("/{id}/unhide")
+    @PreAuthorize("hasAnyRole('PREMIUM', 'ADMIN')")
+    public ResponseEntity<EmailHideResponse> unhideEmail(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(gmailService.unhide(userId, id));
     }
 }

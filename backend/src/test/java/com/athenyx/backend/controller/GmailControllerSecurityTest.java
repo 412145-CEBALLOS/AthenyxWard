@@ -1,5 +1,6 @@
 package com.athenyx.backend.controller;
 
+import com.athenyx.backend.dto.EmailHideResponse;
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
 import com.athenyx.backend.dto.EmailSummary;
 import com.athenyx.backend.gmail.GmailService;
@@ -76,11 +77,63 @@ class GmailControllerSecurityTest {
     }
 
     @Test
+    void hideEmail_endpoint_hasPreAuthorizeAnnotation() throws Exception {
+        Method method = GmailController.class.getMethod("hideEmail", Long.class, Authentication.class);
+        PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+        assertThat(annotation).isNotNull();
+        assertThat(annotation.value()).contains("PREMIUM").contains("ADMIN");
+    }
+
+    @Test
+    void hideEmail_withPremiumUser_delegatesToService() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        when(gmailService.hide(1L, 10L))
+                .thenReturn(new EmailHideResponse(10L, true));
+
+        ResponseEntity<EmailHideResponse> response = controller.hideEmail(10L, authentication);
+
+        assertThat(response.getBody().isHidden()).isTrue();
+    }
+
+    @Test
+    void unhideEmail_endpoint_hasPreAuthorizeAnnotation() throws Exception {
+        Method method = GmailController.class.getMethod("unhideEmail", Long.class, Authentication.class);
+        PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
+        assertThat(annotation).isNotNull();
+        assertThat(annotation.value()).contains("PREMIUM").contains("ADMIN");
+    }
+
+    @Test
+    void unhideEmail_withPremiumUser_delegatesToService() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        when(gmailService.unhide(1L, 10L))
+                .thenReturn(new EmailHideResponse(10L, false));
+
+        ResponseEntity<EmailHideResponse> response = controller.unhideEmail(10L, authentication);
+
+        assertThat(response.getBody().isHidden()).isFalse();
+    }
+
+    @Test
+    void getHiddenEmails_returnsEmailList() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        when(gmailService.getHiddenEmails(1L)).thenReturn(List.of(
+                new EmailSummary(10L, "gid", "a@b.com", "A", "Subj", "snip",
+                        LocalDateTime.now(), LocalDateTime.now(), true, "now", true, true, null, null, null)
+        ));
+
+        ResponseEntity<List<EmailSummary>> response = controller.getHiddenEmails(authentication);
+
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody().get(0).isHidden()).isTrue();
+    }
+
+    @Test
     void getImportantEmails_returnsEmailList() {
         when(authentication.getPrincipal()).thenReturn(1L);
         when(gmailService.getImportantEmails(1L)).thenReturn(List.of(
                 new EmailSummary(10L, "gid", "a@b.com", "A", "Subj", "snip",
-                        LocalDateTime.now(), LocalDateTime.now(), true, "now", true, null, null, null)
+                        LocalDateTime.now(), LocalDateTime.now(), true, "now", true, false, null, null, null)
         ));
 
         ResponseEntity<List<EmailSummary>> response = controller.getImportantEmails(authentication);

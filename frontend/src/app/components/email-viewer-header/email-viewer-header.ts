@@ -29,6 +29,7 @@ export class EmailViewerHeaderComponent {
   readonly isImportant = input<boolean>(false);
   readonly hasReminder = input<boolean>(false);
   readonly hasPendingReminder = input<boolean>(false);
+  readonly isHidden = input<boolean>(false);
 
   readonly action = output<EmailAction>();
 
@@ -43,6 +44,10 @@ export class EmailViewerHeaderComponent {
     if (this.hasReminder()) return 'Reactivar recordatorio';
     return 'Crear recordatorio';
   });
+
+  readonly hideLabel = computed(() =>
+    this.isHidden() ? 'Mostrar correo' : 'Ocultar correo',
+  );
 
   readonly items = computed<MenuItem[]>(() => {
     const isTrial = this.isTrial();
@@ -74,7 +79,7 @@ export class EmailViewerHeaderComponent {
       },
       {
         id: 'hide',
-        label: 'Ocultar correo',
+        label: this.hideLabel(),
         icon: 'ti ti-eye-off',
         disabled: false,
       },

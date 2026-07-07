@@ -23,6 +23,7 @@ export interface EmailSummary {
   isRead: boolean;
   originalDateHeader: string | null;
   isImportant: boolean;
+  isHidden: boolean;
   riskPercentage?: number | null;
   riskLevel?: 'GREEN' | 'YELLOW' | 'RED' | null;
   reminder?: import('./reminder.model').ReminderSummary | null;
@@ -50,6 +51,7 @@ export interface EmailDetail {
   isRead: boolean;
   originalDateHeader: string | null;
   isImportant: boolean;
+  isHidden: boolean;
   reminder?: import('./reminder.model').ReminderSummary | null;
 }
 

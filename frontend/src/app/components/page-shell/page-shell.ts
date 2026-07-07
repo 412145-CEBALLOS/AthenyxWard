@@ -16,5 +16,5 @@ export class PageShellComponent {
   readonly icon = input.required<string>();
   readonly title = input.required<string>({ alias: 'pageTitle' });
   readonly subtitle = input<string>('');
-  readonly demo = input<boolean>(true);
+  readonly demo = input<boolean>(false);
 }

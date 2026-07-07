@@ -55,6 +55,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   readonly emails = signal<EmailSummary[]>([]);
   readonly selectedEmail = signal<EmailDetail | null>(null);
+  readonly isHidden = signal(false);
   readonly loading = signal(false);
   readonly showTrialExpiredModal = signal(false);
   readonly hasNextPage = signal(false);
@@ -470,6 +471,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.mobileEmailDetail.set(true);
     if (this.currentSelectionId === email.id) return;
     this.currentSelectionId = email.id;
+    this.isHidden.set(email.isHidden ?? false);
     // Optimistic: mark the row as read in both the signal and the
     // page cache so paginating back doesn't lose the change.
     this.mutateOnPage(email.id!, { isRead: true });
@@ -487,6 +489,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         // The detail knows the canonical isImportant flag; sync the
         // list row + cache with it.
         this.mutateOnPage(email.id!, { isImportant: detail.isImportant });
+        this.isHidden.set(detail.isHidden);
         this.bootstrapAnalysis(detail, email);
         this.loadCurrentReminder(detail.id);
         // Mirror the selection in the URL so navigating away and
@@ -593,6 +596,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.analysisState.set('idle');
     this.analysisPanelOpen.set(false);
     this.currentReminder.set(null);
+    this.isHidden.set(false);
     this.pendingEmailId = null;
   }
 
@@ -654,6 +658,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (detail) => {
         this.selectedEmail.set(detail);
+        this.isHidden.set(detail.isHidden);
         // Try to restore a previously-cached analysis. For TRIAL
         // users this also restores the result of a previous manual
         // run; for PREMIUM/ADMIN it short-circuits the 24 h cache.
@@ -696,7 +701,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.onCreateReminder();
         return;
       case 'hide':
-        console.warn('TODO Sprint 3: hide email — wire to EmailService.hide()');
+        this.onHideEmail();
         return;
       case 'delete':
         console.warn('TODO Sprint 3: delete email — wire to EmailService.softDelete() + ConfirmDialogComponent');
@@ -741,7 +746,38 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.openCreateReminderDialog(email.id, email.subject);
   }
 
-  // --- Reminder flow ----------------------------------------------
+  private onHideEmail(): void {
+    const email = this.selectedEmail();
+    if (!email) return;
+    const currentlyHidden = this.isHidden();
+    const action$ = currentlyHidden
+      ? this.emailService.unhide(email.id)
+      : this.emailService.hide(email.id);
+    this.isHidden.set(!currentlyHidden);
+    action$.pipe(
+      takeUntil(this.onDestroy)
+    ).subscribe({
+      next: (res) => {
+        this.isHidden.set(res.isHidden);
+        if (res.isHidden) {
+          this.emails.update((list) => list.filter((e) => e.id !== email.id));
+          this.mutateOnPage(email.id, { isHidden: res.isHidden });
+          this.clearSelection();
+          this.toast.success('Correo ocultado.');
+        } else {
+          this.fetchEmails(this.currentPage(), this.currentQuery());
+          this.clearSelection();
+          this.toast.success('Correo visible de nuevo.');
+        }
+      },
+      error: () => {
+        this.isHidden.set(currentlyHidden);
+        this.toast.error('No se pudo cambiar la visibilidad del correo. Intenta de nuevo.');
+      },
+    });
+  }
+
+  // --- Reminder flow --------------------------------------------
 
   /**
    * Entry point for the email-list bell chip click. Resolves the

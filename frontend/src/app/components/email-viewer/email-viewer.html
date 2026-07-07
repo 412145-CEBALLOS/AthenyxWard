@@ -6,6 +6,7 @@
     [isImportant]="email().isImportant"
     [hasReminder]="!!reminder()"
     [hasPendingReminder]="reminder()?.done === false"
+    [isHidden]="isHidden()"
     (action)="action.emit($event)" />
   <app-email-analysis
     [analysis]="analysis()"

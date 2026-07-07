@@ -1,5 +1,6 @@
 package com.athenyx.backend.gmail;
 
+import com.athenyx.backend.dto.EmailHideResponse;
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
 import com.athenyx.backend.dto.EmailPageResponse;
 import com.athenyx.backend.dto.EmailSummary;
@@ -94,7 +95,7 @@ class GmailServiceTest {
                 .isRead(false).isImportant(true).user(user)
                 .fetchedAt(LocalDateTime.now())
                 .build();
-        when(emailRepository.findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of(email1, email2));
 
         List<EmailSummary> result = service.getImportantEmails(1L);
@@ -109,7 +110,7 @@ class GmailServiceTest {
     @Test
     void getImportantEmails_emptyListWhenNoneFlagged() {
         when(userRepository.existsById(1L)).thenReturn(true);
-        when(emailRepository.findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of());
 
         List<EmailSummary> result = service.getImportantEmails(1L);
@@ -209,6 +210,145 @@ class GmailServiceTest {
     }
 
     @Test
+    void hide_setsIsHiddenTrue() {
+        Email email = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj").snippet("snip").contentForAnalysis("body")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isHidden(false).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+
+        var result = service.hide(1L, 10L);
+
+        assertThat(result.emailId()).isEqualTo(10L);
+        assertThat(result.isHidden()).isTrue();
+        ArgumentCaptor<Email> captor = ArgumentCaptor.forClass(Email.class);
+        verify(emailRepository).save(captor.capture());
+        assertThat(captor.getValue().isHidden()).isTrue();
+    }
+
+    @Test
+    void hide_throwsWhenEmailBelongsToAnotherUser() {
+        User otherUser = User.builder().id(99L).build();
+        Email email = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj").snippet("snip").contentForAnalysis("body")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isHidden(false).user(otherUser)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+
+        assertThatThrownBy(() -> service.hide(1L, 10L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Acceso denegado");
+    }
+
+    @Test
+    void hide_throwsWhenEmailNotFound() {
+        when(emailRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.hide(1L, 99L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Correo no encontrado");
+    }
+
+    @Test
+    void unhide_setsIsHiddenFalse() {
+        Email email = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj").snippet("snip").contentForAnalysis("body")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isHidden(true).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+
+        var result = service.unhide(1L, 10L);
+
+        assertThat(result.emailId()).isEqualTo(10L);
+        assertThat(result.isHidden()).isFalse();
+        ArgumentCaptor<Email> captor = ArgumentCaptor.forClass(Email.class);
+        verify(emailRepository).save(captor.capture());
+        assertThat(captor.getValue().isHidden()).isFalse();
+    }
+
+    @Test
+    void unhide_throwsWhenEmailBelongsToAnotherUser() {
+        User otherUser = User.builder().id(99L).build();
+        Email email = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj").snippet("snip").contentForAnalysis("body")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isHidden(true).user(otherUser)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+
+        assertThatThrownBy(() -> service.unhide(1L, 10L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Acceso denegado");
+    }
+
+    @Test
+    void unhide_throwsWhenEmailNotFound() {
+        when(emailRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.unhide(1L, 99L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Correo no encontrado");
+    }
+
+    @Test
+    void getHiddenEmails_returnsHiddenEmails() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        Email email1 = Email.builder()
+                .id(10L).gmailId("gid1").sender("a@b.com").senderName("A")
+                .subject("Subj1").snippet("snip1").contentForAnalysis("body1")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(false).isHidden(true).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        Email email2 = Email.builder()
+                .id(20L).gmailId("gid2").sender("c@d.com").senderName("C")
+                .subject("Subj2").snippet("snip2").contentForAnalysis("body2")
+                .receivedAt(LocalDateTime.now()).originalDateHeader("now")
+                .isRead(true).isHidden(true).user(user)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+        when(emailRepository.findByUserIdAndIsHiddenTrueOrderByReceivedAtDesc(1L))
+                .thenReturn(List.of(email1, email2));
+
+        var result = service.getHiddenEmails(1L);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).isHidden()).isTrue();
+        assertThat(result.get(1).isHidden()).isTrue();
+    }
+
+    @Test
+    void getHiddenEmails_returnsEmptyListWhenNoneHidden() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        when(emailRepository.findByUserIdAndIsHiddenTrueOrderByReceivedAtDesc(1L))
+                .thenReturn(List.of());
+
+        var result = service.getHiddenEmails(1L);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void getHiddenEmails_throwsWhenUserNotFound() {
+        when(userRepository.existsById(99L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.getHiddenEmails(99L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Usuario no encontrado");
+    }
+
+    @Test
     void getImportantEmails_populatesRiskFromLatestAnalysis() {
         when(userRepository.existsById(1L)).thenReturn(true);
         Email email = Email.builder()
@@ -218,7 +358,7 @@ class GmailServiceTest {
                 .isRead(false).isImportant(true).user(user)
                 .fetchedAt(LocalDateTime.now())
                 .build();
-        when(emailRepository.findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of(email));
         EmailAnalysis analysis = EmailAnalysis.builder()
                 .id(99L)
@@ -248,7 +388,7 @@ class GmailServiceTest {
                 .isRead(false).isImportant(true).user(user)
                 .fetchedAt(LocalDateTime.now())
                 .build();
-        when(emailRepository.findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(1L))
+        when(emailRepository.findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(1L))
                 .thenReturn(List.of(email));
         when(emailAnalysisRepository.findLatestByEmailIds(List.of(10L)))
                 .thenReturn(List.of());

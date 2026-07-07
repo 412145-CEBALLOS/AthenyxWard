@@ -22,6 +22,11 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
     List<Email> findByUserIdOrderByReceivedAtDesc(Long userId);
 
     /**
+     * Lists persisted emails for the user that are not hidden, newest first.
+     */
+    List<Email> findByUserIdAndIsHiddenFalseOrderByReceivedAtDesc(Long userId);
+
+    /**
      * Cheap check used by {@code GmailService} to skip persisting a
      * message we have already seen.
      */
@@ -33,14 +38,25 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
     Optional<Email> findByGmailIdAndUserId(String id, Long id1);
 
     /**
-     * Lists emails marked as important for the user, newest first.
+     * Lists all hidden emails for the user, newest first.
      */
-    List<Email> findByUserIdAndIsImportantTrueOrderByReceivedAtDesc(Long userId);
+    List<Email> findByUserIdAndIsHiddenTrueOrderByReceivedAtDesc(Long userId);
+
+    /**
+     * Lists emails marked as important for the user, newest first.
+     * Excludes hidden emails.
+     */
+    List<Email> findByUserIdAndIsImportantTrueAndIsHiddenFalseOrderByReceivedAtDesc(Long userId);
 
     /**
      * Counts emails marked as important for the user.
      */
     long countByUserIdAndIsImportantTrue(Long userId);
+
+    /**
+     * Counts emails marked as hidden for the user.
+     */
+    long countByUserIdAndIsHiddenTrue(Long userId);
 
     /**
      * Case-insensitive substring search over {@code subject},
@@ -66,6 +82,7 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
     @Query("""
         SELECT e FROM Email e
         WHERE e.user.id = :userId
+          AND e.isHidden = false
           AND (LOWER(e.subject)     LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(e.sender)      LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(e.senderName)  LIKE LOWER(CONCAT('%', :q, '%'))

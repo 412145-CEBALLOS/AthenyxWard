@@ -85,7 +85,7 @@ describe('EmailService', () => {
       const mockEmails = [
         { id: 1, gmailId: 'g1', sender: 'a@b.com', senderName: 'A', subject: 'S',
           snippet: 'snip', receivedAt: '2026-06-01', fetchedAt: '2026-06-01',
-          isRead: false, originalDateHeader: null, isImportant: true },
+          isRead: false, originalDateHeader: null, isImportant: true, isHidden: false },
       ];
 
       service.fetchImportantEmails().subscribe((emails) => {
@@ -134,6 +134,50 @@ describe('EmailService', () => {
       const req = httpMock.expectOne('/api/emails/10/important');
       req.flush({ emailId: 10, isImportant: false });
       expect(service.importantCount()).toBe(2);
+    });
+  });
+
+  describe('hide', () => {
+    it('calls POST /api/emails/{id}/hide and returns isHidden=true', () => {
+      service.hide(10).subscribe((res) => {
+        expect(res.emailId).toBe(10);
+        expect(res.isHidden).toBe(true);
+      });
+
+      const req = httpMock.expectOne('/api/emails/10/hide');
+      expect(req.request.method).toBe('POST');
+      req.flush({ emailId: 10, isHidden: true });
+    });
+  });
+
+  describe('unhide', () => {
+    it('calls POST /api/emails/{id}/unhide and returns isHidden=false', () => {
+      service.unhide(10).subscribe((res) => {
+        expect(res.emailId).toBe(10);
+        expect(res.isHidden).toBe(false);
+      });
+
+      const req = httpMock.expectOne('/api/emails/10/unhide');
+      expect(req.request.method).toBe('POST');
+      req.flush({ emailId: 10, isHidden: false });
+    });
+  });
+
+  describe('fetchHiddenEmails', () => {
+    it('calls GET /api/emails/hidden', () => {
+      const mockHidden = [
+        { id: 5, gmailId: 'gid5', sender: 'x@y.com', senderName: 'X', subject: 'S5',
+          snippet: 'snip5', receivedAt: '2026-07-01', fetchedAt: '2026-07-01',
+          isRead: false, originalDateHeader: null, isImportant: false, isHidden: true },
+      ];
+
+      service.fetchHiddenEmails().subscribe((emails) => {
+        expect(emails).toEqual(mockHidden);
+      });
+
+      const req = httpMock.expectOne('/api/emails/hidden');
+      expect(req.request.method).toBe('GET');
+      req.flush(mockHidden);
     });
   });
 });

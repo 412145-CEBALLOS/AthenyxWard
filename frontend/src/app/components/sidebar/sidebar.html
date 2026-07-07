@@ -59,6 +59,12 @@
                                 <span class="important-badge">{{ importantCount() }}</span>
                             }
                         </a>
+                        <a (click)="toggle()" routerLink="hidden" routerLinkActive="active" title="Correos ocultos">
+                            <i class="ti ti-eye-off"></i> Correos ocultos
+                            @if (hiddenCount() > 0) {
+                                <span class="important-badge">{{ hiddenCount() }}</span>
+                            }
+                        </a>
                     }
                     <a (click)="toggle()" routerLink="settings" routerLinkActive="active" title="Configuración">
                         <i class="ti ti-settings"></i> Configuración

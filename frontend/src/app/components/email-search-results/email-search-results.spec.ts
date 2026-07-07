@@ -26,6 +26,7 @@ function makeEmail(overrides: Partial<EmailSummary> = {}): EmailSummary {
     isRead: false,
     originalDateHeader: null,
     isImportant: false,
+    isHidden: false,
     riskPercentage: null,
     riskLevel: null,
     reminder: null,

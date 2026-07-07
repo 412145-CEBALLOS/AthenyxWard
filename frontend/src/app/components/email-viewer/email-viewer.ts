@@ -40,6 +40,7 @@ export class EmailViewerComponent {
   readonly userRole = input<UserRole>(null);
   readonly reminder = input<Reminder | ReminderSummary | null>(null);
   readonly analysisPanelOpen = model<boolean>(false);
+  readonly isHidden = input<boolean>(false);
 
   readonly retry = output<void>();
   readonly analyzeRequest = output<void>();
