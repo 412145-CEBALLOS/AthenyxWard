@@ -1,5 +1,6 @@
 package com.athenyx.backend.config;
 
+import com.athenyx.backend.ai.AiUnavailableException;
 import com.athenyx.backend.heuristics.TrialLimitExceededException;
 import com.athenyx.backend.security.RefreshTokenException;
 import com.athenyx.backend.service.reminder.ReminderConflictException;
@@ -61,6 +62,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleTrialLimitExceeded(TrialLimitExceededException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("error", ex.getMessage(), "remaining", ex.remaining(), "limit", 20));
+    }
+
+    @ExceptionHandler(AiUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleAiUnavailable(AiUnavailableException ex) {
+        log.warn("AI unavailable: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "IA no disponible"));
     }
 
     @ExceptionHandler(ReminderPremiumRequiredException.class)
