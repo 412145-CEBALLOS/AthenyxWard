@@ -1,21 +1,23 @@
 <div class="viewer-card">
-  <app-email-viewer-header [email]="email()" />
+  <app-email-viewer-header
+    [email]="email()"
+    [userRole]="userRole()"
+    [canMarkImportant]="userRole() !== 'TRIAL'"
+    [isImportant]="email().isImportant"
+    [hasReminder]="!!reminder()"
+    [hasPendingReminder]="reminder()?.done === false"
+    (action)="action.emit($event)" />
   <app-email-analysis
     [analysis]="analysis()"
     [state]="state()"
     [accessibilityMode]="accessibilityMode()"
-    [canMarkImportant]="canMarkImportant()"
-    [isImportant]="isImportant()"
+    [canMarkImportant]="userRole() !== 'TRIAL'"
+    [isImportant]="email().isImportant"
     [userRole]="userRole()"
     [trialRemaining]="null"
-    [hasReminder]="hasReminder()"
-    [hasPendingReminder]="hasPendingReminder()"
+    [hasReminder]="!!reminder()"
+    [hasPendingReminder]="reminder()?.done === false"
     [(open)]="analysisPanelOpen"
-    (hide)="hide.emit()"
-    (delete)="delete.emit()"
-    (markPhishing)="markPhishing.emit()"
-    (markImportant)="markImportant.emit()"
-    (createReminder)="createReminder.emit()"
     (retry)="retry.emit()"
     (analyzeRequest)="analyzeRequest.emit()" />
   <div class="viewer-subject">

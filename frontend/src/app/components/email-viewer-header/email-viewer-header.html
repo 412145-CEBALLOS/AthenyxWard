@@ -18,4 +18,8 @@
       {{ email() | emailDate }}
     </div>
   </div>
+  <app-kebab-menu
+    [items]="items()"
+    [label]="'Acciones del correo'"
+    (action)="onAction($event)" />
 </div>

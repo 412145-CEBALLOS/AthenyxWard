@@ -13,6 +13,7 @@ import { UserInfo } from '../../models/user-info.model';
 import { EmailPageResponse } from '../../models/email-summary.model';
 import { EmailSearchService } from '../../services/email-search.service';
 
+
 function emptyResponse(): EmailPageResponse {
   return { emails: [], currentPage: 0, pageSize: 20, hasNextPage: false };
 }
@@ -275,3 +276,5 @@ describe('HomeComponent — US 3.7 search bar (mobile)', () => {
     matches[0].flush(emptyResponse());
   }));
 });
+
+

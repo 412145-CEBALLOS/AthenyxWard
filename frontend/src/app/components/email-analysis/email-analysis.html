@@ -188,48 +188,6 @@
                 <p>{{ a.contentSummary }}</p>
               </div>
             }
-
-            <div class="actions-bar" role="toolbar" aria-label="Acciones del correo">
-              <button type="button" class="btn-action" (click)="onHide()">
-                Ocultar
-              </button>
-              <button type="button" class="btn-action btn-action-danger"
-                      (click)="onDelete()">
-                Eliminar
-              </button>
-              <button type="button" class="btn-action" (click)="onMarkPhishing()">
-                Marcar como phishing
-              </button>
-              <button type="button" class="btn-action btn-action-premium btn-action-important"
-                      [disabled]="!canMarkImportant()"
-                      [title]="canMarkImportant() ? '' : 'Mejora tu plan para marcar correos importantes'"
-                      (click)="onMarkImportant()">
-                @if (isImportant()) {
-                  <i class="ti ti-flag-3-filled" aria-hidden="true"></i>
-                  <span>Importante</span>
-                } @else {
-                  <i class="ti ti-flag-3" aria-hidden="true"></i>
-                  <span>Marcar importante</span>
-                }
-              </button>
-              <button type="button" class="btn-action btn-action-premium"
-                      [disabled]="!canMarkImportant() || hasPendingReminder()"
-                      [title]="
-                        !canMarkImportant() ? 'Disponible en plan Premium' :
-                        hasPendingReminder() ? 'Ya tienes un recordatorio pendiente para este correo' :
-                        hasReminder() ? 'Reactivar este recordatorio' : ''
-                      "
-                      (click)="onCreateReminder()">
-                <i class="ti ti-bell" aria-hidden="true"></i>
-                @if (hasPendingReminder()) {
-                  <span>Ver recordatorio</span>
-                } @else if (hasReminder()) {
-                  <span>Reactivar recordatorio</span>
-                } @else {
-                  <span>Crear recordatorio</span>
-                }
-              </button>
-            </div>
           }
         }
       }

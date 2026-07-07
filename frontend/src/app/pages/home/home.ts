@@ -15,6 +15,7 @@ import { ReminderService } from '../../services/reminder.service';
 import { NotificationService } from '../../services/notification.service';
 import { EmailSearchService } from '../../services/email-search.service';
 import { EmailDetail, EmailSummary, EmailPageResponse } from '../../models/email-summary.model';
+import { EmailAction } from '../../models/email-action.model';
 import { EmailAnalysisResult, AnalysisState } from '../../models/email-analysis.model';
 import { Reminder, ReminderSummary } from '../../models/reminder.model';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -92,8 +93,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   readonly analysisPanelOpen = signal(false);
 
   readonly isPremium = computed(() => this.authService.user()?.role === 'PREMIUM');
-  readonly canMarkImportant = computed(() => this.authService.user()?.role !== 'TRIAL');
-  readonly canCreateReminder = computed(() => this.authService.user()?.role !== 'TRIAL');
   readonly accessibilityMode = computed(() => this.authService.user()?.accessibilityMode ?? true);
   readonly userRole = computed(() => this.authService.user()?.role ?? null);
 
@@ -681,10 +680,31 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  onEmailHide(): void { console.warn('TODO Sprint 3: hide email'); }
-  onEmailDelete(): void { console.warn('TODO Sprint 3: delete email'); }
-  onEmailMarkPhishing(): void { console.warn('TODO Sprint 3: mark as phishing'); }
-  onEmailMarkImportant(): void {
+  onEmailAction(action: EmailAction): void {
+    switch (action) {
+      case 'explain-ai':
+        if (this.analysisState() === 'idle') {
+          this.runAnalysis(this.selectedEmail()!.id);
+        } else {
+          this.analysisPanelOpen.set(true);
+        }
+        return;
+      case 'mark-important':
+        this.onMarkImportant();
+        return;
+      case 'create-reminder':
+        this.onCreateReminder();
+        return;
+      case 'hide':
+        console.warn('TODO Sprint 3: hide email — wire to EmailService.hide()');
+        return;
+      case 'delete':
+        console.warn('TODO Sprint 3: delete email — wire to EmailService.softDelete() + ConfirmDialogComponent');
+        return;
+    }
+  }
+
+  private onMarkImportant(): void {
     const email = this.selectedEmail();
     if (!email) return;
     this.emailService.toggleImportant(email.id).pipe(
@@ -704,19 +724,15 @@ export class HomeComponent implements OnInit, OnDestroy {
       },
     });
   }
-  onEmailCreateReminder(): void {
+
+  private onCreateReminder(): void {
     const email = this.selectedEmail();
     if (!email) return;
-    if (!this.canCreateReminder()) {
+    if (this.userRole() === 'TRIAL') {
       this.toast.warning('Los recordatorios están disponibles en el plan Premium.');
       this.router.navigate(['/plan']);
       return;
     }
-    // If a reminder already exists (pending or done), open it in
-    // edit mode. The form dialog's save forces done=false, so a
-    // "done" reminder comes back as pending. A "pending" reminder
-    // being re-saved is a no-op for the date/message but also
-    // useful to update the message.
     const existing = this.currentReminder();
     if (existing) {
       this.openEditReminderDialog(email.id, existing);

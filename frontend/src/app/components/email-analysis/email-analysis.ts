@@ -47,44 +47,13 @@ export class EmailAnalysisComponent {
   readonly canMarkImportant = input<boolean>(false);
   readonly isImportant = input<boolean>(false);
   readonly trialRemaining = input<number | null>(null);
-  /**
-   * True when the email currently being viewed has a reminder
-   * (any state). Used to switch the action-button label between
-   * "Crear recordatorio", "Reactivar recordatorio" and
-   * "Ver recordatorio" — and to disable the button entirely when
-   * a pending reminder already exists.
-   */
   readonly hasPendingReminder = input<boolean>(false);
   readonly hasReminder = input<boolean>(false);
-  /**
-   * Drives the trial-user flow: when the user is on a TRIAL plan the
-   * panel never auto-runs the analysis — they must press the explicit
-   * "Analizar este correo" button. Non-trial users (PREMIUM, ADMIN)
-   * fire the {@link analyzeRequest} output on the first toggle click.
-   */
   readonly userRole = input<UserRole>(null);
 
-  readonly hide = output<void>();
-  readonly delete = output<void>();
-  readonly markPhishing = output<void>();
-  readonly markImportant = output<void>();
-  readonly createReminder = output<void>();
   readonly retry = output<void>();
-  /**
-   * Emitted when the user asks for a fresh analysis (PREMIUM/ADMIN
-   * toggle on first click, or TRIAL via the in-body button). The
-   * parent (email-viewer → home) is responsible for invoking
-   * {@code AnalysisService.analyze()} and flipping {@link open} to
-   * {@code true} when the result is ready.
-   */
   readonly analyzeRequest = output<void>();
 
-  /**
-   * Two-way bound open-state. The parent (home.ts) writes
-   * {@code true} when an analysis just finished so the panel
-   * auto-reveals; the component writes back whenever the user
-   * manually toggles the header.
-   */
   readonly open = model<boolean>(false);
 
   readonly circumference = 2 * Math.PI * 46;
@@ -148,13 +117,6 @@ export class EmailAnalysisComponent {
     () => (this.analysis()?.suspiciousUrls.length ?? 0) > 3,
   );
 
-  /**
-   * Public hook invoked by the parent (home.ts) when the analysis has
-   * just finished and the panel should auto-reveal. Kept for
-   * backwards compatibility with the imperative call site; the
-   * idiomatic path is to write {@link open} directly via the
-   * two-way binding.
-   */
   showAfterAnalysis(): void {
     this.open.set(true);
   }
@@ -174,26 +136,6 @@ export class EmailAnalysisComponent {
 
   onAnalyzeClick(): void {
     this.analyzeRequest.emit();
-  }
-
-  onHide(): void {
-    this.hide.emit();
-  }
-
-  onDelete(): void {
-    this.delete.emit();
-  }
-
-  onMarkPhishing(): void {
-    this.markPhishing.emit();
-  }
-
-  onMarkImportant(): void {
-    this.markImportant.emit();
-  }
-
-  onCreateReminder(): void {
-    this.createReminder.emit();
   }
 
   onRetry(): void {

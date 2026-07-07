@@ -118,17 +118,6 @@ describe('EmailAnalysisComponent', () => {
     expect(btn.getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('disables premium actions for trial users', () => {
-    fixture.componentRef.setInput('analysis', buildAnalysis(20));
-    fixture.componentRef.setInput('state', 'ready');
-    fixture.componentRef.setInput('canMarkImportant', false);
-    fixture.detectChanges();
-    const premiumButtons: NodeListOf<HTMLButtonElement> =
-      fixture.nativeElement.querySelectorAll('.btn-action-premium');
-    expect(premiumButtons.length).toBeGreaterThan(0);
-    premiumButtons.forEach((b) => expect(b.disabled).toBe(true));
-  });
-
   // --- US 2.3 panel-toggle + trial button + risk format ---
 
   it('starts closed (aria-expanded=false) by default', () => {
@@ -230,51 +219,10 @@ describe('EmailAnalysisComponent', () => {
       .getAttribute('aria-expanded')).toBe('true');
   });
 
-  // --- Reminder button states (hasReminder / hasPendingReminder) ---
-
-  it('renders "Crear recordatorio" by default and emits createReminder on click', () => {
+  it('does not render an actions-bar', () => {
     fixture.componentRef.setInput('analysis', buildAnalysis(20));
     fixture.componentRef.setInput('state', 'ready');
-    fixture.componentRef.setInput('canMarkImportant', true);
     fixture.detectChanges();
-    const btn: HTMLButtonElement = fixture.nativeElement.querySelector(
-      '.actions-bar .btn-action-premium:nth-last-child(1)'
-    );
-    expect(btn.textContent.trim()).toBe('Crear recordatorio');
-    expect(btn.disabled).toBeFalse();
-    let emitted = false;
-    component.createReminder.subscribe(() => (emitted = true));
-    btn.click();
-    expect(emitted).toBeTrue();
-  });
-
-  it('disables the create-reminder button when hasPendingReminder is true', () => {
-    fixture.componentRef.setInput('analysis', buildAnalysis(20));
-    fixture.componentRef.setInput('state', 'ready');
-    fixture.componentRef.setInput('canMarkImportant', true);
-    fixture.componentRef.setInput('hasPendingReminder', true);
-    fixture.componentRef.setInput('hasReminder', true);
-    fixture.detectChanges();
-    const btn: HTMLButtonElement = fixture.nativeElement.querySelector(
-      '.actions-bar .btn-action-premium:nth-last-child(1)'
-    );
-    expect(btn.disabled).toBeTrue();
-    expect(btn.textContent.trim()).toBe('Ver recordatorio');
-    expect(btn.getAttribute('title')).toContain('pendiente');
-  });
-
-  it('switches to "Reactivar recordatorio" when the reminder is done', () => {
-    fixture.componentRef.setInput('analysis', buildAnalysis(20));
-    fixture.componentRef.setInput('state', 'ready');
-    fixture.componentRef.setInput('canMarkImportant', true);
-    fixture.componentRef.setInput('hasPendingReminder', false);
-    fixture.componentRef.setInput('hasReminder', true);
-    fixture.detectChanges();
-    const btn: HTMLButtonElement = fixture.nativeElement.querySelector(
-      '.actions-bar .btn-action-premium:nth-last-child(1)'
-    );
-    expect(btn.disabled).toBeFalse();
-    expect(btn.textContent.trim()).toBe('Reactivar recordatorio');
-    expect(btn.getAttribute('title')).toContain('Reactivar');
+    expect(fixture.nativeElement.querySelector('.actions-bar')).toBeFalsy();
   });
 });

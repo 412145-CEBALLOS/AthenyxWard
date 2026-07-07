@@ -18,7 +18,7 @@ describe('PageShell', () => {
     fixture = TestBed.createComponent(PageShellComponent);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('icon', 'ti ti-home');
-    fixture.componentRef.setInput('title', 'Test');
+    fixture.componentRef.setInput('pageTitle', 'Test');
     fixture.detectChanges();
   });
 

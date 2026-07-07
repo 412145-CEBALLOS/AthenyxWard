@@ -1,7 +1,6 @@
 package com.athenyx.backend.security;
 
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -25,14 +24,12 @@ import java.util.Base64;
  * scheme forward-compatible.</p>
  */
 @Service
-@Slf4j
 public class TokenEncryptionService {
 
     private static final String VERSION_PREFIX = "v1:";
     private static final int IV_LENGTH = 12;
     private static final int TAG_LENGTH_BITS = 128;
     // private static final int KEY_LENGTH_BITS = 256;
-    private static final String DEV_JWT_SECRET_MARKER = "K7gNU3sdo+OL0wNhqoVWhr3g6s1xYv72ol/pe/Unols=";
 
     private final String jwtSecret;
     private SecretKey key;
@@ -51,9 +48,6 @@ public class TokenEncryptionService {
             this.key = deriveKey(jwtSecret);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to derive token encryption key", e);
-        }
-        if (DEV_JWT_SECRET_MARKER.equals(jwtSecret)) {
-            log.warn("app.jwt.secret is the default development value. DO NOT use in production.");
         }
     }
 
