@@ -9,6 +9,7 @@ import { EmailDetail } from '../../models/email-summary.model';
 import { Reminder, ReminderSummary } from '../../models/reminder.model';
 import { EmailAction } from '../../models/email-action.model';
 import { EmailAnalysisResult, AnalysisState } from '../../models/email-analysis.model';
+import { AiExplanation, AiState, AI_ORIGIN_LABELS } from '../../models/ai-explanation.model';
 import { EmailViewerHeaderComponent } from '../email-viewer-header/email-viewer-header';
 import { EmailAnalysisComponent } from '../email-analysis/email-analysis';
 import { EmailBodyComponent } from '../email-body/email-body';
@@ -41,9 +42,27 @@ export class EmailViewerComponent {
   readonly reminder = input<Reminder | ReminderSummary | null>(null);
   readonly analysisPanelOpen = model<boolean>(false);
   readonly isHidden = input<boolean>(false);
+  readonly aiExplanation = input<AiExplanation | null>(null);
+  readonly aiState = input<AiState>('idle');
 
   readonly retry = output<void>();
   readonly analyzeRequest = output<void>();
   readonly action = output<EmailAction>();
   readonly reminderAction = output<ReminderAction>();
+  readonly explainRequest = output<void>();
+
+  relativeTime(dateStr: string): string {
+    const date = new Date(dateStr);
+    const now = Date.now();
+    const diffMs = now - date.getTime();
+    const diffSec = Math.abs(Math.round(diffMs / 1000));
+    const rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
+    if (diffSec < 60) return rtf.format(-diffSec, 'second');
+    const diffMin = Math.round(diffSec / 60);
+    if (diffMin < 60) return rtf.format(-diffMin, 'minute');
+    const diffH = Math.round(diffMin / 60);
+    if (diffH < 24) return rtf.format(-diffH, 'hour');
+    const diffD = Math.round(diffH / 24);
+    return rtf.format(-diffD, 'day');
+  }
 }

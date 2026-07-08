@@ -23,9 +23,9 @@ import java.time.Clock;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Servicio de explicación IA on-demand (US 3.2).
+ * Servicio de explicación IA on-demand (US 3.2) con resiliencia (US 3.8).
  *
- * <h3>Cinco caminos posibles desde {@link #explain(Long, Long)}:</h3>
+ * <h3>Seis caminos posibles desde {@link #explain(Long, Long)}:</h3>
  * <ol>
  *   <li><b>Sin análisis previo (riskLevel == null)</b> → FALLBACK con texto
  *       fijo "Analiza primero el correo", {@code origin = FALLBACK},
@@ -33,23 +33,28 @@ import java.util.concurrent.CompletableFuture;
  *   <li><b>AI deshabilitada ({@code enabled=false})</b> → FALLBACK regenerado
  *       del último {@link EmailAnalysis}: findings + riskLevel +
  *       recommendedActions.</li>
- *   <li><b>Ollama responde en 8 s</b> → {@code origin = LLM},
+ *   <li><b>Ollama responde en ≤8 s con texto válido</b> → {@code origin = LLM},
  *       {@code modelName} de {@link AiProperties}, {@code User.analysisCount++}
  *       si el usuario es TRIAL, se persiste {@link AiExplanation}.</li>
- *   <li><b>Ollama lanza excepción / timeout</b> → FALLBACK heurístico
- *       (mismo regenerador del camino 2). La excepción se captura
- *       internamente y se loggea.</li>
+ *   <li><b>Ollama timeout / excepción de red (8 s)</b> → FALLBACK heurístico.
+ *       La excepción se captura internamente y se loggea.</li>
+ *   <li><b>Respuesta LLM vacía o en blanco</b> → FALLBACK heurístico.
+ *       Lanzada como {@link AiUnavailableException} y capturada en el mismo
+ *       bloque catch que las excepciones de red.</li>
  *   <li><b>TRIAL con quota agotada ({@code analysisCount >= 20})</b> →
  *       {@link TrialLimitExceededException} → mapeada a 403 por el handler
  *       global. Defense-in-depth: el controlador ya bloquea TRIAL vía
  *       {@code @PreAuthorize}.</li>
  * </ol>
  *
- * <h3>Contrato de fallback</h3>
+ * <h3>Contrato de fallback (US 3.8)</h3>
  * El servicio <strong>nunca propaga errores de IA al cliente</strong>.
- * Toda excepción de Ollama (timeout, parse error, 5xx de red) se captura
- * y se convierte en {@code origin = FALLBACK} con un texto regenerado.
+ * Toda excepción de Ollama (timeout, parse error, 5xx de red, respuesta
+ * vacía) se captura y se convierte en {@code origin = FALLBACK} con un
+ * texto regenerado a partir del último análisis heurístico disponible.
  * El cliente siempre recibe HTTP 200 con {@link AiExplanationResponse}.
+ * Cada llamada emite un {@code log.info} estructurado con {@code userId},
+ * {@code emailId}, {@code durationMs} y {@code origin} (LLM o FALLBACK).
  *
  * <h3>Persistencia</h3>
  * Toda explicación (LLM o FALLBACK) se persiste como una nueva fila en
@@ -93,18 +98,24 @@ public class AiExplanationService {
                 .findFirstByEmailIdOrderByAnalyzedAtDesc(emailId)
                 .orElse(null);
 
+        long start = System.currentTimeMillis();
+
         if (latest == null) {
+            log.info("ai.explain userId={} emailId={} durationMs=0 origin={}",
+                    userId, emailId, AiOrigin.FALLBACK);
             return CompletableFuture.completedFuture(
                     persistAndReturn(user, email, "Analiza primero el correo",
                             AiOrigin.FALLBACK, null));
         }
 
         if (!aiProperties.enabled()) {
+            long durationMs = System.currentTimeMillis() - start;
+            log.info("ai.explain userId={} emailId={} durationMs={} origin={}",
+                    userId, emailId, durationMs, AiOrigin.FALLBACK);
             return CompletableFuture.completedFuture(persistAndReturn(
                     user, email, buildHeuristicFallback(latest), AiOrigin.FALLBACK, null));
         }
 
-        long start = System.currentTimeMillis();
         try {
             String prompt = buildPrompt(latest, email);
             String text = chatClient.prompt()
@@ -129,6 +140,12 @@ public class AiExplanationService {
                     user, email, text, AiOrigin.LLM, aiProperties.modelName()));
 
         } catch (Exception e) {
+            // Los modos de fallo que aterrizan aquí son:
+            //  - AiUnavailableException("Empty LLM response")  → respuesta vacía/blanks
+            //  - Timeout de red (RestClient)                 → Ollama no responde en 8 s
+            //  - RuntimeException("Connection refused")        → Ollama no está corriendo
+            //  - Cualquier otra Exception de Spring AI       → parsing, 5xx upstream, etc.
+            // En todos los casos se devuelve FALLBACK heurístico; nunca se propaga al cliente.
             long durationMs = System.currentTimeMillis() - start;
             log.info("ai.explain userId={} emailId={} durationMs={} origin={} error={}",
                     userId, emailId, durationMs, AiOrigin.FALLBACK, e.getMessage());

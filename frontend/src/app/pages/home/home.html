@@ -67,11 +67,14 @@
         [userRole]="userRole()"
         [reminder]="currentReminder()"
         [isHidden]="isHidden()"
+        [aiExplanation]="aiExplanation()"
+        [aiState]="aiState()"
         [(analysisPanelOpen)]="analysisPanelOpen"
         (action)="onEmailAction($event)"
         (retry)="onEmailAnalysisRetry()"
         (analyzeRequest)="onAnalysisRequest()"
-        (reminderAction)="onReminderAction($event)" />
+        (reminderAction)="onReminderAction($event)"
+        (explainRequest)="onExplainRequest()" />
     } @else {
       <div class="viewer-empty">
         <svg viewBox="0 0 24 24" fill="none">

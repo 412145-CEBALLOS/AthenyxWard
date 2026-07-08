@@ -18,6 +18,15 @@
       {{ email() | emailDate }}
     </div>
   </div>
+  <button
+    type="button"
+    class="ai-explain-btn"
+    [disabled]="aiButtonDisabled()"
+    [attr.title]="aiButtonDisabledTooltip()"
+    (click)="onAiButtonClick()"
+    aria-label="Explicar con IA">
+    <i class="ti ti-robot" aria-hidden="true"></i>
+  </button>
   <app-kebab-menu
     [items]="items()"
     [label]="'Acciones del correo'"

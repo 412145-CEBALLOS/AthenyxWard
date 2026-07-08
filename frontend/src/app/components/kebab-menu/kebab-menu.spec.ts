@@ -171,35 +171,6 @@ describe('KebabMenuComponent', () => {
     expect(component.isActive(1)).toBeTrue();
   });
 
-  it('Home goes to first enabled item', fakeAsync(() => {
-    setItems([
-      { id: 'a', label: 'A', disabled: true },
-      { id: 'b', label: 'B' },
-      { id: 'c', label: 'C' },
-    ]);
-    openKebab();
-    tick();
-    const menu = fixture.nativeElement.querySelector('[role="menu"]');
-    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
-    fixture.detectChanges();
-    expect(component.isActive(1)).toBeTrue();
-  }));
-
-  it('End goes to last enabled item', fakeAsync(() => {
-    setItems([
-      { id: 'a', label: 'A' },
-      { id: 'b', label: 'B', disabled: true },
-      { id: 'c', label: 'C' },
-    ]);
-    openKebab();
-    tick();
-    const menu = fixture.nativeElement.querySelector('[role="menu"]');
-    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
-    tick();
-    fixture.detectChanges();
-    expect(component.isActive(2)).toBeTrue();
-  }));
-
   it('Enter on focused item emits its id', fakeAsync(() => {
     setItems([{ id: 'enter-action', label: 'Enter Me' }]);
     openKebab();

@@ -16,6 +16,7 @@ const buildEmail = (overrides: Partial<EmailSummary> = {}): EmailSummary => ({
   originalDateHeader: null,
   isImportant: false,
   isHidden: false,
+  isDeleted: false,
   ...overrides,
 });
 

@@ -40,6 +40,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Transactional
 class ReminderServiceIntegrationTest {
 
+    private static final LocalDateTime D1 = LocalDateTime.of(2026, 8, 1, 10, 0);
+    private static final LocalDateTime D2 = LocalDateTime.of(2026, 8, 2, 10, 0);
+    private static final LocalDateTime D3 = LocalDateTime.of(2026, 8, 3, 10, 0);
+
     @Autowired private ReminderService service;
     @Autowired private ReminderRepository repository;
     @Autowired private EmailRepository emailRepository;
@@ -75,14 +79,14 @@ class ReminderServiceIntegrationTest {
     void create_persistsAndReturnsFullResponse() {
         CreateReminderRequest req = new CreateReminderRequest(
             email.getId(),
-            LocalDateTime.of(2026, 6, 24, 15, 0),
+            D1,
             "  Llamar al banco  ");
 
         ReminderResponse response = service.create(premium.getId(), req);
 
         assertThat(response.id()).isNotNull();
         assertThat(response.emailId()).isEqualTo(email.getId());
-        assertThat(response.reminderDate()).isEqualTo(LocalDateTime.of(2026, 6, 24, 15, 0));
+        assertThat(response.reminderDate()).isEqualTo(D1);
         assertThat(response.message()).isEqualTo("Llamar al banco");
         assertThat(response.done()).isFalse();
         assertThat(response.createdAt()).isNotNull();
@@ -92,10 +96,10 @@ class ReminderServiceIntegrationTest {
     @Test
     void create_rejectsDuplicateWithConflict() {
         service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "primero"));
+            email.getId(), D1, "primero"));
 
         assertThatThrownBy(() -> service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 25, 9, 0), "segundo")))
+            email.getId(), D2, "segundo")))
             .isInstanceOf(ReminderConflictException.class)
             .hasMessageContaining("Ya tienes");
     }
@@ -103,7 +107,7 @@ class ReminderServiceIntegrationTest {
     @Test
     void create_rejectsTrialUser() {
         assertThatThrownBy(() -> service.create(trial.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "x")))
+            email.getId(), D1, "x")))
             .isInstanceOf(ReminderPremiumRequiredException.class);
     }
 
@@ -119,9 +123,9 @@ class ReminderServiceIntegrationTest {
             .user(other).build());
 
         service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "u1"));
+            email.getId(), D1, "u1"));
         service.create(other.getId(), new CreateReminderRequest(
-            otherEmail.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "u2"));
+            otherEmail.getId(), D1, "u2"));
 
         assertThat(repository.findAll()).hasSize(2);
     }
@@ -131,7 +135,7 @@ class ReminderServiceIntegrationTest {
     @Test
     void findByUser_returnsItemsSortedByDateAsc() {
         service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 26, 10, 0), "later"));
+            email.getId(), D3, "later"));
 
         Email email2 = emailRepository.save(Email.builder()
             .gmailId("gid-3").sender("a@b.com").subject("Subj3")
@@ -140,19 +144,19 @@ class ReminderServiceIntegrationTest {
             .originalDateHeader("now")
             .user(premium).build());
         service.create(premium.getId(), new CreateReminderRequest(
-            email2.getId(), LocalDateTime.of(2026, 6, 25, 9, 0), "sooner"));
+            email2.getId(), D2, "sooner"));
 
         List<ReminderResponse> items = service.findByUser(premium.getId(), ReminderService.Filter.ALL);
 
         assertThat(items).hasSize(2);
-        assertThat(items.get(0).reminderDate()).isEqualTo(LocalDateTime.of(2026, 6, 25, 9, 0));
-        assertThat(items.get(1).reminderDate()).isEqualTo(LocalDateTime.of(2026, 6, 26, 10, 0));
+        assertThat(items.get(0).reminderDate()).isEqualTo(D2);
+        assertThat(items.get(1).reminderDate()).isEqualTo(D3);
     }
 
     @Test
     void findByUser_pendingFilterExcludesDone() {
         service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "pending"));
+            email.getId(), D1, "pending"));
 
         Email email2 = emailRepository.save(Email.builder()
             .gmailId("gid-4").sender("a@b.com").subject("Subj4")
@@ -161,7 +165,7 @@ class ReminderServiceIntegrationTest {
             .originalDateHeader("now")
             .user(premium).build());
         ReminderResponse done = service.create(premium.getId(), new CreateReminderRequest(
-            email2.getId(), LocalDateTime.of(2026, 6, 25, 10, 0), "to-complete"));
+            email2.getId(), D2, "to-complete"));
         service.update(premium.getId(), done.id(), new UpdateReminderRequest(null, null, true));
 
         assertThat(service.findByUser(premium.getId(), ReminderService.Filter.PENDING))
@@ -175,7 +179,7 @@ class ReminderServiceIntegrationTest {
     @Test
     void findByUser_trialReturnsEmpty() {
         service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "x"));
+            email.getId(), D1, "x"));
 
         assertThat(service.findByUser(trial.getId(), ReminderService.Filter.ALL)).isEmpty();
     }
@@ -189,13 +193,13 @@ class ReminderServiceIntegrationTest {
     @Test
     void findSummaryByEmail_returnsSummaryWhenExists() {
         service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "x"));
+            email.getId(), D1, "x"));
 
         ReminderSummary summary = service.findSummaryByEmail(premium.getId(), email.getId());
 
         assertThat(summary).isNotNull();
         assertThat(summary.id()).isNotNull();
-        assertThat(summary.reminderDate()).isEqualTo(LocalDateTime.of(2026, 6, 24, 15, 0));
+        assertThat(summary.reminderDate()).isEqualTo(D1);
         assertThat(summary.done()).isFalse();
     }
 
@@ -208,13 +212,13 @@ class ReminderServiceIntegrationTest {
             .originalDateHeader("now")
             .user(premium).build());
         service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "for-1"));
+            email.getId(), D1, "for-1"));
 
         Map<Long, ReminderSummary> map = service.findSummariesForEmails(
             premium.getId(), List.of(email.getId(), email2.getId()));
 
         assertThat(map).containsOnlyKeys(email.getId());
-        assertThat(map.get(email.getId()).reminderDate()).isEqualTo(LocalDateTime.of(2026, 6, 24, 15, 0));
+        assertThat(map.get(email.getId()).reminderDate()).isEqualTo(D1);
     }
 
     // --- update ---
@@ -222,12 +226,12 @@ class ReminderServiceIntegrationTest {
     @Test
     void update_appliesPartialPatch() {
         ReminderResponse created = service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "original"));
+            email.getId(), D1, "original"));
 
         ReminderResponse updated = service.update(premium.getId(), created.id(),
-            new UpdateReminderRequest(LocalDateTime.of(2026, 6, 25, 9, 0), "  new  ", null));
+            new UpdateReminderRequest(D2, "  new  ", null));
 
-        assertThat(updated.reminderDate()).isEqualTo(LocalDateTime.of(2026, 6, 25, 9, 0));
+        assertThat(updated.reminderDate()).isEqualTo(D2);
         assertThat(updated.message()).isEqualTo("new");
         assertThat(updated.done()).isFalse();
     }
@@ -235,20 +239,20 @@ class ReminderServiceIntegrationTest {
     @Test
     void update_doneOnlyLeavesOtherFieldsUntouched() {
         ReminderResponse created = service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "msg"));
+            email.getId(), D1, "msg"));
 
         ReminderResponse updated = service.update(premium.getId(), created.id(),
             new UpdateReminderRequest(null, null, true));
 
         assertThat(updated.done()).isTrue();
         assertThat(updated.message()).isEqualTo("msg");
-        assertThat(updated.reminderDate()).isEqualTo(LocalDateTime.of(2026, 6, 24, 15, 0));
+        assertThat(updated.reminderDate()).isEqualTo(D1);
     }
 
     @Test
     void update_throwsNotFoundForOtherUsersReminder() {
         ReminderResponse created = service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "x"));
+            email.getId(), D1, "x"));
 
         assertThatThrownBy(() -> service.update(trial.getId(), created.id(),
             new UpdateReminderRequest(null, null, true)))
@@ -260,7 +264,7 @@ class ReminderServiceIntegrationTest {
     @Test
     void delete_removesReminder() {
         ReminderResponse created = service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "x"));
+            email.getId(), D1, "x"));
 
         service.delete(premium.getId(), created.id());
 
@@ -270,7 +274,7 @@ class ReminderServiceIntegrationTest {
     @Test
     void delete_throwsNotFoundForOtherUsersReminder() {
         ReminderResponse created = service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "x"));
+            email.getId(), D1, "x"));
 
         assertThatThrownBy(() -> service.delete(trial.getId(), created.id()))
             .isInstanceOf(ReminderNotFoundException.class);
@@ -282,13 +286,13 @@ class ReminderServiceIntegrationTest {
     @Test
     void databaseEnforcesUniqueConstraintPerUserEmail() {
         service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "x"));
+            email.getId(), D1, "x"));
 
         // Bypass the service's pre-check and try to write a raw row —
         // the DB unique constraint must reject it.
         Reminder duplicate = Reminder.builder()
             .user(premium).email(email)
-            .reminderDate(LocalDateTime.of(2026, 6, 25, 9, 0))
+            .reminderDate(D2)
             .message("dup").done(false)
             .build();
 
@@ -313,7 +317,7 @@ class ReminderServiceIntegrationTest {
     @Test
     void update_rejectsPastDate() {
         ReminderResponse created = service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "x"));
+            email.getId(), D1, "x"));
 
         assertThatThrownBy(() -> service.update(premium.getId(), created.id(),
             new UpdateReminderRequest(LocalDateTime.now().minusHours(1), null, null)))
@@ -327,9 +331,9 @@ class ReminderServiceIntegrationTest {
         Email e1 = freshEmail(premium, "g-c1");
         Email e2 = freshEmail(premium, "g-c2");
         Email e3 = freshEmail(premium, "g-c3");
-        ReminderResponse r1 = service.create(premium.getId(), new CreateReminderRequest(e1.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "p1"));
-        ReminderResponse r2 = service.create(premium.getId(), new CreateReminderRequest(e2.getId(), LocalDateTime.of(2026, 6, 24, 16, 0), "p2"));
-        ReminderResponse r3 = service.create(premium.getId(), new CreateReminderRequest(e3.getId(), LocalDateTime.of(2026, 6, 24, 17, 0), "p3"));
+        ReminderResponse r1 = service.create(premium.getId(), new CreateReminderRequest(e1.getId(), D1, "p1"));
+        ReminderResponse r2 = service.create(premium.getId(), new CreateReminderRequest(e2.getId(), D1, "p2"));
+        ReminderResponse r3 = service.create(premium.getId(), new CreateReminderRequest(e3.getId(), D1, "p3"));
         // Mark r1 and r2 as done.
         service.update(premium.getId(), r1.id(), new UpdateReminderRequest(null, null, true));
         service.update(premium.getId(), r2.id(), new UpdateReminderRequest(null, null, true));
@@ -349,8 +353,8 @@ class ReminderServiceIntegrationTest {
             .googleId("g-other2").email("o2@example.com").name("O2").role(Role.PREMIUM).build());
         Email own = freshEmail(premium, "g-own");
         Email otherMail = freshEmail(other, "g-other");
-        ReminderResponse r1 = service.create(premium.getId(), new CreateReminderRequest(own.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "own"));
-        ReminderResponse r2 = service.create(other.getId(), new CreateReminderRequest(otherMail.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "other"));
+        ReminderResponse r1 = service.create(premium.getId(), new CreateReminderRequest(own.getId(), D1, "own"));
+        ReminderResponse r2 = service.create(other.getId(), new CreateReminderRequest(otherMail.getId(), D1, "other"));
         service.update(premium.getId(), r1.id(), new UpdateReminderRequest(null, null, true));
         service.update(other.getId(), r2.id(), new UpdateReminderRequest(null, null, true));
 
@@ -363,7 +367,7 @@ class ReminderServiceIntegrationTest {
     @Test
     void clearCompleted_returnsZeroWhenNothingDone() {
         service.create(premium.getId(), new CreateReminderRequest(
-            email.getId(), LocalDateTime.of(2026, 6, 24, 15, 0), "p"));
+            email.getId(), D1, "p"));
 
         int deleted = service.clearCompleted(premium.getId());
 

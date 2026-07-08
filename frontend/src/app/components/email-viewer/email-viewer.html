@@ -14,7 +14,9 @@
     [hasPendingReminder]="reminder()?.done === false"
     [isHidden]="isHidden()"
     [isDeleted]="email().isDeleted"
-    (action)="action.emit($event)" />
+    [canExplain]="analysis()?.riskLevel != null"
+    (action)="action.emit($event)"
+    (explainRequest)="explainRequest.emit()" />
   <app-email-analysis
     [analysis]="analysis()"
     [state]="state()"
@@ -28,6 +30,26 @@
     [(open)]="analysisPanelOpen"
     (retry)="retry.emit()"
     (analyzeRequest)="analyzeRequest.emit()" />
+  @if (aiState() === 'loading') {
+    <div class="ai-loading" role="status" aria-live="polite">
+      <span class="spinner"></span>
+      <p>Generando explicación con IA…</p>
+    </div>
+  }
+  @if (aiState() === 'ready' && aiExplanation(); as exp) {
+    <div class="ai-card">
+      <div class="ai-card-header">
+        <span class="ai-badge" [class.ai-badge--llm]="exp.origin === 'LLM'" [class.ai-badge--fallback]="exp.origin === 'FALLBACK'">
+          {{ exp.origin === 'LLM' ? 'Generado por IA' : 'Explicación heurística' }}
+        </span>
+        <span class="ai-timestamp">{{ relativeTime(exp.generatedAt) }}</span>
+        @if (exp.origin === 'LLM' && exp.modelName) {
+          <span class="ai-model">{{ exp.modelName }}</span>
+        }
+      </div>
+      <p class="ai-text">{{ exp.text }}</p>
+    </div>
+  }
   <div class="viewer-subject">
     <h2>{{ email().subject }}</h2>
   </div>

@@ -42,24 +42,47 @@ describe('EmailViewerHeaderComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('renders 5 kebab items', () => {
+  it('renders 4 kebab items', () => {
     const trigger = fixture.nativeElement.querySelector('.kebab-trigger');
     trigger.click();
     fixture.detectChanges();
     const items = fixture.nativeElement.querySelectorAll('[role="menuitem"]');
-    expect(items.length).toBe(5);
+    expect(items.length).toBe(4);
   });
 
-  it('emits explain-ai action', () => {
+  it('emits explainRequest when AI button is clicked', () => {
     fixture.componentRef.setInput('userRole', 'PREMIUM');
     fixture.detectChanges();
-    let emitted: string | null = null;
-    component.action.subscribe((id) => (emitted = id));
-    const trigger = fixture.nativeElement.querySelector('.kebab-trigger');
-    trigger.click();
+    let emitted = false;
+    component.explainRequest.subscribe(() => (emitted = true));
+    const btn = fixture.nativeElement.querySelector('.ai-explain-btn') as HTMLButtonElement;
+    btn.click();
+    expect(emitted).toBeTrue();
+  });
+
+  it('AI button is disabled when canExplain=false with tooltip', () => {
+    fixture.componentRef.setInput('canExplain', false);
     fixture.detectChanges();
-    fixture.nativeElement.querySelector('[role="menuitem"]').click();
-    expect(emitted as unknown as string).toBe('explain-ai');
+    const btn = fixture.nativeElement.querySelector('.ai-explain-btn') as HTMLButtonElement;
+    expect(btn.disabled).toBeTrue();
+    expect(btn.title).toBe('Analiza primero el correo');
+  });
+
+  it('AI button is disabled when isDeleted=true with tooltip', () => {
+    fixture.componentRef.setInput('userRole', 'PREMIUM');
+    fixture.componentRef.setInput('isDeleted', true);
+    fixture.detectChanges();
+    const btn = fixture.nativeElement.querySelector('.ai-explain-btn') as HTMLButtonElement;
+    expect(btn.disabled).toBeTrue();
+    expect(btn.title).toBe('No disponible para correos eliminados');
+  });
+
+  it('AI button is enabled when canExplain=true and not deleted', () => {
+    fixture.componentRef.setInput('userRole', 'PREMIUM');
+    fixture.detectChanges();
+    const btn = fixture.nativeElement.querySelector('.ai-explain-btn') as HTMLButtonElement;
+    expect(btn.disabled).toBeFalse();
+    expect(btn.title).toBe('');
   });
 
   it('emits hide action', () => {
@@ -71,7 +94,7 @@ describe('EmailViewerHeaderComponent', () => {
     trigger.click();
     fixture.detectChanges();
     const allItems = fixture.nativeElement.querySelectorAll('[role="menuitem"]');
-    allItems[3].click();
+    allItems[2].click();
     expect(emitted as unknown as string).toBe('hide');
   });
 
@@ -84,7 +107,7 @@ describe('EmailViewerHeaderComponent', () => {
     trigger.click();
     fixture.detectChanges();
     const allItems = fixture.nativeElement.querySelectorAll('[role="menuitem"]');
-    allItems[4].click();
+    allItems[3].click();
     expect(emitted as unknown as string).toBe('delete');
   });
 
@@ -95,13 +118,12 @@ describe('EmailViewerHeaderComponent', () => {
     trigger.click();
     fixture.detectChanges();
     const items = fixture.nativeElement.querySelectorAll('[role="menuitem"]');
+    expect(items[0].getAttribute('aria-disabled')).toBe('true');
+    expect(items[0].getAttribute('title')).toContain('Premium');
     expect(items[1].getAttribute('aria-disabled')).toBe('true');
     expect(items[1].getAttribute('title')).toContain('Premium');
-    expect(items[2].getAttribute('aria-disabled')).toBe('true');
-    expect(items[2].getAttribute('title')).toContain('Premium');
-    expect(items[0].getAttribute('aria-disabled')).toBeNull();
+    expect(items[2].getAttribute('aria-disabled')).toBeNull();
     expect(items[3].getAttribute('aria-disabled')).toBeNull();
-    expect(items[4].getAttribute('aria-disabled')).toBeNull();
   });
 
   it('PREMIUM: all items enabled except TRIAL restrictions', () => {
@@ -111,8 +133,8 @@ describe('EmailViewerHeaderComponent', () => {
     trigger.click();
     fixture.detectChanges();
     const items = fixture.nativeElement.querySelectorAll('[role="menuitem"]');
+    expect(items[0].getAttribute('aria-disabled')).toBeNull();
     expect(items[1].getAttribute('aria-disabled')).toBeNull();
-    expect(items[2].getAttribute('aria-disabled')).toBeNull();
   });
 
   it('isImportant=true changes label to "Quitar importante" and sets active on mark-important item', () => {
@@ -138,8 +160,8 @@ describe('EmailViewerHeaderComponent', () => {
     fixture.detectChanges();
     expect(component.reminderLabel()).toBe('Ver recordatorio');
     const items = component.items();
-    expect(items[2].disabled).toBeTrue();
-    expect(items[2].disabledTooltip).toContain('pendiente');
+    expect(items[1].disabled).toBeTrue();
+    expect(items[1].disabledTooltip).toContain('pendiente');
   });
 
   it('isHidden=true changes hide label to "Mostrar correo"', () => {
@@ -152,21 +174,21 @@ describe('EmailViewerHeaderComponent', () => {
 
   it('delete item has variant destructive', () => {
     const items = component.items();
-    expect(items[4].variant).toBe('destructive');
+    expect(items[3].variant).toBe('destructive');
   });
 
-  it('isDeleted=true disables all items except explain-ai', () => {
+  it('isDeleted=true disables all kebab items', () => {
     fixture.componentRef.setInput('userRole', 'PREMIUM');
     fixture.componentRef.setInput('isDeleted', true);
     fixture.detectChanges();
     const items = component.items();
-    expect(items[0].id).toBe('explain-ai');
-    expect(items[0].disabled).toBeFalse();
+    expect(items[0].disabled).toBeTrue();
+    expect(items[0].disabledTooltip).toContain('eliminados');
     expect(items[1].disabled).toBeTrue();
     expect(items[1].disabledTooltip).toContain('eliminados');
     expect(items[2].disabled).toBeTrue();
+    expect(items[2].disabledTooltip).toContain('eliminados');
     expect(items[3].disabled).toBeTrue();
-    expect(items[4].disabled).toBeTrue();
-    expect(items[4].disabledTooltip).toContain('ya fue eliminado');
+    expect(items[3].disabledTooltip).toContain('ya fue eliminado');
   });
 });

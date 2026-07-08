@@ -674,7 +674,7 @@ Local AI integration:
 * Spring AI + Ollama + Llama 3 integration,
 * explainable AI analysis (HYBRID mode — supplements heuristic rules),
 * AI-generated threat explanations and natural-language warnings,
-* email actions (hide, delete, mark as phishing).
+* email actions (hide, delete).
 
 ---
 

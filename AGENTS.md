@@ -111,6 +111,51 @@ Backend (`HeuristicAnalysisService.analyze`):
 - Persists to `EmailAnalysis` entity, increments `User.analysisCount` for TRIAL users
 - Re-analysis (cache miss) **always inserts a new `EmailAnalysis` row** — never updates an existing one, so the history endpoint always shows the full timeline.
 
+## AI Explanation Flow (US 3.2 / US 3.3)
+
+Separate from the heuristic analysis pipeline (above). The "Explicar con IA" button lives
+in the email viewer header, next to the kebab menu. It calls the AI explanation endpoint
+(`POST /api/emails/{id}/explain`) regardless of whether a heuristic analysis exists.
+
+**Frontend flow:**
+```
+user clicks "Explicar con IA" button (email-viewer-header)
+   └─ home.onExplainRequest()
+        ├─ 200 → aiExplanation set, aiState = 'ready' → card with badge + timestamp
+        ├─ 403 → aiState = 'unavailable-trial' + toast
+        └─ 5xx / timeout → aiState = 'error' + toast with "Reintentar" action
+```
+
+Key facts:
+- `canExplain` input to `email-viewer-header` is `analysis()?.riskLevel != null` — button is
+  disabled with tooltip "Analiza primero el correo" until the email has been analyzed.
+- Badge shows "Generado por IA" (origin LLM) or "Explicación heurística" (origin FALLBACK).
+- Timestamp is rendered via `Intl.RelativeTimeFormat('es')` — no external library.
+- Reset on email change: `selectEmail`, `clearSelection`, `openStandaloneEmail` all set
+  `aiState = 'idle'` and `aiExplanation = null`.
+- `ToastService.error(msg, { action: { label: 'Reintentar', onClick: fn } })` — the
+  toast's inline action button re-fires `onExplainRequest`.
+
+Backend (`AiExplanationService.explain`):
+- PREMIUM/ADMIN only → 403 for TRIAL users.
+- 5 fallback scenarios (LLM success, Ollama disabled, connection refused, no prior analysis,
+  timeout) → all return `AiOrigin` enum so the frontend can badge the result.
+- Response: `AiExplanationResponse { id, text, origin: LLM|FALLBACK, modelName, generatedAt }`.
+
+## AI Resilience (US 3.8)
+
+The `AiExplanationService` implements five internal paths (documented in its class-level Javadoc):
+
+| Path | Trigger | Origin | Log |
+|------|---------|--------|-----|
+| No prior analysis | `latest == null` | FALLBACK | `durationMs=0, origin=FALLBACK` |
+| AI disabled | `enabled=false` | FALLBACK | `durationMs, origin=FALLBACK` |
+| LLM success | Ollama responds ≤8 s with valid text | LLM | `durationMs, origin=LLM` |
+| LLM exception | timeout, connection refused, 5xx | FALLBACK | `durationMs, origin=FALLBACK, error=…` |
+| Empty response | `content == null \|\| isBlank()` | FALLBACK | `durationMs, origin=FALLBACK, error=…` |
+
+All paths emit `log.info("ai.explain userId={} emailId={} durationMs={} origin={} [error=…]")` — never propagated to the client. Tests in `AiExplanationServiceTest` cover all 5 paths plus a dedicated timeout test (`AiUnavailableException("timeout")`).
+
 ## Reminders (US 2.6)
 
 User-defined reminders attached to a single email. One row per

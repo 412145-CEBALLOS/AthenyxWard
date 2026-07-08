@@ -31,10 +31,24 @@ export class EmailViewerHeaderComponent {
   readonly hasPendingReminder = input<boolean>(false);
   readonly isHidden = input<boolean>(false);
   readonly isDeleted = input<boolean>(false);
+  readonly canExplain = input<boolean>(true);
 
   readonly action = output<EmailAction>();
+  readonly explainRequest = output<void>();
 
   readonly isTrial = computed(() => this.userRole() === 'TRIAL');
+
+  readonly aiButtonDisabled = computed<boolean>(
+    () => !this.canExplain() || this.isDeleted(),
+  );
+
+  readonly aiButtonDisabledTooltip = computed<string | null>(
+    () => {
+      if (this.isDeleted()) return 'No disponible para correos eliminados';
+      if (!this.canExplain()) return 'Analiza primero el correo';
+      return null;
+    },
+  );
 
   readonly importantLabel = computed(() =>
     this.isImportant() ? 'Quitar importante' : 'Marcar importante',
@@ -54,12 +68,6 @@ export class EmailViewerHeaderComponent {
     const isTrial = this.isTrial();
     const deleted = this.isDeleted();
     return [
-      {
-        id: 'explain-ai',
-        label: 'Explicar con IA',
-        icon: 'ti ti-robot',
-        disabled: false,
-      },
       {
         id: 'mark-important',
         label: this.importantLabel(),
@@ -103,5 +111,11 @@ export class EmailViewerHeaderComponent {
 
   onAction(id: string): void {
     this.action.emit(id as EmailAction);
+  }
+
+  onAiButtonClick(): void {
+    if (!this.aiButtonDisabled()) {
+      this.explainRequest.emit();
+    }
   }
 }

@@ -18,6 +18,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -33,8 +38,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for {@link AiExplanationService} covering the 5 scenarios
- * defined in US 3.2 plus the foreign-email access check.
+ * Unit tests for {@link AiExplanationService} covering the 5+1 scenarios
+ * defined in US 3.2 (5 paths) + US 3.8 (timeout as explicit AiUnavailableException)
+ * plus the foreign-email access check.
  */
 @ExtendWith(MockitoExtension.class)
 class AiExplanationServiceTest {
@@ -106,10 +112,36 @@ class AiExplanationServiceTest {
         when(callResponse.content()).thenReturn(responseText);
     }
 
+    private ListAppender<ILoggingEvent> installLogCaptor() {
+        Logger logger = (Logger) LoggerFactory.getLogger(AiExplanationService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        return appender;
+    }
+
+    private void assertStructuredLog(ListAppender<ILoggingEvent> appender,
+                                     Long expectedUserId, Long expectedEmailId,
+                                     AiOrigin expectedOrigin, boolean expectError) {
+        var events = appender.list;
+        assertThat(events).hasSizeGreaterThan(0);
+        var event = events.get(events.size() - 1);
+        assertThat(event.getLevel()).isEqualTo(Level.INFO);
+        String msg = event.getFormattedMessage();
+        assertThat(msg).contains("ai.explain");
+        assertThat(msg).contains("userId=" + expectedUserId);
+        assertThat(msg).contains("emailId=" + expectedEmailId);
+        assertThat(msg).contains("origin=" + expectedOrigin);
+        if (expectError) {
+            assertThat(msg).contains("error=");
+        }
+    }
+
     // --- Scenario 1a: No previous analysis → FALLBACK fixed, NOT called ChatClient ---
 
     @Test
     void noPreviousAnalysis_returnsFixedFallback_doesNotCallChatClient() throws Exception {
+        ListAppender<ILoggingEvent> appender = installLogCaptor();
         when(userRepository.findById(1L)).thenReturn(Optional.of(premiumUser));
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
@@ -121,10 +153,12 @@ class AiExplanationServiceTest {
         assertThat(result.text()).isEqualTo("Analiza primero el correo");
         assertThat(result.modelName()).isNull();
         verify(chatClient, never()).prompt();
+        assertStructuredLog(appender, 1L, 10L, AiOrigin.FALLBACK, false);
     }
 
     @Test
     void noPreviousAnalysis_persistsRowWithFallbackOrigin() throws Exception {
+        ListAppender<ILoggingEvent> appender = installLogCaptor();
         when(userRepository.findById(1L)).thenReturn(Optional.of(premiumUser));
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
@@ -138,12 +172,14 @@ class AiExplanationServiceTest {
         assertThat(captor.getValue().getOrigin()).isEqualTo(AiOrigin.FALLBACK);
         assertThat(captor.getValue().getText()).isEqualTo("Analiza primero el correo");
         assertThat(captor.getValue().getModelName()).isNull();
+        assertStructuredLog(appender, 1L, 10L, AiOrigin.FALLBACK, false);
     }
 
     // --- Scenario 1b: AI disabled → FALLBACK heuristic, NOT called ChatClient ---
 
     @Test
     void aiDisabled_returnsHeuristicFallback_doesNotCallChatClient() throws Exception {
+        ListAppender<ILoggingEvent> appender = installLogCaptor();
         EmailAnalysis latest = EmailAnalysis.builder()
                 .id(100L).email(email).user(premiumUser)
                 .riskLevel(ThreatLevel.YELLOW).riskPercentage(65)
@@ -164,12 +200,14 @@ class AiExplanationServiceTest {
         assertThat(result.text()).contains("heurístico");
         assertThat(result.modelName()).isNull();
         verify(chatClient, never()).prompt();
+        assertStructuredLog(appender, 1L, 10L, AiOrigin.FALLBACK, false);
     }
 
     // --- Scenario 1c: Ollama throws → FALLBACK heuristic ---
 
     @Test
     void ollamaThrows_returnsHeuristicFallback() throws Exception {
+        ListAppender<ILoggingEvent> appender = installLogCaptor();
         EmailAnalysis latest = EmailAnalysis.builder()
                 .id(100L).email(email).user(premiumUser)
                 .riskLevel(ThreatLevel.RED).riskPercentage(85)
@@ -192,12 +230,14 @@ class AiExplanationServiceTest {
         assertThat(result.origin()).isEqualTo(AiOrigin.FALLBACK);
         assertThat(result.text()).contains("heurístico");
         assertThat(result.modelName()).isNull();
+        assertStructuredLog(appender, 1L, 10L, AiOrigin.FALLBACK, true);
     }
 
     // --- Scenario 1d: Ollama empty response → FALLBACK heuristic ---
 
     @Test
     void ollamaReturnsEmptyString_returnsHeuristicFallback() throws Exception {
+        ListAppender<ILoggingEvent> appender = installLogCaptor();
         EmailAnalysis latest = EmailAnalysis.builder()
                 .id(100L).email(email).user(premiumUser)
                 .riskLevel(ThreatLevel.YELLOW).riskPercentage(50)
@@ -220,6 +260,37 @@ class AiExplanationServiceTest {
 
         assertThat(result.origin()).isEqualTo(AiOrigin.FALLBACK);
         assertThat(result.modelName()).isNull();
+        assertStructuredLog(appender, 1L, 10L, AiOrigin.FALLBACK, true);
+    }
+
+    // --- Scenario 1e: Ollama timeout (AiUnavailableException) → FALLBACK heuristic (US 3.8) ---
+
+    @Test
+    void ollamaTimeout_throwsAiUnavailable_returnsHeuristicFallback() throws Exception {
+        ListAppender<ILoggingEvent> appender = installLogCaptor();
+        EmailAnalysis latest = EmailAnalysis.builder()
+                .id(100L).email(email).user(premiumUser)
+                .riskLevel(ThreatLevel.YELLOW).riskPercentage(55)
+                .findings("[{\"rule\":\"Urgency\",\"description\":\" ASAP\",\"score\":20}]")
+                .recommendedActions("[{\"label\":\"No hacer clic\"}]")
+                .analyzedAt(LocalDateTime.now(fixedClock))
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(premiumUser));
+        when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
+        when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
+                .thenReturn(Optional.of(latest));
+        when(aiProperties.enabled()).thenReturn(true);
+        when(chatClient.prompt()).thenReturn(userSpec);
+        when(userSpec.user(any(String.class))).thenReturn(userSpec);
+        when(userSpec.call()).thenThrow(new AiUnavailableException("timeout"));
+
+        AiExplanationResponse result = service.explain(1L, 10L).get();
+
+        assertThat(result.origin()).isEqualTo(AiOrigin.FALLBACK);
+        assertThat(result.text()).contains("heurístico");
+        assertThat(result.modelName()).isNull();
+        assertStructuredLog(appender, 1L, 10L, AiOrigin.FALLBACK, true);
     }
 
     // --- Scenario 2: TRIAL at limit → throws TrialLimitExceeded ---
@@ -243,6 +314,7 @@ class AiExplanationServiceTest {
 
     @Test
     void llmEnabled_returnsLlmExplanation_persistsRowWithLlmOrigin() throws Exception {
+        ListAppender<ILoggingEvent> appender = installLogCaptor();
         EmailAnalysis latest = EmailAnalysis.builder()
                 .id(100L).email(email).user(premiumUser)
                 .riskLevel(ThreatLevel.YELLOW).riskPercentage(65)
@@ -273,10 +345,12 @@ class AiExplanationServiceTest {
         assertThat(captor.getValue().getModelName()).isEqualTo("llama3");
         assertThat(result.origin()).isEqualTo(AiOrigin.LLM);
         assertThat(result.modelName()).isEqualTo("llama3");
+        assertStructuredLog(appender, 1L, 10L, AiOrigin.LLM, false);
     }
 
     @Test
     void trialUser_llmSuccess_incrementsAnalysisCount() throws Exception {
+        ListAppender<ILoggingEvent> appender = installLogCaptor();
         User trialUser = User.builder()
                 .id(3L).googleId("gid3").email("trial2@example.com").name("T2")
                 .role(Role.TRIAL).analysisCount(5)
@@ -310,6 +384,7 @@ class AiExplanationServiceTest {
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getAnalysisCount()).isEqualTo(6);
+        assertStructuredLog(appender, 3L, 30L, AiOrigin.LLM, false);
     }
 
     // --- Security: foreign email → 403 RuntimeException ---

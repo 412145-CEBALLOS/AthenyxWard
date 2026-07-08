@@ -14,9 +14,11 @@ import { AnalysisService } from '../../services/analysis.service';
 import { ReminderService } from '../../services/reminder.service';
 import { NotificationService } from '../../services/notification.service';
 import { EmailSearchService } from '../../services/email-search.service';
+import { AiExplanationService } from '../../services/ai-explanation.service';
 import { EmailDetail, EmailSummary, EmailPageResponse } from '../../models/email-summary.model';
 import { EmailAction } from '../../models/email-action.model';
 import { EmailAnalysisResult, AnalysisState } from '../../models/email-analysis.model';
+import { AiExplanation, AiState } from '../../models/ai-explanation.model';
 import { Reminder, ReminderSummary } from '../../models/reminder.model';
 import { HttpErrorResponse } from '@angular/common/http';
 import { EMPTY, Observable, Subject, forkJoin, of, takeUntil } from 'rxjs';
@@ -51,6 +53,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly reminderService = inject(ReminderService);
   private readonly notificationService = inject(NotificationService);
   private readonly emailSearchService = inject(EmailSearchService);
+  private readonly aiExplanationService = inject(AiExplanationService);
   private readonly platformId = inject(PLATFORM_ID);
 
   readonly emails = signal<EmailSummary[]>([]);
@@ -92,6 +95,9 @@ export class HomeComponent implements OnInit, OnDestroy {
    * the result.
    */
   readonly analysisPanelOpen = signal(false);
+
+  readonly aiExplanation = signal<AiExplanation | null>(null);
+  readonly aiState = signal<AiState>('idle');
 
   readonly isPremium = computed(() => this.authService.user()?.role === 'PREMIUM');
   readonly accessibilityMode = computed(() => this.authService.user()?.accessibilityMode ?? true);
@@ -481,6 +487,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.analysisState.set('idle');
     this.analysisPanelOpen.set(false);
     this.currentReminder.set(null);
+    this.aiExplanation.set(null);
+    this.aiState.set('idle');
 
     this.emailService.getEmailDetail(email.id!).pipe(
       takeUntil(this.onDestroy)
@@ -599,6 +607,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.currentReminder.set(null);
     this.isHidden.set(false);
     this.pendingEmailId = null;
+    this.aiExplanation.set(null);
+    this.aiState.set('idle');
   }
 
   /**
@@ -654,6 +664,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.analysisState.set('idle');
     this.analysisPanelOpen.set(false);
     this.currentReminder.set(null);
+    this.aiExplanation.set(null);
+    this.aiState.set('idle');
     this.emailService.getEmailDetail(emailId).pipe(
       takeUntil(this.onDestroy)
     ).subscribe({
@@ -1058,6 +1070,34 @@ export class HomeComponent implements OnInit, OnDestroy {
         } else {
           this.analysisState.set('error');
           this.toast.error('No se pudo analizar el correo. Intenta nuevamente.');
+        }
+      }
+    });
+  }
+
+  onExplainRequest(): void {
+    const email = this.selectedEmail();
+    if (!email) return;
+    this.aiState.set('loading');
+    this.aiExplanationService.explain(email.id).pipe(
+      takeUntil(this.onDestroy)
+    ).subscribe({
+      next: (result) => {
+        this.aiExplanation.set(result);
+        this.aiState.set('ready');
+      },
+      error: (err: HttpErrorResponse) => {
+        if (err.status === 403) {
+          this.aiState.set('unavailable-trial');
+          this.toast.error('Has alcanzado el límite de análisis de tu prueba (incluye explicaciones con IA).');
+        } else {
+          this.aiState.set('error');
+          this.toast.error('IA no disponible', {
+            action: {
+              label: 'Reintentar',
+              onClick: () => this.onExplainRequest(),
+            },
+          });
         }
       }
     });
