@@ -8,7 +8,9 @@ import { AiExplanation } from '../models/ai-explanation.model';
 function makeExplanation(overrides: Partial<AiExplanation> = {}): AiExplanation {
   return {
     id: 1,
-    text: 'Este correo presenta indicadores de phishing.',
+    summary: 'Correo con indicadores de phishing.',
+    heuristicExplanation: 'Contiene lenguaje de urgencia y enlaces sospechosos.',
+    secondOpinion: 'De acuerdo con el veredicto.',
     origin: 'LLM',
     modelName: 'llama3',
     generatedAt: '2026-07-07T10:00:00Z',

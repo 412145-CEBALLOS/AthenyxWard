@@ -194,7 +194,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         // Desktop: the dropdown handles its own fetching. Skip the
         // inbox fetch so the user keeps their unfiltered inbox in
         // view. They can opt in via Enter or "Ver todos resultados".
-        if (!this.isMobile()) {
+        // But when the user CLEARS the search (empty term), reset the
+        // inbox to page 1 so it doesn't stay frozen on the previous
+        // (possibly empty) list.
+        if (!this.isMobile() && trimmed.length > 0) {
           return EMPTY;
         }
         return this.fetchEmails$(0, trimmed);

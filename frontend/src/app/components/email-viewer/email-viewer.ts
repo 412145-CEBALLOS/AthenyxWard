@@ -1,9 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  effect,
+  ElementRef,
   input,
   model,
   output,
+  ViewChild,
 } from '@angular/core';
 import { EmailDetail } from '../../models/email-summary.model';
 import { Reminder, ReminderSummary } from '../../models/reminder.model';
@@ -34,6 +37,9 @@ type UserRole = 'TRIAL' | 'PREMIUM' | 'ADMIN' | null;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EmailViewerComponent {
+  @ViewChild('aiCard', { read: ElementRef }) aiCardRef?: ElementRef<HTMLElement>;
+  @ViewChild('aiLoading', { read: ElementRef }) aiLoadingRef?: ElementRef<HTMLElement>;
+
   readonly email = input.required<EmailDetail>();
   readonly analysis = input<EmailAnalysisResult | null>(null);
   readonly state = input<AnalysisState>('idle');
@@ -50,6 +56,35 @@ export class EmailViewerComponent {
   readonly action = output<EmailAction>();
   readonly reminderAction = output<ReminderAction>();
   readonly explainRequest = output<void>();
+
+  private hasScrolledToAiCard = false;
+
+  onExplainRequest(): void {
+    this.explainRequest.emit();
+    this.hasScrolledToAiCard = false;
+    setTimeout(() => {
+      const el = this.aiLoadingRef?.nativeElement || this.aiCardRef?.nativeElement;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  }
+
+  constructor() {
+    effect(() => {
+      const aiState = this.aiState();
+      const aiExp = this.aiExplanation();
+      if (aiState === 'ready' && aiExp && !this.hasScrolledToAiCard) {
+        this.hasScrolledToAiCard = true;
+        setTimeout(() => {
+          const el = this.aiCardRef?.nativeElement;
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      }
+    });
+  }
 
   relativeTime(dateStr: string): string {
     const date = new Date(dateStr);

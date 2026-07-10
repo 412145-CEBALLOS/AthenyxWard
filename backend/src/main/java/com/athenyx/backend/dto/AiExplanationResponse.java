@@ -7,7 +7,9 @@ import java.time.LocalDateTime;
 
 public record AiExplanationResponse(
         Long id,
-        String text,
+        @Nullable String summary,
+        @Nullable String heuristicExplanation,
+        @Nullable String secondOpinion,
         AiOrigin origin,
         @Nullable String modelName,
         LocalDateTime generatedAt

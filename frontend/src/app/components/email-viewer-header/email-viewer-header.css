@@ -54,8 +54,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
+  gap: 6px;
   height: 36px;
+  padding: 0 12px;
   border: 1px solid rgba(226, 232, 240, 0.8);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
@@ -63,6 +64,19 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .ai-explain-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    gap: 0;
+  }
+
+  .ai-btn-text {
+    display: none;
+  }
 }
 
 .ai-explain-btn:hover:not(:disabled) {
@@ -84,4 +98,5 @@
 .ai-explain-btn i {
   font-size: 1.1rem;
   line-height: 1;
+  flex-shrink: 0;
 }

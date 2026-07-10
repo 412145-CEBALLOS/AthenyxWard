@@ -26,22 +26,28 @@
     }
 
     @if (loading()) {
-      <div class="email-empty email-empty-search">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" stroke="#cbd5e1" stroke-width="1.5" />
-          <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" />
-        </svg>
-        <p>No se encontraron correos para "{{ currentQuery() }}"</p>
+      <div class="email-loading" role="status" aria-label="Cargando correos">
+        <div class="spinner large"></div>
       </div>
     } @else if (emails().length === 0) {
-      <div class="email-empty">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="#cbd5e1" stroke-width="1.5"/>
-          <polyline points="22,6 12,13 2,6" stroke="#cbd5e1" stroke-width="1.5"/>
-        </svg>
-        <p>No hay correos aún</p>
-        <span>Los correos aparecerán aquí automáticamente</span>
-      </div>
+      @if (currentQuery()) {
+        <div class="email-empty email-empty-search">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" stroke="#cbd5e1" stroke-width="1.5" />
+            <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          <p>No se encontraron correos para "{{ currentQuery() }}"</p>
+        </div>
+      } @else {
+        <div class="email-empty">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="#cbd5e1" stroke-width="1.5"/>
+            <polyline points="22,6 12,13 2,6" stroke="#cbd5e1" stroke-width="1.5"/>
+          </svg>
+          <p>No hay correos aún</p>
+          <span>Los correos aparecerán aquí automáticamente</span>
+        </div>
+      }
     } @else {
       <app-email-list
         [emails]="emails()"

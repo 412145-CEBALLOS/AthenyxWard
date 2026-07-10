@@ -19,9 +19,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.concurrent.CompletableFuture;
-
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.concurrent.CompletableFuture;
 import java.util.*;
 
 @Service
@@ -37,6 +37,7 @@ public class HeuristicAnalysisService {
     private final HeuristicEngine engine;
     private final EmailHeaderCache emailHeaderCache;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
     @Async("heuristicsExecutor")
     @Transactional
@@ -51,7 +52,7 @@ public class HeuristicAnalysisService {
         Optional<EmailAnalysis> cached = analysisRepository
             .findFirstByEmailIdOrderByAnalyzedAtDesc(emailId);
         if (cached.isPresent() && cached.get().getAnalyzedAt()
-                .isAfter(LocalDateTime.now().minusHours(24))) {
+                .isAfter(LocalDateTime.now(clock).minusHours(24))) {
             return CompletableFuture.completedFuture(toResponse(cached.get()));
         }
 
@@ -96,6 +97,7 @@ public class HeuristicAnalysisService {
             .contentSummary(contentSummary)
             .build();
 
+        analysis.setAnalyzedAt(LocalDateTime.now(clock));
         EmailAnalysis saved = analysisRepository.save(analysis);
 
         if (user.getRole() == Role.TRIAL) {

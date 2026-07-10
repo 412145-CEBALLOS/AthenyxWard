@@ -10,7 +10,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 /**
  * Dedicated thread pool for AI (Ollama) calls.
  *
- * <p>Llama 3 CPU-bound calls with an 8 s timeout should run on a separate
+ * <p>Llama 3 CPU-bound calls with a 30 s timeout should run on a separate
  * pool from the heuristic {@code heuristicsExecutor} to prevent heuristic
  * analysis from being starved when many AI requests queue up.
  *

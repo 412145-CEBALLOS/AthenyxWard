@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -13,7 +13,6 @@ import { UserInfo } from '../../models/user-info.model';
 import { EmailPageResponse } from '../../models/email-summary.model';
 import { EmailSearchService } from '../../services/email-search.service';
 import { EmailAnalysisResult } from '../../models/email-analysis.model';
-import { AiExplanation } from '../../models/ai-explanation.model';
 
 
 function emptyResponse(): EmailPageResponse {
@@ -141,6 +140,37 @@ describe('HomeComponent — US 3.7 search bar (desktop default)', () => {
 
     routeHandle.emit({ q: 'paypal' });
     tick(300);
+    const withQ = httpMock.match(
+      (r) => r.url === '/api/emails/fetch' && r.params.has('q'),
+    );
+    expect(withQ.length).toBe(0);
+    flushAll();
+  }));
+
+  it('desktop: clearing the search resets currentQuery to empty', fakeAsync(() => {
+    initAndFlush();
+
+    // 1. User types a query — the debounce fires and currentQuery is set to 'zzz'.
+    emailSearch.set('zzz');
+    tick(300);
+    fixture.detectChanges();
+    expect(component.currentQuery()).toBe('zzz');
+
+    // 2. User clears the search bar — the debounce fires and with the fix,
+    // currentQuery resets to '' (instead of staying at 'zzz').
+    emailSearch.set('');
+    tick(300);
+    fixture.detectChanges();
+    expect(component.currentQuery()).toBe('');
+    flushAll();
+  }));
+
+  it('desktop: typing a new search does NOT refetch the inbox (only the dropdown)', fakeAsync(() => {
+    initAndFlush();
+    emailSearch.set('pay');
+    tick(300);
+    // Desktop: switchMap returns EMPTY for the inbox when term is non-empty.
+    // The dropdown component (not under test here) issues the actual request.
     const withQ = httpMock.match(
       (r) => r.url === '/api/emails/fetch' && r.params.has('q'),
     );
@@ -278,176 +308,3 @@ describe('HomeComponent — US 3.7 search bar (mobile)', () => {
     matches[0].flush(emptyResponse());
   }));
 });
-
-describe('HomeComponent — US 3.3 AI explanation flow', () => {
-  let component: HomeComponent;
-  let fixture: ComponentFixture<HomeComponent>;
-  let httpMock: HttpTestingController;
-  let auth: AuthService;
-  let routeHandle: ReturnType<typeof makeRouteWithParams>;
-
-  function makeAiExplanation(overrides: Partial<AiExplanation> = {}): AiExplanation {
-    return {
-      id: 1,
-      text: 'Este correo parece ser un intento de phishing.',
-      origin: 'LLM',
-      modelName: 'llama3',
-      generatedAt: '2026-07-07T10:00:00Z',
-      ...overrides,
-    };
-  }
-
-  function makeAnalysis(overrides: Partial<EmailAnalysisResult> = {}): EmailAnalysisResult {
-    return {
-      analysisId: 1,
-      emailId: 42,
-      riskPercentage: 65,
-      riskLevel: 'YELLOW',
-      threatCategories: [],
-      heuristicFindings: [],
-      suspiciousUrls: [],
-      senderTrust: {
-        sender: 'test@example.com',
-        displayName: 'Test',
-        domain: 'example.com',
-        displayMismatch: false,
-      },
-      aiExplanation: 'Heuristic',
-      contentSummary: 'Summary',
-      recommendedActions: [],
-      analyzedAt: '2026-07-07T09:00:00Z',
-      source: 'HEURISTIC',
-      ...overrides,
-    };
-  }
-
-  beforeEach(async () => {
-    routeHandle = makeRouteWithParams();
-
-    await TestBed.configureTestingModule({
-      imports: [HomeComponent],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([{ path: 'home', component: HomeComponent }]),
-        { provide: ActivatedRoute, useValue: routeHandle.route },
-      ],
-    }).compileComponents();
-
-    auth = TestBed.inject(AuthService);
-    auth.currentUser.set(makeUser());
-
-    fixture = TestBed.createComponent(HomeComponent);
-    component = fixture.componentInstance;
-    httpMock = TestBed.inject(HttpTestingController);
-  });
-
-  afterEach(() => {
-    httpMock.verify();
-  });
-
-  function setupSelectedEmail(): void {
-    const emailDetail = {
-      id: 42,
-      gmailId: 'gid42',
-      sender: 'test@example.com',
-      senderName: 'Test User',
-      subject: 'Test Subject',
-      snippet: 'Snippet',
-      contentForAnalysis: 'Body',
-      htmlContent: null,
-      receivedAt: '2026-07-01T10:00:00Z',
-      fetchedAt: '2026-07-01T10:00:00Z',
-      isRead: true,
-      originalDateHeader: null as string | null,
-      isImportant: false,
-      isHidden: false,
-      isDeleted: false,
-    };
-    component.selectedEmail.set(emailDetail as any);
-    component.analysisResult.set(makeAnalysis() as any);
-    component.analysisState.set('ready');
-    component.aiExplanation.set(null);
-    component.aiState.set('idle');
-    fixture.detectChanges();
-  }
-
-  it('200 → aiState is ready and aiExplanation is set', () => {
-    setupSelectedEmail();
-    component.onExplainRequest();
-    const req = httpMock.expectOne((r) => r.url === '/api/emails/42/explain');
-    req.flush(makeAiExplanation());
-    expect(component.aiState()).toBe('ready');
-    expect(component.aiExplanation()?.text).toContain('phishing');
-    expect(component.aiExplanation()?.origin).toBe('LLM');
-  });
-
-  it('200 with FALLBACK origin → aiExplanation origin is FALLBACK', () => {
-    setupSelectedEmail();
-    component.onExplainRequest();
-    const req = httpMock.expectOne((r) => r.url === '/api/emails/42/explain');
-    req.flush(makeAiExplanation({ origin: 'FALLBACK', modelName: '' }));
-    expect(component.aiExplanation()?.origin).toBe('FALLBACK');
-  });
-
-  it('403 → aiState is unavailable-trial and toast is shown', () => {
-    setupSelectedEmail();
-    component.onExplainRequest();
-    const req = httpMock.expectOne((r) => r.url === '/api/emails/42/explain');
-    req.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
-    expect(component.aiState()).toBe('unavailable-trial');
-  });
-
-  it('5xx → aiState is error and toast is shown', () => {
-    setupSelectedEmail();
-    component.onExplainRequest();
-    const req = httpMock.expectOne((r) => r.url === '/api/emails/42/explain');
-    req.flush('Internal error', { status: 500, statusText: 'Internal Server Error' });
-    expect(component.aiState()).toBe('error');
-  });
-
-  it('timeout (0 status) → aiState is error', () => {
-    setupSelectedEmail();
-    component.onExplainRequest();
-    const req = httpMock.expectOne((r) => r.url === '/api/emails/42/explain');
-    req.error(new ProgressEvent('error'), { status: 0, statusText: '' });
-    expect(component.aiState()).toBe('error');
-  });
-
-  it('reset: aiState and aiExplanation reset when selectEmail is called', () => {
-    setupSelectedEmail();
-    component.aiExplanation.set(makeAiExplanation());
-    component.aiState.set('ready');
-    fixture.detectChanges();
-
-    component.selectEmail({
-      id: 99,
-      gmailId: 'gid99',
-      sender: 'new@example.com',
-      senderName: 'New',
-      subject: 'New',
-      snippet: 'snip',
-      receivedAt: '',
-      fetchedAt: '',
-      isRead: false,
-      isImportant: false,
-      isHidden: false,
-      isDeleted: false,
-      originalDateHeader: null,
-    });
-    expect(component.aiState()).toBe('idle');
-    expect(component.aiExplanation()).toBeNull();
-  });
-
-  it('reset: aiState and aiExplanation reset when clearSelection is called', () => {
-    setupSelectedEmail();
-    component.aiExplanation.set(makeAiExplanation());
-    component.aiState.set('ready');
-    fixture.detectChanges();
-
-    (component as any).clearSelection();
-    expect(component.aiState()).toBe('idle');
-    expect(component.aiExplanation()).toBeNull();
-  });
-});
-

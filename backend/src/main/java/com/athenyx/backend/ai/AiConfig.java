@@ -16,14 +16,14 @@ import java.time.Duration;
  *
  * <h3>Parámetros aplicados</h3>
  * <ul>
- *   <li><b>timeout = 8 s</b>: Latencia típica de Llama 3 8B en CPU local;
+ *   <li><b>timeout = 30 s</b>: Latencia típica de Llama 3 8B en CPU local;
  *       margen suficiente para evitar errores 5xx en el frontend.
  *       Configurado via {@code spring.ai.ollama.chat.options.timeout} en
  *       {@code application.properties}, aplicado por el {@link RestClient} de
  *       {@link OllamaApi} (no requiere configuración adicional aquí).
  *   <li><b>temperature = 0.2</b>: Baja creatividad — respuestas más
  *       determinísticas y enfocadas, adecuadas para explicar amenazas.
- *   <li><b>num-predict = 300</b>: ~3 párrafos cortos (~300 tokens), suficiente
+ *   <li><b>num-predict = 1000</b>: ~3 párrafos cortos (~1000 tokens), suficiente
  *       para una explicación en lenguaje natural sin consumir VRAM excesiva.
  * </ul>
  *
@@ -50,10 +50,10 @@ public class AiConfig {
 
     public AiConfig(
             @Value("${spring.ai.ollama.chat.enabled:true}") boolean aiEnabled,
-            @Value("${spring.ai.ollama.chat.model:llama3}") String modelName,
+            @Value("${spring.ai.ollama.chat.model:qwen2.5:7b-instruct}") String modelName,
             @Value("${spring.ai.ollama.chat.options.temperature:0.2}") double temperature,
-            @Value("${spring.ai.ollama.chat.options.num-predict:300}") int numPredict,
-            @Value("${spring.ai.ollama.chat.options.timeout:8s}") Duration timeout) {
+            @Value("${spring.ai.ollama.chat.options.num-predict:1000}") int numPredict,
+            @Value("${spring.ai.ollama.chat.options.timeout:25s}") Duration timeout) {
         this.aiEnabled = aiEnabled;
         this.modelName = modelName;
         this.temperature = temperature;

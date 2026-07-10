@@ -25,7 +25,9 @@ export type AiState = 'idle' | 'loading' | 'ready' | 'unavailable-trial' | 'erro
  */
 export interface AiExplanation {
   id: number;
-  text: string;
+  summary: string | null;
+  heuristicExplanation: string | null;
+  secondOpinion: string | null;
   origin: AiOrigin;
   modelName: string;
   generatedAt: string;

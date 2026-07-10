@@ -4,7 +4,6 @@ import com.athenyx.backend.heuristics.AnalysisOrigin;
 import com.athenyx.backend.heuristics.ThreatLevel;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -60,7 +59,6 @@ public class EmailAnalysis {
 
     private String modelName;
 
-    @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime analyzedAt;
 }

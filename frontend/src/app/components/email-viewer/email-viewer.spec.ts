@@ -52,7 +52,9 @@ function makeAnalysis(overrides: Partial<EmailAnalysisResult> = {}): EmailAnalys
 function makeAiExplanation(overrides: Partial<AiExplanation> = {}): AiExplanation {
   return {
     id: 1,
-    text: 'Este correo parece ser un intento de phishing.',
+    summary: 'Este correo parece ser un intento de phishing.',
+    heuristicExplanation: 'Contiene indicadores de urgencia.',
+    secondOpinion: 'De acuerdo con el veredicto heurístico.',
     origin: 'LLM',
     modelName: 'llama3',
     generatedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -113,8 +115,9 @@ describe('EmailViewerComponent', () => {
     expect(card).toBeTruthy();
     const badge = card.querySelector('.ai-badge');
     expect(badge.textContent).toContain('Generado por IA');
-    const text = card.querySelector('.ai-text');
-    expect(text.textContent).toContain('phishing');
+    const sections = card.querySelectorAll('.ai-section-text');
+    expect(sections.length).toBeGreaterThan(0);
+    expect(sections[0].textContent).toContain('phishing');
   });
 
   it('renders LLM badge with --llm class', () => {
@@ -159,19 +162,71 @@ describe('EmailViewerComponent', () => {
     expect(model).toBeFalsy();
   });
 
-  it('emits explainRequest when header AI button is clicked', fakeAsync(() => {
-    const email = makeDetail();
-    fixture.componentRef.setInput('email', email);
-    fixture.detectChanges();
-    let emitted = false;
-    component.explainRequest.subscribe(() => (emitted = true));
+  it('renders all 3 sections when all fields are present', () => {
+    fixture.componentRef.setInput('email', makeDetail());
+    fixture.componentRef.setInput('aiExplanation', makeAiExplanation({
+      summary: 'Resumen del correo.',
+      heuristicExplanation: 'Explicacion heuristica.',
+      secondOpinion: 'Segunda opinion.',
+    }));
+    fixture.componentRef.setInput('aiState', 'ready');
     fixture.detectChanges();
 
-    const btn = fixture.nativeElement.querySelector('.ai-explain-btn') as HTMLButtonElement;
-    btn.click();
-    tick();
-    expect(emitted).toBeTrue();
-  }));
+    const sections = fixture.nativeElement.querySelectorAll('.ai-section');
+    expect(sections.length).toBe(3);
+    const titles = fixture.nativeElement.querySelectorAll('.ai-section-title');
+    expect(titles[0].textContent).toContain('Resumen del correo');
+    expect(titles[1].textContent).toContain('Por qué el análisis heurístico');
+    expect(titles[2].textContent).toContain('Segunda opinión de la IA');
+  });
+
+  it('renders only non-null sections when some fields are missing', () => {
+    fixture.componentRef.setInput('email', makeDetail());
+    fixture.componentRef.setInput('aiExplanation', makeAiExplanation({
+      summary: 'Resumen disponible.',
+      heuristicExplanation: null,
+      secondOpinion: null,
+    }));
+    fixture.componentRef.setInput('aiState', 'ready');
+    fixture.detectChanges();
+
+    const sections = fixture.nativeElement.querySelectorAll('.ai-section');
+    expect(sections.length).toBe(1);
+    const titles = fixture.nativeElement.querySelectorAll('.ai-section-title');
+    expect(titles[0].textContent).toContain('Resumen del correo');
+  });
+
+  it('shows "Análisis anterior no disponible" when all 3 nulls and origin LLM', () => {
+    fixture.componentRef.setInput('email', makeDetail());
+    fixture.componentRef.setInput('aiExplanation', makeAiExplanation({
+      summary: null,
+      heuristicExplanation: null,
+      secondOpinion: null,
+      origin: 'LLM',
+      modelName: 'llama3',
+    }));
+    fixture.componentRef.setInput('aiState', 'ready');
+    fixture.detectChanges();
+
+    const errorText = fixture.nativeElement.querySelector('.ai-text');
+    expect(errorText.textContent).toContain('Análisis anterior no disponible');
+  });
+
+  it('shows "Error al consultar a la IA" when all 3 nulls and origin FALLBACK', () => {
+    fixture.componentRef.setInput('email', makeDetail());
+    fixture.componentRef.setInput('aiExplanation', makeAiExplanation({
+      summary: null,
+      heuristicExplanation: null,
+      secondOpinion: null,
+      origin: 'FALLBACK',
+      modelName: '',
+    }));
+    fixture.componentRef.setInput('aiState', 'ready');
+    fixture.detectChanges();
+
+    const errorText = fixture.nativeElement.querySelector('.ai-text');
+    expect(errorText.textContent).toContain('Error al consultar a la IA');
+  });
 
   it('relativeTime returns Spanish string', () => {
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();

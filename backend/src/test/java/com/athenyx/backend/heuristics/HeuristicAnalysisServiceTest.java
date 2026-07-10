@@ -24,7 +24,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -59,6 +61,7 @@ class HeuristicAnalysisServiceTest {
 
     private HeuristicAnalysisService service;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Clock clock = Clock.fixed(LocalDateTime.of(2025, 1, 1, 12, 0).toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
 
     private User user;
     private Email email;
@@ -68,7 +71,7 @@ class HeuristicAnalysisServiceTest {
     void setUp() {
         service = new HeuristicAnalysisService(
             emailRepository, analysisRepository, userRepository,
-            engine, emailHeaderCache, objectMapper
+            engine, emailHeaderCache, objectMapper, clock
         );
 
         user = User.builder()
@@ -105,7 +108,7 @@ class HeuristicAnalysisServiceTest {
             .origin(AnalysisOrigin.HEURISTIC)
             .riskLevel(ThreatLevel.GREEN)
             .riskPercentage(15)
-            .analyzedAt(LocalDateTime.now().minusHours(25))
+            .analyzedAt(LocalDateTime.now(clock).minusHours(25))
             .build();
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
@@ -168,7 +171,7 @@ class HeuristicAnalysisServiceTest {
             .origin(AnalysisOrigin.HEURISTIC)
             .riskLevel(ThreatLevel.GREEN)
             .riskPercentage(15)
-            .analyzedAt(LocalDateTime.now().minusHours(25))
+            .analyzedAt(LocalDateTime.now(clock).minusHours(25))
             .build();
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))

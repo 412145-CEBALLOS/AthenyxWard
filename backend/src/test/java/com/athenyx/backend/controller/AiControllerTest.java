@@ -60,7 +60,9 @@ class AiControllerTest {
         when(authentication.getPrincipal()).thenReturn(1L);
         AiExplanationResponse response = new AiExplanationResponse(
                 1L,
-                "Este correo es sospechoso porque contiene lenguaje de urgencia.",
+                "Resumen del correo.",
+                "Explicación heurística.",
+                "Segunda opinión.",
                 AiOrigin.LLM,
                 "llama3",
                 LocalDateTime.now());

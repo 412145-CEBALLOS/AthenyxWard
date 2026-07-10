@@ -3,7 +3,6 @@ package com.athenyx.backend.entity;
 import com.athenyx.backend.ai.AiOrigin;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -31,8 +30,14 @@ public class AiExplanation {
     @JoinColumn(name = "email_id", nullable = false)
     private Email email;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String text;
+    @Column(columnDefinition = "TEXT")
+    private String summary;
+
+    @Column(name = "heuristic_explanation", columnDefinition = "TEXT")
+    private String heuristicExplanation;
+
+    @Column(name = "second_opinion", columnDefinition = "TEXT")
+    private String secondOpinion;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -41,7 +46,6 @@ public class AiExplanation {
     @Column(name = "model_name", length = 64)
     private String modelName;
 
-    @CreationTimestamp
     @Column(name = "generated_at", nullable = false, updatable = false)
     private LocalDateTime generatedAt;
 }

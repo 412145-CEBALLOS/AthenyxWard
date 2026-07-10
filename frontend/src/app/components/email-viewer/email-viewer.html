@@ -16,7 +16,7 @@
     [isDeleted]="email().isDeleted"
     [canExplain]="analysis()?.riskLevel != null"
     (action)="action.emit($event)"
-    (explainRequest)="explainRequest.emit()" />
+    (explainRequest)="onExplainRequest()" />
   <app-email-analysis
     [analysis]="analysis()"
     [state]="state()"
@@ -31,13 +31,13 @@
     (retry)="retry.emit()"
     (analyzeRequest)="analyzeRequest.emit()" />
   @if (aiState() === 'loading') {
-    <div class="ai-loading" role="status" aria-live="polite">
+    <div class="ai-loading" #aiLoading role="status" aria-live="polite">
       <span class="spinner"></span>
       <p>Generando explicación con IA…</p>
     </div>
   }
   @if (aiState() === 'ready' && aiExplanation(); as exp) {
-    <div class="ai-card">
+    <div class="ai-card" #aiCard>
       <div class="ai-card-header">
         <span class="ai-badge" [class.ai-badge--llm]="exp.origin === 'LLM'" [class.ai-badge--fallback]="exp.origin === 'FALLBACK'">
           {{ exp.origin === 'LLM' ? 'Generado por IA' : 'Explicación heurística' }}
@@ -47,7 +47,31 @@
           <span class="ai-model">{{ exp.modelName }}</span>
         }
       </div>
-      <p class="ai-text">{{ exp.text }}</p>
+
+      @if (!exp.summary && !exp.heuristicExplanation && !exp.secondOpinion) {
+        <p class="ai-text">
+          {{ exp.origin === 'LLM' ? 'Análisis anterior no disponible' : 'Error al consultar a la IA' }}
+        </p>
+      } @else {
+        @if (exp.summary) {
+          <section class="ai-section">
+            <h4 class="ai-section-title">Resumen del correo</h4>
+            <p class="ai-section-text">{{ exp.summary }}</p>
+          </section>
+        }
+        @if (exp.heuristicExplanation) {
+          <section class="ai-section">
+            <h4 class="ai-section-title">Por qué el análisis heurístico dio este resultado</h4>
+            <p class="ai-section-text">{{ exp.heuristicExplanation }}</p>
+          </section>
+        }
+        @if (exp.secondOpinion) {
+          <section class="ai-section">
+            <h4 class="ai-section-title">Segunda opinión de la IA</h4>
+            <p class="ai-section-text">{{ exp.secondOpinion }}</p>
+          </section>
+        }
+      }
     </div>
   }
   <div class="viewer-subject">

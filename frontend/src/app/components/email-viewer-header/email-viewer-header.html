@@ -18,7 +18,7 @@
       {{ email() | emailDate }}
     </div>
   </div>
-  <button
+    <button
     type="button"
     class="ai-explain-btn"
     [disabled]="aiButtonDisabled()"
@@ -26,6 +26,7 @@
     (click)="onAiButtonClick()"
     aria-label="Explicar con IA">
     <i class="ti ti-robot" aria-hidden="true"></i>
+    <span class="ai-btn-text">Análisis por IA</span>
   </button>
   <app-kebab-menu
     [items]="items()"

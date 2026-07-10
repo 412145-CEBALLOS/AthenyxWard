@@ -121,10 +121,23 @@ in the email viewer header, next to the kebab menu. It calls the AI explanation 
 ```
 user clicks "Explicar con IA" button (email-viewer-header)
    └─ home.onExplainRequest()
-        ├─ 200 → aiExplanation set, aiState = 'ready' → card with badge + timestamp
+        ├─ 200 → aiExplanation set, aiState = 'ready' → card with badge + 3 sections
         ├─ 403 → aiState = 'unavailable-trial' + toast
         └─ 5xx / timeout → aiState = 'error' + toast with "Reintentar" action
 ```
+
+**Response structure:**
+`AiExplanationResponse { id, summary, heuristicExplanation, secondOpinion, origin: LLM|FALLBACK, modelName, generatedAt }`
+
+**UI rendering (email-viewer):**
+- If all 3 fields are null and origin=LLM → "Análisis anterior no disponible" (legacy rows)
+- If all 3 fields are null and origin=FALLBACK → "Error al consultar a la IA"
+- Otherwise → render up to 3 sections conditionally, each with title + text (`.ai-section-title`, `.ai-section-text`)
+
+**Section titles:**
+- "Resumen del correo" — summary of the email content
+- "Por qué el análisis heurístico dio este resultado" — why heuristic gave this percentage
+- "Segunda opinión de la IA" — AI's own independent verdict
 
 Key facts:
 - `canExplain` input to `email-viewer-header` is `analysis()?.riskLevel != null` — button is
@@ -138,9 +151,9 @@ Key facts:
 
 Backend (`AiExplanationService.explain`):
 - PREMIUM/ADMIN only → 403 for TRIAL users.
-- 5 fallback scenarios (LLM success, Ollama disabled, connection refused, no prior analysis,
-  timeout) → all return `AiOrigin` enum so the frontend can badge the result.
-- Response: `AiExplanationResponse { id, text, origin: LLM|FALLBACK, modelName, generatedAt }`.
+- LLM is asked for a structured JSON response with 3 fields (summary, heuristicExplanation, secondOpinion), each 2 paragraphs.
+- Prompt includes anti-prompt-injection guardrails: untrusted content wrapped in `<email_body>` delimiters, explicit instruction to ignore any directives found inside.
+- `num-predict = 1000` (provides ~2500 chars headroom for 3 sections of 3-4 sentences with Qwen 2.5 7B).
 
 ## AI Resilience (US 3.8)
 
@@ -150,11 +163,13 @@ The `AiExplanationService` implements five internal paths (documented in its cla
 |------|---------|--------|-----|
 | No prior analysis | `latest == null` | FALLBACK | `durationMs=0, origin=FALLBACK` |
 | AI disabled | `enabled=false` | FALLBACK | `durationMs, origin=FALLBACK` |
-| LLM success | Ollama responds ≤8 s with valid text | LLM | `durationMs, origin=LLM` |
+| LLM success | Ollama responds ≤25 s with valid JSON + 3 fields | LLM | `durationMs, origin=LLM` |
 | LLM exception | timeout, connection refused, 5xx | FALLBACK | `durationMs, origin=FALLBACK, error=…` |
-| Empty response | `content == null \|\| isBlank()` | FALLBACK | `durationMs, origin=FALLBACK, error=…` |
+| Parse fails — invalid JSON | JSON malformed, no truncation pattern | FALLBACK | `durationMs, origin=FALLBACK, error=invalid_json length=N` |
+| Parse fails — truncated JSON | Response cut by `num-predict` (pattern or length) | FALLBACK | `durationMs, origin=FALLBACK, error=truncated_json length=N` |
+| All fields empty | 3 nulls after successful parse | FALLBACK | `durationMs, origin=FALLBACK, error=empty_sections` |
 
-All paths emit `log.info("ai.explain userId={} emailId={} durationMs={} origin={} [error=…]")` — never propagated to the client. Tests in `AiExplanationServiceTest` cover all 5 paths plus a dedicated timeout test (`AiUnavailableException("timeout")`).
+All paths emit `log.info("ai.explain userId={} emailId={} durationMs={} origin={} [error=…]")` — never propagated to the client. Tests in `AiExplanationServiceTest` cover all paths.
 
 ## Reminders (US 2.6)
 
@@ -281,7 +296,7 @@ Frontend (`AnalysisHistoryComponent`):
 ## Development Workflow
 
 1. Start MySQL locally (port 3306)
-2. **If using AI features (Sprint 3+):** Start Ollama locally with Llama 3 model (`ollama serve && ollama pull llama3`)
+2. **If using AI features (Sprint 3+):** Start Ollama locally with Qwen 2.5 model (`ollama serve && ollama pull qwen2.5:7b-instruct`)
 3. Configure `backend/src/main/resources/application.properties`
 4. Run backend: `./mvnw spring-boot:run`
    - **Sin Ollama instalado:** set env var `OLLAMA_ENABLED=false` (o en `.env`) — el backend arranca igual en modo lazy sin contactar Ollama
@@ -299,6 +314,10 @@ Frontend (`AnalysisHistoryComponent`):
 - Backend: Lombok for boilerplate reduction, Jakarta Bean Validation
 - Frontend: Prettier (100 char width, single quotes), strict TypeScript
 - No ESLint configured yet
+
+## Planning Guidelines
+
+When the user asks for a plan before implementing, do not include code examples in the plan. Only describe what each step will do (e.g., "Replace the `text` column in the `AiExplanation` entity with three nullable TEXT columns: `summary`, `heuristicExplanation`, and `secondOpinion`"). The implementation itself may include code, but the plan should be descriptive only.
 
 ## References
 
