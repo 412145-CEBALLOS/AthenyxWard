@@ -1,0 +1,112 @@
+@if (open() && user()) {
+  <div class="drawer-overlay" (click)="onOverlayClick()">
+    <div class="drawer-panel" (click)="onPanelClick($event)" role="dialog" aria-modal="true">
+      <div class="drawer-header">
+        <h2 class="drawer-title">Detalle del usuario</h2>
+        <button type="button" class="close-btn" (click)="close.emit()" aria-label="Cerrar">
+          ✕
+        </button>
+      </div>
+
+      <div class="drawer-body">
+        <!-- Identidad -->
+        <section class="drawer-section">
+          <h3 class="section-title">Identidad</h3>
+          <div class="user-identity">
+            @if (user()!.pictureUrl) {
+              <img [src]="user()!.pictureUrl" [alt]="user()!.name" class="user-avatar-img" />
+            } @else {
+              <div class="user-avatar-placeholder">{{ user()!.name.charAt(0) }}</div>
+            }
+            <div class="identity-info">
+              <span class="user-name">{{ user()!.name }}</span>
+              <span class="user-email">{{ user()!.email }}</span>
+            </div>
+          </div>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">ID</span>
+              <span class="meta-value">{{ user()!.id }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Google ID</span>
+              <span class="meta-value mono">{{ user()!.googleId }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Creado</span>
+              <span class="meta-value">{{ user()!.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Último acceso</span>
+              <span class="meta-value">{{ (user()!.lastLogin | date: 'dd/MM/yyyy HH:mm') || 'Nunca' }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Suscripción -->
+        <section class="drawer-section">
+          <h3 class="section-title">Suscripción</h3>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Rol</span>
+              <span class="role-badge" [attr.data-role]="user()!.role">
+                {{ roleLabel(user()!.role) }}
+              </span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Estado</span>
+              <span class="status-badge" [attr.data-active]="user()!.isActive">
+                {{ user()!.isActive ? 'Activo' : 'Inactivo' }}
+              </span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Fin del trial</span>
+              <span class="meta-value" [class.trial-warning]="isTrialExpiringSoon()" [class.trial-expired]="isTrialExpired()">
+                {{ (user()!.trialEndDate | date: 'dd/MM/yyyy') || 'No aplica' }}
+              </span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Análisis usados</span>
+              <span class="meta-value">{{ user()!.analysisCount }} / {{ trialAnalysisLimit() }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Actividad -->
+        <section class="drawer-section">
+          <h3 class="section-title">Actividad</h3>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Emails analizados</span>
+              <span class="meta-value">{{ user()!.emailCount }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Recordatorios creados</span>
+              <span class="meta-value">{{ user()!.reminderCount }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Acciones -->
+        <section class="drawer-section actions-section">
+          <button type="button" class="action-btn role-btn" (click)="changeRole.emit()">
+            <i class="ti ti-user-cog"></i>
+            Cambiar rol
+          </button>
+          <button type="button" class="action-btn trial-btn" (click)="resetTrial.emit()">
+            <i class="ti ti-refresh"></i>
+            Restablecer trial
+          </button>
+          <button type="button" class="action-btn audit-btn" (click)="viewAuditHistory.emit(user()!.email)">
+            <i class="ti ti-history"></i>
+            Ver historial de auditoría
+          </button>
+          <button type="button" class="action-btn delete-btn" (click)="deleteUser.emit()">
+            <i class="ti ti-trash"></i>
+            Eliminar usuario
+          </button>
+        </section>
+      </div>
+    </div>
+  </div>
+}

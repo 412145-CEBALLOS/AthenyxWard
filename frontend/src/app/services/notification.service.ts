@@ -2,23 +2,31 @@ import {
   DestroyRef,
   Injectable,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of, Subject, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { UpcomingNotification } from '../models/notification.model';
 import { ReminderService } from './reminder.service';
 import { ToastService } from './toast.service';
+import { AppConfigInitializerService } from './app-config-initializer.service';
+import { AuthService } from './auth.service';
 
 const UPCOMING_WINDOW_MS = 24 * 60 * 60 * 1000;
-const SOON_WINDOW_MS = 24 * 60 * 60 * 1000; // "coming up" toast covers the whole 24h window
+const SOON_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Polls {@code GET /api/notifications/upcoming} every 2 minutes
- * (default) and exposes the latest snapshot as a signal.
+ * Self-reactive notification polling service.
+ *
+ * <p>Polls {@code GET /api/notifications/upcoming} on a configurable
+ * interval (default 120 s) and exposes the latest snapshot as a signal.
+ * Polling starts/stops automatically based on the user's role
+ * (PREMIUM/ADMIN only) and the {@code NOTIFICATIONS_POLL_INTERVAL_SECONDS}
+ * config value — no external orchestration needed.</p>
  *
  * <p>Three consumption paths:
  * <ul>
@@ -32,15 +40,14 @@ const SOON_WINDOW_MS = 24 * 60 * 60 * 1000; // "coming up" toast covers the whol
  *         "en 1 d".</li>
  *     <li><strong>"Just fired" toast</strong> — fired once per
  *         reminder when the due time has passed. Warning type with
- *         a "Marcar hecho" action button.</li>
+ *         a "Marcar hecho" action button. Also scheduled precisely
+ *         via {@code setTimeout} so it fires at the exact moment
+ *         the reminder becomes overdue, independent of the poll
+ *         interval.</li>
  * </ul>
  *
  * <p>Both toasts are deduped in-memory via {@link shownIds}.
- * Refreshing the page re-fires them for still-pending reminders.
- * The polling loop is started/stopped by
- * {@link LayoutComponent} (only for non-TRIAL users). It fires
- * once immediately on start and every {@link intervalMs}
- * thereafter.</p>
+ * Refreshing the page re-fires them for still-pending reminders.</p>
  */
 @Injectable({
   providedIn: 'root',
@@ -50,15 +57,13 @@ export class NotificationService {
   private readonly reminderService = inject(ReminderService);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly appConfig = inject(AppConfigInitializerService);
+  private readonly authService = inject(AuthService);
 
-  /** Latest poll response (empty until the first poll lands). */
   readonly notifications = signal<UpcomingNotification[]>([]);
-  /** Most recent poll error, or {@code null} when the last poll succeeded. */
   readonly lastError = signal<string | null>(null);
 
-  /** Derived: count of items the panel will display. */
   readonly count = computed(() => this.notifications().length);
-  /** Derived: count of overdue items (those that triggered the warning toast). */
   readonly overdueCount = computed(() =>
     this.notifications().filter((n) => n.isOverdue).length
   );
@@ -84,14 +89,27 @@ export class NotificationService {
   private currentIntervalMs = 0;
   private inFlight = false;
 
+  /** Maps reminderId → scheduled setTimeout handle for "just fired" toasts. */
+  private readonly overdueTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
   constructor() {
-    this.destroyRef.onDestroy(() => this.stopPolling());
+    this.destroyRef.onDestroy(() => {
+      this.stopPollingLoop();
+      this.clearAllOverdueTimers();
+    });
+
+    effect(() => {
+      const role = this.authService.user()?.role;
+      const intervalMs = this.appConfig.pollIntervalSeconds() * 1000;
+      const shouldPoll = (role === 'PREMIUM' || role === 'ADMIN') && intervalMs > 0;
+      if (shouldPoll) {
+        this.startPollingLoop(intervalMs);
+      } else {
+        this.stopPollingLoop();
+      }
+    });
   }
 
-  /**
-   * Returns the raw list once. Cold observable — useful for one-off
-   * lookups. The polling loop calls this internally as well.
-   */
   fetchOnce(): Observable<UpcomingNotification[]> {
     return this.http
       .get<UpcomingNotification[]>(`${environment.apiUrl}/notifications/upcoming`)
@@ -99,51 +117,23 @@ export class NotificationService {
   }
 
   /**
-   * Starts (or restarts) the polling loop. The first poll is fired
-   * immediately; subsequent polls happen every {@link intervalMs}.
-   * Safe to call multiple times — a running loop is reset to the
-   * new interval.
+   * @deprecated No-op. Kept for backward compatibility with components
+   * that call it directly. Polling is now self-managed internally via
+   * the {@code effect()} in the constructor.
    */
-  startPolling(intervalMs: number = 120_000): void {
-    this.stopPolling();
-    this.currentIntervalMs = intervalMs;
-    this.poll();
-    this.intervalHandle = setInterval(() => this.poll(), intervalMs);
-  }
+  startPolling(intervalMs: number = 120_000): void {}
 
-  /** Stops the polling loop. No-op when already stopped. */
-  stopPolling(): void {
-    if (this.intervalHandle !== null) {
-      clearInterval(this.intervalHandle);
-      this.intervalHandle = null;
-    }
-  }
+  /** @deprecated No-op. Polling is stopped internally via the {@code effect()}. */
+  stopPolling(): void {}
 
-  /**
-   * Marks a notification as already-shown so the toast won't
-   * re-fire on the next poll. Idempotent.
-   */
   markShown(id: number): void {
     this.shownIds.add(id);
   }
 
-  /**
-   * Marks the reminder as done on the backend. Idempotent: a
-   * second call while the first is in flight is dropped silently.
-   * On success the id is removed from the local notifications
-   * cache and {@link done$} fires with the id.
-   */
   markDone(notification: UpcomingNotification): Observable<void> {
     return this.markDoneById(notification.reminderId);
   }
 
-  /**
-   * Overload for callers that only know the reminder id (e.g. the
-   * "Marcar hecho" button inside the email viewer, which already
-   * has the reminder object but no {@link UpcomingNotification}
-   * wrapper). Same idempotency + cache-update guarantees as
-   * {@link markDone}.
-   */
   markDoneById(reminderId: number): Observable<void> {
     if (this.inflightMarkDone.has(reminderId)) {
       return of(undefined);
@@ -157,49 +147,59 @@ export class NotificationService {
           this.markDoneLocally(reminderId);
         }),
         map(() => undefined),
-        catchError((err) => {
+        catchError((err: HttpErrorResponse) => {
           this.inflightMarkDone.delete(reminderId);
+          if (err?.status === 404) {
+            console.info(`[NotificationService] markDone 404 — stale notification for reminderId=${reminderId}, removed silently`);
+            this.markDoneLocally(reminderId);
+            return of(undefined);
+          }
           this.toast.error('No se pudo marcar el recordatorio como hecho.');
           return throwError(() => err);
         })
       );
   }
 
-  /**
-   * Removes a notification from the local cache and fires
-   * {@link done$} so other components (the email-viewer banner,
-   * the {@code /reminders} page) can refresh their own copy of the
-   * state. Local + targeted — no global signal cascade.
-   */
   markDoneLocally(id: number): void {
+    this.clearOverdueTimer(id);
     this.removeLocally(id);
     this.done$.next(id);
   }
 
-  /** Removes a notification from the local cache (after deletion, etc). */
   removeLocally(id: number): void {
+    this.clearOverdueTimer(id);
     this.notifications.update((list) => list.filter((n) => n.reminderId !== id));
   }
 
+  startPollingLoop(intervalMs: number): void {
+    if (this.intervalHandle !== null && this.currentIntervalMs === intervalMs) {
+      return;
+    }
+    this.stopPollingLoop();
+    this.currentIntervalMs = intervalMs;
+    this.poll();
+    this.intervalHandle = setInterval(() => this.poll(), intervalMs);
+  }
+
+  stopPollingLoop(): void {
+    if (this.intervalHandle !== null) {
+      clearInterval(this.intervalHandle);
+      this.intervalHandle = null;
+      this.currentIntervalMs = 0;
+    }
+  }
+
   private poll(): void {
-    // Don't overlap with a previous in-flight poll.
     if (this.inFlight) return;
-    // Don't race with a markDone: the backend hasn't committed yet,
-    // so the poll would re-fetch the just-done reminder and put it
-    // back in the bell. The next poll cycle (≤ 2 min later) will
-    // pick it up.
     if (this.inflightMarkDone.size > 0) return;
     this.inFlight = true;
     this.fetchOnce().subscribe({
       next: (items) => {
         this.inFlight = false;
         this.lastError.set(null);
-        // The backend query already filters `done = false`, so the
-        // response is authoritative once a PATCH has committed.
-        // We don't need a client-side set lookup — `done$` plus
-        // the in-flight guard is enough to keep the bell consistent.
         this.notifications.set(items);
         this.fireToasts(items);
+        this.scheduleOverdueTimers(items);
       },
       error: () => {
         this.inFlight = false;
@@ -208,17 +208,6 @@ export class NotificationService {
     });
   }
 
-  /**
-   * Fires two kinds of toasts based on the latest poll result:
-   *
-   * <ul>
-   *   <li>items in the next 24h → info toast "Recordatorio próximo:
-   *       … en X min/h/d".</li>
-   *   <li>items that have just passed their due time → warning toast
-   *       with "Marcar hecho" action.</li>
-   * </ul>
-   * Both are deduped via {@link shownIds}.
-   */
   private fireToasts(items: UpcomingNotification[]): void {
     const now = Date.now();
     for (const item of items) {
@@ -246,12 +235,69 @@ export class NotificationService {
           hours >= 1 ? `${hours} h` :
           `${minutes} min`;
         this.toast.info(`Recordatorio próximo: "${subject}" en ${when}.`);
-      } else if (diffMs <= 0 && diffMs >= -UPCOMING_WINDOW_MS) {
-        // Edge case: an item that just became overdue this poll
-        // (isOverdue was false in the previous poll, true now).
-        // Same code path as the overdue branch — but already handled
-        // above. Keep the comment for clarity.
       }
     }
+  }
+
+  /**
+   * Schedules precise {@code setTimeout} timers for each upcoming
+   * (non-overdue) reminder so the "just fired" toast fires at the
+   * exact overdue moment, independent of the poll interval.
+   *
+   * <p>Timers are stored in {@link overdueTimers} and cleared when:
+   * <ul>
+   *   <li>the reminder is removed locally ({@link markDoneLocally},
+   *       {@link removeLocally})</li>
+   *   <li>a new poll returns the same reminder with a different date</li>
+   *   <li>the service is destroyed</li>
+   * </ul>
+   */
+  private scheduleOverdueTimers(items: UpcomingNotification[]): void {
+    const currentIds = new Set(items.map(i => i.reminderId));
+    for (const [id, handle] of this.overdueTimers) {
+      if (!currentIds.has(id)) {
+        clearTimeout(handle);
+        this.overdueTimers.delete(id);
+      }
+    }
+    const now = Date.now();
+    for (const item of items) {
+      if (item.isOverdue) continue;
+      const target = new Date(item.reminderDate).getTime();
+      if (Number.isNaN(target)) continue;
+      const diffMs = target - now;
+      if (diffMs <= 0) continue;
+      if (diffMs > UPCOMING_WINDOW_MS) continue;
+      const existing = this.overdueTimers.get(item.reminderId);
+      if (existing !== undefined) continue;
+      const handle = setTimeout(() => {
+        this.overdueTimers.delete(item.reminderId);
+        if (this.shownIds.has(item.reminderId)) return;
+        this.shownIds.add(item.reminderId);
+        const subject = item.emailSubject || item.emailSender || 'un correo';
+        this.toast.warning(`Tu recordatorio de "${subject}" acaba de vencer.`, {
+          action: {
+            label: 'Marcar hecho',
+            onClick: () => this.markDone(item).subscribe(),
+          },
+        });
+      }, diffMs);
+      this.overdueTimers.set(item.reminderId, handle);
+    }
+  }
+
+  private clearOverdueTimer(id: number): void {
+    const handle = this.overdueTimers.get(id);
+    if (handle !== undefined) {
+      clearTimeout(handle);
+      this.overdueTimers.delete(id);
+    }
+  }
+
+  private clearAllOverdueTimers(): void {
+    for (const handle of this.overdueTimers.values()) {
+      clearTimeout(handle);
+    }
+    this.overdueTimers.clear();
   }
 }

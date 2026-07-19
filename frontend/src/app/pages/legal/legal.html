@@ -1,0 +1,81 @@
+<app-page-shell
+  [icon]="isPrivacy() ? 'ti ti-shield-lock' : 'ti ti-file-text'"
+  [pageTitle]="pageTitle()"
+  [subtitle]="pageSubtitle()">
+
+  @if (loading()) {
+    <div class="legal-loading">
+      <div class="legal-spinner"></div>
+      <p>Cargando documento…</p>
+    </div>
+  } @else if (error()) {
+    <div class="legal-error">
+      <i class="ti ti-alert-circle" aria-hidden="true"></i>
+      <p>No se pudo cargar el documento legal. Inténtalo de nuevo más tarde.</p>
+      <a routerLink="/login" class="legal-back-link">Volver al inicio</a>
+    </div>
+  } @else {
+    @if (fromOAuth()) {
+      <div class="legal-oauth-notice">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        <span>Para completar tu registro, lee y acepta los {{ isPrivacy() ? 'términos' : 'términos y condiciones' }}.</span>
+      </div>
+    }
+
+    <div class="legal-body">
+      @for (block of blocks(); track $index) {
+        @switch (block.kind) {
+          @case ('heading1') {
+            <h1 class="legal-h1" [innerHTML]="block.content"></h1>
+          }
+          @case ('heading2') {
+            <h2 class="legal-h2" [innerHTML]="block.content"></h2>
+          }
+          @case ('heading3') {
+            <h3 class="legal-h3" [innerHTML]="block.content"></h3>
+          }
+          @case ('paragraph') {
+            <p class="legal-paragraph" [innerHTML]="block.content"></p>
+          }
+          @case ('orderedList') {
+            <ol class="legal-ol">
+              @for (item of block.items; track $index) {
+                <li [innerHTML]="item"></li>
+              }
+            </ol>
+          }
+          @case ('unorderedList') {
+            <ul class="legal-ul">
+              @for (item of block.items; track $index) {
+                <li [innerHTML]="item"></li>
+              }
+            </ul>
+          }
+        }
+      }
+    </div>
+
+    @if (fromOAuth()) {
+      <div class="legal-accept-section">
+        <button
+          type="button"
+          class="legal-accept-btn"
+          [disabled]="!canAccept()"
+          (click)="accept()">
+          <i class="ti ti-check" aria-hidden="true"></i>
+          Aceptar y completar registro
+        </button>
+        @if (!hasReadEnough()) {
+          <p class="legal-scroll-hint">Desplázate hacia abajo para terminar de leer</p>
+        }
+      </div>
+    } @else {
+      <div class="legal-accept-section">
+        <a routerLink="/login" class="legal-back-link">
+          <i class="ti ti-arrow-left" aria-hidden="true"></i>
+          Volver al inicio
+        </a>
+      </div>
+    }
+  }
+</app-page-shell>

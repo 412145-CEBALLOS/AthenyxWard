@@ -1,8 +1,9 @@
 package com.athenyx.backend.controller;
 
+import com.athenyx.backend.ai.AiExplanationService;
+import com.athenyx.backend.ai.AiPremiumRequiredException;
 import com.athenyx.backend.dto.AiExplanationResponse;
 import com.athenyx.backend.heuristics.TrialLimitExceededException;
-import com.athenyx.backend.ai.AiExplanationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ public class AiController {
     private final AiExplanationService service;
 
     @PostMapping("/emails/{id}/explain")
-    @PreAuthorize("hasAnyRole('PREMIUM', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AiExplanationResponse> explain(
             @PathVariable Long id,
             Authentication auth) {
@@ -30,6 +31,9 @@ public class AiController {
             return ResponseEntity.ok(response);
         } catch (CompletionException e) {
             Throwable cause = e.getCause() != null ? e.getCause() : e;
+            if (cause instanceof AiPremiumRequiredException) {
+                throw (AiPremiumRequiredException) cause;
+            }
             if (cause instanceof TrialLimitExceededException) {
                 throw (TrialLimitExceededException) cause;
             }

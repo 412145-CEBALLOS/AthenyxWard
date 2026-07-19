@@ -7,4 +7,18 @@
             (toggleSidebar)="toggleSidebar()"/>
         <router-outlet [class.sidebar-margin]="sidebarOpen"></router-outlet>
     </div>
+    <footer class="layout-footer">
+        <nav class="footer-links" aria-label="Enlaces legales">
+            <a routerLink="/legal/terms" class="footer-link">Términos y Condiciones</a>
+            <span class="footer-sep" aria-hidden="true">·</span>
+            <a routerLink="/legal/privacy" class="footer-link">Política de Privacidad</a>
+            <span class="footer-sep" aria-hidden="true">·</span>
+            <a routerLink="/help" class="footer-link">Ayuda</a>
+        </nav>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <span class="footer-support">
+            <span>Soporte:</span>
+            <a [href]="'mailto:' + appConfig.supportEmail()" class="footer-link">{{ appConfig.supportEmail() }}</a>
+        </span>
+    </footer>
 </div>

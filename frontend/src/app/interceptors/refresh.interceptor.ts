@@ -61,9 +61,10 @@ function performRefresh(authService: AuthService, router: Router): Observable<un
   if (!inflightRefresh) {
     inflightRefresh = authService.refresh().pipe(
       catchError((refreshErr) => {
+        const isAccountDisabled = refreshErr?.error?.error === 'ACCOUNT_DISABLED';
         authService.refreshFailed.set(true);
         authService.currentUser.set(null);
-        router.navigate(['/login']);
+        router.navigate([isAccountDisabled ? '/account-disabled' : '/login']);
         return throwError(() => refreshErr);
       }),
       finalize(() => {

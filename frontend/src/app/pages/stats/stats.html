@@ -3,6 +3,7 @@
   [pageTitle]="title()"
   [subtitle]="subtitle()">
 
+  <div class="stats-page">
   <div class="period-selector" role="tablist" aria-label="Periodo de tiempo">
     <button type="button" role="tab"
       [class.active]="period() === 'week'"
@@ -340,4 +341,5 @@
       </div>
     }
   }
+  </div>
 </app-page-shell>

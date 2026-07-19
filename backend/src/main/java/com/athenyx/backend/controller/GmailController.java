@@ -1,5 +1,6 @@
 package com.athenyx.backend.controller;
 
+import com.athenyx.backend.audit.AuditEventPublisher;
 import com.athenyx.backend.dto.EmailPageResponse;
 import com.athenyx.backend.dto.EmailDetail;
 import com.athenyx.backend.dto.EmailSummary;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,6 +30,7 @@ import java.util.Map;
 public class GmailController {
 
     private final GmailService gmailService;
+    private final AuditEventPublisher auditEventPublisher;
 
     @GetMapping("/fetch")
     public ResponseEntity<EmailPageResponse> fetchEmails(
@@ -73,37 +76,53 @@ public class GmailController {
 
     @PostMapping("/{id}/important")
     @PreAuthorize("hasAnyRole('PREMIUM', 'ADMIN')")
+    @Transactional
     public ResponseEntity<EmailImportantToggleResponse> toggleImportant(
             @PathVariable Long id,
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(gmailService.toggleImportant(userId, id));
+        String actorEmail = (String) authentication.getDetails();
+        EmailImportantToggleResponse result = gmailService.toggleImportant(userId, id);
+        auditEventPublisher.publishEmailMarkedImportant(userId, actorEmail, id, result.isImportant());
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/{id}/hide")
     @PreAuthorize("hasAnyRole('PREMIUM', 'ADMIN')")
+    @Transactional
     public ResponseEntity<EmailHideResponse> hideEmail(
             @PathVariable Long id,
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(gmailService.hide(userId, id));
+        String actorEmail = (String) authentication.getDetails();
+        EmailHideResponse result = gmailService.hide(userId, id);
+        auditEventPublisher.publishEmailHidden(userId, actorEmail, id);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/{id}/unhide")
     @PreAuthorize("hasAnyRole('PREMIUM', 'ADMIN')")
+    @Transactional
     public ResponseEntity<EmailHideResponse> unhideEmail(
             @PathVariable Long id,
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(gmailService.unhide(userId, id));
+        String actorEmail = (String) authentication.getDetails();
+        EmailHideResponse result = gmailService.unhide(userId, id);
+        auditEventPublisher.publishEmailUnhidden(userId, actorEmail, id);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/{id}/delete")
+    @Transactional
     public ResponseEntity<EmailDeleteResponse> deleteEmail(
             @PathVariable Long id,
             Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(gmailService.softDelete(userId, id));
+        String actorEmail = (String) authentication.getDetails();
+        EmailDeleteResponse result = gmailService.softDelete(userId, id);
+        auditEventPublisher.publishEmailDeleted(userId, actorEmail, id);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/deleted")

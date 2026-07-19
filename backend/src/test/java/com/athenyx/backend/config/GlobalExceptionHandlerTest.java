@@ -125,4 +125,14 @@ class GlobalExceptionHandlerTest {
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(res.getBody()).containsEntry("error", "Recordatorio no encontrado");
     }
+
+    @Test
+    void mapsAccountDisabledRefreshTokenException_to403() {
+        ResponseEntity<Map<String, String>> res = handler.handleRefreshTokenException(
+                new RefreshTokenException(RefreshTokenException.Kind.ACCOUNT_DISABLED,
+                        "User account is disabled or deleted"));
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(res.getBody()).containsEntry("error", "ACCOUNT_DISABLED");
+    }
 }

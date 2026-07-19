@@ -65,9 +65,18 @@ public class User {
     @Builder.Default
     private boolean accessibilityMode = true;
 
+    private LocalDateTime termsAcceptedAt;
+
+    private String termsVersion;
+
     @Column(nullable = false)
     @Builder.Default
     private long tokenVersion = 0L;
+
+    @Builder.Default
+    private boolean isActive = true;
+
+    private LocalDateTime deletedAt;
 
     @CreationTimestamp
     @Column(updatable = false)

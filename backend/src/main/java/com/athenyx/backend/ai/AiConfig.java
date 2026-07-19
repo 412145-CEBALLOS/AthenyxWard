@@ -1,5 +1,7 @@
 package com.athenyx.backend.ai;
 
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
@@ -42,23 +44,26 @@ import java.time.Duration;
 @Configuration
 public class AiConfig {
 
-    private final boolean aiEnabled;
+    private final Boolean envAiEnabled;
     private final String modelName;
     private final double temperature;
     private final int numPredict;
     private final Duration timeout;
+    private final ConfigService configService;
 
     public AiConfig(
-            @Value("${spring.ai.ollama.chat.enabled:true}") boolean aiEnabled,
+            @Value("${spring.ai.ollama.chat.enabled:#{null}}") Boolean envAiEnabled,
             @Value("${spring.ai.ollama.chat.model:qwen2.5:7b-instruct}") String modelName,
             @Value("${spring.ai.ollama.chat.options.temperature:0.2}") double temperature,
             @Value("${spring.ai.ollama.chat.options.num-predict:1000}") int numPredict,
-            @Value("${spring.ai.ollama.chat.options.timeout:25s}") Duration timeout) {
-        this.aiEnabled = aiEnabled;
+            @Value("${spring.ai.ollama.chat.options.timeout:25s}") Duration timeout,
+            ConfigService configService) {
+        this.envAiEnabled = envAiEnabled;
         this.modelName = modelName;
         this.temperature = temperature;
         this.numPredict = numPredict;
         this.timeout = timeout;
+        this.configService = configService;
     }
 
     /**
@@ -112,6 +117,6 @@ public class AiConfig {
      */
     @Bean
     public AiProperties aiProperties() {
-        return new AiProperties(aiEnabled, modelName, temperature, numPredict, timeout);
+        return new AiProperties(true, modelName, temperature, numPredict, timeout);
     }
 }

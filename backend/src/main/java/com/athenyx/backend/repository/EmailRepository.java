@@ -1,12 +1,14 @@
 package com.athenyx.backend.repository;
 
 import com.athenyx.backend.entity.Email;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -105,4 +107,13 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
      * Counts soft-deleted emails for the user.
      */
     long countByUserIdAndIsDeletedTrue(Long userId);
+
+    long countByUserId(Long userId);
+
+    @Query("SELECT e.id FROM Email e WHERE e.fetchedAt < :cutoff")
+    List<Long> findIdsOlderThan(LocalDateTime cutoff);
+
+    @Modifying
+    @Query("DELETE FROM Email e WHERE e.id IN :ids")
+    int deleteAllByIdIn(@Param("ids") List<Long> ids);
 }

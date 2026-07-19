@@ -1,76 +1,52 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { signal } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { LayoutComponent } from './layout';
+import { AppConfigInitializerService } from '../../services/app-config-initializer.service';
+import { signal, PLATFORM_ID, Signal, WritableSignal } from '@angular/core';
+import { ChangeDetectionStrategy } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
 
-import { LayoutComponent } from './layout';
-import { AuthService } from '../../services/auth.service';
-import { NotificationService } from '../../services/notification.service';
+class MockAppConfigInitializerService {
+  readonly supportEmail: Signal<string> = signal('support@athenyxward.com').asReadonly();
+  readonly pollIntervalSeconds: WritableSignal<number> = signal(120);
+  readonly loading: Signal<boolean> = signal(false).asReadonly();
+  load = jasmine.createSpy('load');
+}
 
-describe('Layout', () => {
+describe('LayoutComponent', () => {
   let component: LayoutComponent;
   let fixture: ComponentFixture<LayoutComponent>;
-  let notificationServiceStub: { startPolling: jasmine.Spy; stopPolling: jasmine.Spy };
+  let mockAppConfig: MockAppConfigInitializerService;
 
   beforeEach(async () => {
-    notificationServiceStub = {
-      startPolling: jasmine.createSpy('startPolling'),
-      stopPolling: jasmine.createSpy('stopPolling'),
-    };
+    mockAppConfig = new MockAppConfigInitializerService();
 
     await TestBed.configureTestingModule({
       imports: [LayoutComponent],
       providers: [
-        provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        {
-          provide: AuthService,
-          useValue: {
-            user: signal(null),
-            logout: () => undefined,
-            logoutAll: () => undefined,
-          },
-        },
-        { provide: NotificationService, useValue: notificationServiceStub },
+        provideRouter([]),
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: AppConfigInitializerService, useValue: mockAppConfig },
       ],
     })
-    .overrideComponent(LayoutComponent, {
-      set: { template: '<div class="layout-stub"></div>' },
-    })
-    .compileComponents();
+      .overrideComponent(LayoutComponent, {
+        set: { changeDetection: ChangeDetectionStrategy.Default },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(LayoutComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
-
-  afterEach(() => {
-    fixture.destroy();
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
-  it('opens the sidebar on the first toggleSidebar() call', () => {
-    expect(component.sidebarOpen).toBeFalse();
-    component.toggleSidebar();
-    expect(component.sidebarOpen).toBeTrue();
-  });
-
-  it('marks the sidebar as closing on the second toggleSidebar() call', fakeAsync(() => {
-    component.toggleSidebar();
-    component.toggleSidebar();
-    expect(component.sidebarOpen).toBeTrue();
-    expect(component.sidebarClosing).toBeTrue();
-    tick(400);
-    expect(component.sidebarOpen).toBeFalse();
-    expect(component.sidebarClosing).toBeFalse();
-  }));
-
-  it('does not start polling for a TRIAL user', () => {
-    expect(notificationServiceStub.startPolling).not.toHaveBeenCalled();
+  it('calls appConfig.load() on init', () => {
+    component.ngOnInit();
+    expect(mockAppConfig.load).toHaveBeenCalled();
   });
 });

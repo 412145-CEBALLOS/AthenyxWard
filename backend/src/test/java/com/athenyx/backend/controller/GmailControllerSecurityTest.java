@@ -5,6 +5,7 @@ import com.athenyx.backend.dto.EmailHideResponse;
 import com.athenyx.backend.dto.EmailImportantToggleResponse;
 import com.athenyx.backend.dto.EmailSummary;
 import com.athenyx.backend.gmail.GmailService;
+import com.athenyx.backend.audit.AuditEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,6 +30,9 @@ class GmailControllerSecurityTest {
 
     @Mock
     private Authentication authentication;
+
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
 
     @InjectMocks
     private GmailController controller;

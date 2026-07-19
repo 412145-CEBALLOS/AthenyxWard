@@ -41,7 +41,7 @@ class AiConfigTest {
 
     @Test
     void aiProperties_exposesValuesFromProperties() {
-        assertThat(aiProperties.enabled()).isFalse();
+        assertThat(aiProperties.enabled()).isTrue();
         assertThat(aiProperties.modelName()).isEqualTo("qwen2.5:7b-instruct");
         assertThat(aiProperties.temperature()).isEqualTo(0.2);
         assertThat(aiProperties.numPredict()).isEqualTo(1000);

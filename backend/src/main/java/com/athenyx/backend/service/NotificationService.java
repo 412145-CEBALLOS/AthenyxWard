@@ -1,5 +1,7 @@
 package com.athenyx.backend.service;
 
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
 import com.athenyx.backend.dto.UpcomingReminderNotification;
 import com.athenyx.backend.entity.Reminder;
 import com.athenyx.backend.repository.ReminderRepository;
@@ -15,9 +17,8 @@ import java.util.List;
 /**
  * Powers the bell-icon notification panel and the "tu recordatorio
  * acaba de vencer" toasts. Returns every non-done reminder for the
- * user that falls inside a symmetric 24 h window around the current
- * time — i.e. anything due in the next 24 h plus anything overdue
- * by up to 24 h.
+ * user that falls inside a symmetric window around the current
+ * time — configured via {@code notifications.upcoming-window-hours}.
  *
  * <p>The window is computed against a {@link Clock} so unit tests
  * can pin "now" deterministically. The default Spring container
@@ -28,11 +29,9 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class NotificationService {
 
-    /** How far back and forward a reminder is considered "upcoming". */
-    static final Duration UPCOMING_WINDOW = Duration.ofHours(24);
-
     private final ReminderRepository reminderRepository;
     private final Clock clock;
+    private final ConfigService configService;
 
     /**
      * Returns the list of upcoming / just-overdue reminders for
@@ -41,9 +40,11 @@ public class NotificationService {
      * current {@link Clock} value.
      */
     public List<UpcomingReminderNotification> getUpcomingReminders(Long userId) {
+        int windowHours = configService.getInt(ConfigKey.NOTIFICATIONS_UPCOMING_WINDOW_HOURS);
+        Duration window = Duration.ofHours(windowHours);
         LocalDateTime now = LocalDateTime.now(clock);
-        LocalDateTime from = now.minus(UPCOMING_WINDOW);
-        LocalDateTime to = now.plus(UPCOMING_WINDOW);
+        LocalDateTime from = now.minus(window);
+        LocalDateTime to = now.plus(window);
 
         List<Reminder> rows = reminderRepository.findUpcomingForUser(userId, from, to);
         return rows.stream()

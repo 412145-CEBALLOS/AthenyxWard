@@ -1,11 +1,14 @@
 package com.athenyx.backend.config;
 
+import com.athenyx.backend.ai.AiPremiumRequiredException;
 import com.athenyx.backend.ai.AiUnavailableException;
 import com.athenyx.backend.heuristics.TrialLimitExceededException;
 import com.athenyx.backend.security.RefreshTokenException;
+import com.athenyx.backend.service.AdminUserService;
 import com.athenyx.backend.service.reminder.ReminderConflictException;
 import com.athenyx.backend.service.reminder.ReminderNotFoundException;
 import com.athenyx.backend.service.reminder.ReminderPremiumRequiredException;
+import com.athenyx.backend.service.reminder.ReminderQuotaExceededException;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.LazyInitializationException;
 import org.springframework.http.HttpStatus;
@@ -54,6 +57,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RefreshTokenException.class)
     public ResponseEntity<Map<String, String>> handleRefreshTokenException(RefreshTokenException ex) {
+        if (ex.getKind() == RefreshTokenException.Kind.ACCOUNT_DISABLED) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "ACCOUNT_DISABLED"));
+        }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", ex.getMessage()));
     }
@@ -71,6 +78,12 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", "IA no disponible"));
     }
 
+    @ExceptionHandler(AiPremiumRequiredException.class)
+    public ResponseEntity<Map<String, String>> handleAiPremiumRequired(AiPremiumRequiredException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "ai_premium_required"));
+    }
+
     @ExceptionHandler(ReminderPremiumRequiredException.class)
     public ResponseEntity<Map<String, String>> handleReminderPremiumRequired(ReminderPremiumRequiredException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -83,10 +96,53 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", ex.getMessage()));
     }
 
+    @ExceptionHandler(ReminderQuotaExceededException.class)
+    public ResponseEntity<Map<String, String>> handleReminderQuotaExceeded(ReminderQuotaExceededException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
     @ExceptionHandler(ReminderNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleReminderNotFound(ReminderNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AdminUserService.UserNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleUserNotFound(AdminUserService.UserNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AdminUserService.AdminSelfOperationException.class)
+    public ResponseEntity<Map<String, String>> handleAdminSelfOperation(AdminUserService.AdminSelfOperationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", ex.getCode()));
+    }
+
+    @ExceptionHandler(ConfigValidationException.class)
+    public ResponseEntity<Map<String, String>> handleConfigValidation(ConfigValidationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ConfigNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleConfigNotFound(ConfigNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.athenyx.backend.security.FeatureDisabledException.class)
+    public ResponseEntity<Map<String, String>> handleFeatureDisabled(com.athenyx.backend.security.FeatureDisabledException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ClassCastException.class)
+    public ResponseEntity<Map<String, String>> handleClassCastException(ClassCastException ex) {
+        log.error("ClassCastException (likely a backend bug)", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error interno del servidor"));
     }
 
     @ExceptionHandler(LazyInitializationException.class)

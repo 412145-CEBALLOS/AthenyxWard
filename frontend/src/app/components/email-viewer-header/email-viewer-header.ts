@@ -32,6 +32,7 @@ export class EmailViewerHeaderComponent {
   readonly isHidden = input<boolean>(false);
   readonly isDeleted = input<boolean>(false);
   readonly canExplain = input<boolean>(true);
+  readonly aiEnabled = input<boolean>(true);
 
   readonly action = output<EmailAction>();
   readonly explainRequest = output<void>();
@@ -39,11 +40,12 @@ export class EmailViewerHeaderComponent {
   readonly isTrial = computed(() => this.userRole() === 'TRIAL');
 
   readonly aiButtonDisabled = computed<boolean>(
-    () => !this.canExplain() || this.isDeleted(),
+    () => !this.aiEnabled() || !this.canExplain() || this.isDeleted(),
   );
 
   readonly aiButtonDisabledTooltip = computed<string | null>(
     () => {
+      if (!this.aiEnabled()) return 'La IA está deshabilitada por el administrador';
       if (this.isDeleted()) return 'No disponible para correos eliminados';
       if (!this.canExplain()) return 'Analiza primero el correo';
       return null;

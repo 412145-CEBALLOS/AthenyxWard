@@ -1,0 +1,145 @@
+@if (loading()) {
+  <app-page-shell icon="ti ti-settings" pageTitle="Configuración global" subtitle="Parámetros ajustables del sistema.">
+    <div class="state-container">
+      <div class="spinner"></div>
+      <p>Cargando configuración…</p>
+    </div>
+  </app-page-shell>
+} @else if (error()) {
+  <app-page-shell icon="ti ti-settings" pageTitle="Configuración global" subtitle="Parámetros ajustables del sistema.">
+    <div class="state-container">
+      <i class="ti ti-alert-circle error-icon"></i>
+      <p>No se pudo cargar la configuración.</p>
+      <button class="btn-secondary" (click)="loadConfig()">Reintentar</button>
+    </div>
+  </app-page-shell>
+} @else {
+  <app-page-shell icon="ti ti-settings" pageTitle="Configuración global" subtitle="Parámetros ajustables del sistema.">
+    <div class="config-wrapper">
+      @for (cat of categories(); track cat.category) {
+        <details class="config-category" open>
+          <summary class="config-category-header">
+            <i class="ti {{ categoryIcon(cat) }}"></i>
+            <span>{{ cat.categoryLabel }}</span>
+            <span class="config-count">{{ cat.entries.length }} claves</span>
+          </summary>
+          <div class="config-entries">
+            @for (entry of cat.entries; track entry.key) {
+              <article class="config-card">
+                <div class="config-card-header">
+                  <div>
+                    <h3 class="config-label">{{ labelFor(entry.key) }}</h3>
+                    <p class="config-key">{{ entry.key }}</p>
+                    <p class="config-description">{{ entry.description }}</p>
+                  </div>
+                </div>
+
+                <div class="config-value-row">
+                  @if (editingKey() === entry.key) {
+                    <div class="config-edit">
+                      @switch (entry.type) {
+                        @case ('INT') {
+                          <input
+                            type="number"
+                            class="config-input"
+                            [attr.inputmode]="'numeric'"
+                            [attr.aria-label]="'Editar ' + labelFor(entry.key)"
+                            [min]="entry.minValue ?? 0"
+                            [max]="entry.maxValue ?? 999999"
+                            [value]="editingValue()"
+                            (input)="editingValue.set($any($event.target).value)"
+                            (keydown.enter)="onSave(entry.key)"
+                            (keydown.escape)="onCancel()" />
+                        }
+                        @case ('BOOLEAN') {
+                          <label class="switch">
+                            <input type="checkbox"
+                              [checked]="editingValue() === 'true'"
+                              (change)="editingValue.set($any($event.target).checked ? 'true' : 'false')" />
+                            <span class="slider"></span>
+                          </label>
+                          <span class="bool-label">{{ editingValue() === 'true' ? 'Activado' : 'Desactivado' }}</span>
+                        }
+                        @case ('STRING') {
+                          <input type="text"
+                            class="config-input"
+                            [attr.aria-label]="'Editar ' + labelFor(entry.key)"
+                            [value]="editingValue()"
+                            (input)="editingValue.set($any($event.target).value)"
+                            (keydown.enter)="onSave(entry.key)"
+                            (keydown.escape)="onCancel()" />
+                        }
+                      }
+                      <div class="edit-actions">
+                        <button class="btn-primary btn-sm"
+                          [disabled]="!canSave(entry.key)"
+                          (click)="onSave(entry.key)">
+                          @if (saving() === entry.key) {
+                            Guardando…
+                          } @else {
+                            Guardar
+                          }
+                        </button>
+                        <button class="btn-secondary btn-sm" (click)="onCancel()">Cancelar</button>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="config-display">
+                      <span class="config-value-badge"
+                            [class.config-value-badge--empty]="isValueEmpty(entry)"
+                            [title]="entry.value">
+                        <span class="config-value-badge-label">Valor actual</span>
+                        <strong class="config-value-badge-value">{{ formatValue(entry) }}</strong>
+                      </span>
+                      <div class="config-meta">
+                        @if (entry.updatedAt) {
+                          <span>Actualizado {{ relativeTime(entry.updatedAt) }}
+                            @if (entry.updatedBy) {
+                              por {{ entry.updatedBy }}
+                            }
+                          </span>
+                        } @else {
+                          <span>Sin cambios aún</span>
+                        }
+                      </div>
+                    </div>
+                    <button class="btn-edit" (click)="onEdit(entry)" title="Editar">
+                      <i class="ti ti-pencil"></i>
+                    </button>
+                  }
+                </div>
+
+                @if (isPurgable(entry.key)) {
+                  <div class="purge-row">
+                    @if (purgeConfirmKey() === entry.key) {
+                      <div class="purge-confirm">
+                        <p class="purge-warning">¿Ejecutar purgado ahora? Esta acción eliminará registros definitivamente.</p>
+                        <div class="purge-confirm-actions">
+                          <button class="btn-danger btn-sm" (click)="onPurgeConfirm(entry.key)">
+                            @if (purging() === entry.key) {
+                              Ejecutando…
+                            } @else {
+                              Confirmar
+                            }
+                          </button>
+                          <button class="btn-secondary btn-sm" (click)="onPurgeCancel()">Cancelar</button>
+                        </div>
+                      </div>
+                    } @else {
+                      <button class="btn-purge"
+                        [disabled]="purging() !== null"
+                        (click)="onPurgeRequest(entry.key)">
+                        <i class="ti ti-eraser"></i>
+                        Purgar ahora
+                      </button>
+                    }
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        </details>
+      }
+    </div>
+  </app-page-shell>
+}

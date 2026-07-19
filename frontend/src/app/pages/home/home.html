@@ -75,6 +75,7 @@
         [isHidden]="isHidden()"
         [aiExplanation]="aiExplanation()"
         [aiState]="aiState()"
+        [aiEnabled]="appConfig.aiEnabled()"
         [(analysisPanelOpen)]="analysisPanelOpen"
         (action)="onEmailAction($event)"
         (retry)="onEmailAnalysisRetry()"

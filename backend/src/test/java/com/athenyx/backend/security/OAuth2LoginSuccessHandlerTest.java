@@ -1,5 +1,8 @@
 package com.athenyx.backend.security;
 
+import com.athenyx.backend.audit.AuditEventPublisher;
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
 import com.athenyx.backend.entity.Role;
 import com.athenyx.backend.entity.User;
 import com.athenyx.backend.repository.UserRepository;
@@ -40,6 +43,9 @@ class OAuth2LoginSuccessHandlerTest {
     @Mock private OAuth2AuthorizedClientService authorizedClientService;
     @Mock private TokenEncryptionService tokenEncryptionService;
     @Mock private RefreshTokenService refreshTokenService;
+    @Mock private AuditEventPublisher auditEventPublisher;
+    @Mock private LoginAttemptService loginAttemptService;
+    @Mock private ConfigService configService;
 
     private JwtUtil jwtUtil;
     private OAuth2LoginSuccessHandler handler;
@@ -47,9 +53,11 @@ class OAuth2LoginSuccessHandlerTest {
     @BeforeEach
     void setUp() throws Exception {
         jwtUtil = new JwtUtil("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ", 900_000L);
+        when(configService.getString(ConfigKey.OAUTH_ALLOWED_DOMAINS)).thenReturn("");
         handler = new OAuth2LoginSuccessHandler(
                 userRepository, jwtUtil, authorizedClientService,
-                tokenEncryptionService, refreshTokenService);
+                tokenEncryptionService, refreshTokenService, auditEventPublisher,
+                loginAttemptService, configService);
         setField("frontendUrl", "http://localhost:4200");
         setField("cookieSecure", false);
 
@@ -70,6 +78,8 @@ class OAuth2LoginSuccessHandlerTest {
                 .email("u@example.com")
                 .name("User")
                 .role(Role.PREMIUM)
+                .termsAcceptedAt(java.time.LocalDateTime.now())
+                .termsVersion("v1.0")
                 .build();
         when(userRepository.findByGoogleId("gid")).thenReturn(Optional.of(existing));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -134,5 +144,93 @@ class OAuth2LoginSuccessHandlerTest {
         });
 
         assertThat(res.getRedirectedUrl()).isEqualTo("http://localhost:4200/home");
+    }
+
+    @Test
+    void softDeletedUser_redirectsToLoginWithAccountDisabledError() throws Exception {
+        User deleted = User.builder()
+                .id(7L)
+                .googleId("gid")
+                .email("u@example.com")
+                .name("User")
+                .role(Role.PREMIUM)
+                .deletedAt(java.time.LocalDateTime.now())
+                .build();
+        when(userRepository.findByGoogleId("gid")).thenReturn(Optional.of(deleted));
+
+        OAuth2AccessToken googleToken = new OAuth2AccessToken(
+                OAuth2AccessToken.TokenType.BEARER,
+                "google-access",
+                Instant.now(),
+                Instant.now().plusSeconds(3600));
+        OAuth2AuthorizedClient client = new OAuth2AuthorizedClient(
+                mock(org.springframework.security.oauth2.client.registration.ClientRegistration.class),
+                "u",
+                googleToken,
+                null);
+        when(authorizedClientService.loadAuthorizedClient(any(), any())).thenReturn(client);
+
+        OAuth2User oauthUser = new DefaultOAuth2User(
+                List.of(),
+                Map.of("sub", "gid", "email", "u@example.com", "name", "User", "picture", "p"),
+                "sub");
+        Authentication authentication = mock(OAuth2AuthenticationToken.class);
+        when(((OAuth2AuthenticationToken) authentication).getPrincipal()).thenReturn(oauthUser);
+        when(((OAuth2AuthenticationToken) authentication).getAuthorizedClientRegistrationId()).thenReturn("google");
+        when(((OAuth2AuthenticationToken) authentication).getName()).thenReturn("u");
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/login/oauth2/code/google");
+        req.setRequestURI("/login/oauth2/code/google");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+
+        handler.onAuthenticationSuccess(req, res, authentication);
+
+        assertThat(res.getRedirectedUrl()).isEqualTo("http://localhost:4200/login?error=account_disabled");
+        assertThat(res.getHeaders("Set-Cookie")).isEmpty();
+        verify(auditEventPublisher).publishLoginFailed(eq("u@example.com"), eq("account_disabled"));
+    }
+
+    @Test
+    void inactiveUser_redirectsToLoginWithAccountDisabledError() throws Exception {
+        User inactive = User.builder()
+                .id(7L)
+                .googleId("gid")
+                .email("u@example.com")
+                .name("User")
+                .role(Role.PREMIUM)
+                .isActive(false)
+                .build();
+        when(userRepository.findByGoogleId("gid")).thenReturn(Optional.of(inactive));
+
+        OAuth2AccessToken googleToken = new OAuth2AccessToken(
+                OAuth2AccessToken.TokenType.BEARER,
+                "google-access",
+                Instant.now(),
+                Instant.now().plusSeconds(3600));
+        OAuth2AuthorizedClient client = new OAuth2AuthorizedClient(
+                mock(org.springframework.security.oauth2.client.registration.ClientRegistration.class),
+                "u",
+                googleToken,
+                null);
+        when(authorizedClientService.loadAuthorizedClient(any(), any())).thenReturn(client);
+
+        OAuth2User oauthUser = new DefaultOAuth2User(
+                List.of(),
+                Map.of("sub", "gid", "email", "u@example.com", "name", "User", "picture", "p"),
+                "sub");
+        Authentication authentication = mock(OAuth2AuthenticationToken.class);
+        when(((OAuth2AuthenticationToken) authentication).getPrincipal()).thenReturn(oauthUser);
+        when(((OAuth2AuthenticationToken) authentication).getAuthorizedClientRegistrationId()).thenReturn("google");
+        when(((OAuth2AuthenticationToken) authentication).getName()).thenReturn("u");
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/login/oauth2/code/google");
+        req.setRequestURI("/login/oauth2/code/google");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+
+        handler.onAuthenticationSuccess(req, res, authentication);
+
+        assertThat(res.getRedirectedUrl()).isEqualTo("http://localhost:4200/login?error=account_disabled");
+        assertThat(res.getHeaders("Set-Cookie")).isEmpty();
+        verify(auditEventPublisher).publishLoginFailed(eq("u@example.com"), eq("account_disabled"));
     }
 }

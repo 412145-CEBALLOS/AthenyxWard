@@ -16,6 +16,8 @@ function makeUser(role: 'ADMIN' | 'PREMIUM' | 'TRIAL'): UserInfo {
     trialEndDate: null,
     trialExpired: false,
     accessibilityMode: true,
+    termsAcceptedAt: null,
+    termsVersion: null,
   };
 }
 
@@ -51,7 +53,7 @@ describe('Stats', () => {
     mockAuth.user.set(makeUser('TRIAL'));
     fixture.detectChanges();
     expect(component.isAdmin()).toBeFalse();
-    expect(component.title()).toBe('Mis estadísticas');
+    expect(component.title()).toBe('Mis estadÃ­sticas');
     expect(component.subtitle()).toContain('tu actividad');
   });
 
@@ -59,14 +61,14 @@ describe('Stats', () => {
     mockAuth.user.set(makeUser('PREMIUM'));
     fixture.detectChanges();
     expect(component.isAdmin()).toBeFalse();
-    expect(component.title()).toBe('Mis estadísticas');
+    expect(component.title()).toBe('Mis estadÃ­sticas');
   });
 
   it('should show admin dashboard when role is ADMIN', () => {
     mockAuth.user.set(makeUser('ADMIN'));
     fixture.detectChanges();
     expect(component.isAdmin()).toBeTrue();
-    expect(component.title()).toBe('Estadísticas (panel global)');
+    expect(component.title()).toBe('EstadÃ­sticas (panel global)');
     expect(component.subtitle()).toContain('plataforma');
   });
 
@@ -92,9 +94,9 @@ describe('Stats', () => {
     expect(component.period()).toBe('week');
     component.setPeriod('month');
     expect(component.period()).toBe('month');
-    expect(component.periodLabel()).toBe('Último mes');
+    expect(component.periodLabel()).toBe('Ãšltimo mes');
     component.setPeriod('year');
-    expect(component.periodLabel()).toBe('Último año');
+    expect(component.periodLabel()).toBe('Ãšltimo aÃ±o');
   });
 
   it('should compute time since last threat', () => {

@@ -4,6 +4,7 @@ import com.athenyx.backend.entity.EmailAnalysis;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -67,4 +68,8 @@ public interface EmailAnalysisRepository extends JpaRepository<EmailAnalysis, Lo
         @Param("from") LocalDateTime from,
         @Param("to") LocalDateTime to,
         Pageable pageable);
+
+    @Modifying
+    @Query("DELETE FROM EmailAnalysis ea WHERE ea.email.id IN :ids")
+    int deleteByEmailIdIn(@Param("ids") Collection<Long> ids);
 }

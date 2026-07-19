@@ -1,5 +1,8 @@
 package com.athenyx.backend.heuristics;
 
+import com.athenyx.backend.audit.AuditEventPublisher;
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
 import com.athenyx.backend.dto.HeuristicAnalysisResponse;
 import com.athenyx.backend.dto.HeuristicAnalysisResponse.*;
 import com.athenyx.backend.entity.Email;
@@ -29,8 +32,6 @@ import java.util.*;
 @Slf4j
 public class HeuristicAnalysisService {
 
-    private static final int TRIAL_LIMIT = 20;
-
     private final EmailRepository emailRepository;
     private final EmailAnalysisRepository analysisRepository;
     private final UserRepository userRepository;
@@ -38,21 +39,26 @@ public class HeuristicAnalysisService {
     private final EmailHeaderCache emailHeaderCache;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final AuditEventPublisher auditEventPublisher;
+    private final ConfigService configService;
 
     @Async("heuristicsExecutor")
     @Transactional
-    public CompletableFuture<HeuristicAnalysisResponse> analyze(Long userId, Long emailId) {
+    public CompletableFuture<HeuristicAnalysisResponse> analyze(Long userId, Long emailId,
+            String ipAddress, String userAgent, String correlationId) {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        if (user.getRole() == Role.TRIAL && user.getAnalysisCount() >= TRIAL_LIMIT) {
+        int trialLimit = configService.getInt(ConfigKey.TRIAL_ANALYSIS_LIMIT);
+        if (user.getRole() == Role.TRIAL && user.getAnalysisCount() >= trialLimit) {
             throw new TrialLimitExceededException("Límite de análisis alcanzado", 0);
         }
 
         Optional<EmailAnalysis> cached = analysisRepository
             .findFirstByEmailIdOrderByAnalyzedAtDesc(emailId);
+        int cacheHours = configService.getInt(ConfigKey.HEURISTIC_CACHE_HOURS);
         if (cached.isPresent() && cached.get().getAnalyzedAt()
-                .isAfter(LocalDateTime.now(clock).minusHours(24))) {
+                .isAfter(LocalDateTime.now(clock).minusHours(cacheHours))) {
             return CompletableFuture.completedFuture(toResponse(cached.get()));
         }
 
@@ -100,6 +106,19 @@ public class HeuristicAnalysisService {
         analysis.setAnalyzedAt(LocalDateTime.now(clock));
         EmailAnalysis saved = analysisRepository.save(analysis);
 
+        if (result.threatLevel() == ThreatLevel.RED) {
+            auditEventPublisher.publishPhishingDetected(
+                    user.getId(),
+                    user.getEmail(),
+                    email.getId(),
+                    email.getSender(),
+                    result.riskPercentage(),
+                    result.threatLevel().name(),
+                    ipAddress,
+                    userAgent,
+                    correlationId);
+        }
+
         if (user.getRole() == Role.TRIAL) {
             user.setAnalysisCount(user.getAnalysisCount() + 1);
             userRepository.save(user);
@@ -121,7 +140,8 @@ public class HeuristicAnalysisService {
         if (user.getRole() != Role.TRIAL) {
             return Integer.MAX_VALUE;
         }
-        return Math.max(0, TRIAL_LIMIT - user.getAnalysisCount());
+        int trialLimit = configService.getInt(ConfigKey.TRIAL_ANALYSIS_LIMIT);
+        return Math.max(0, trialLimit - user.getAnalysisCount());
     }
 
     private EmailHeuristicsInput toInput(Email email) {

@@ -1,5 +1,6 @@
 package com.athenyx.backend.service;
 
+import com.athenyx.backend.audit.AuditEventPublisher;
 import com.athenyx.backend.entity.RefreshToken;
 import com.athenyx.backend.entity.RevokedReason;
 import com.athenyx.backend.entity.User;
@@ -9,8 +10,11 @@ import com.athenyx.backend.security.RefreshTokenException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -48,6 +52,18 @@ public class RefreshTokenService {
 
     private final RefreshTokenRepository repository;
     private final UserRepository userRepository;
+    private final AuditEventPublisher auditEventPublisher;
+
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    void setApplicationContext(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
+
+    private RefreshTokenService self() {
+        return applicationContext.getBean(RefreshTokenService.class);
+    }
 
     @Value("${app.jwt.refresh-expiration-ms:2592000000}")
     private long refreshExpirationMs;
@@ -84,8 +100,7 @@ public class RefreshTokenService {
         return repository.revokeAllForUser(userId, RevokedReason.LOGOUT, LocalDateTime.now());
     }
 
-    @Transactional
-    public User resolveUserForRotation(String rawToken) {
+    public User findUserByRefreshToken(String rawToken) {
         if (rawToken == null || rawToken.isBlank()) {
             throw new RefreshTokenException(RefreshTokenException.Kind.MISSING, "Refresh token is missing");
         }
@@ -93,13 +108,31 @@ public class RefreshTokenService {
         RefreshToken existing = repository.findByTokenHash(hash)
                 .orElseThrow(() -> new RefreshTokenException(
                         RefreshTokenException.Kind.MISSING, "Refresh token not recognised"));
+        return existing.getUser();
+    }
+
+    @Transactional
+    public User resolveUserForRotation(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            self().logTokenRefreshFailed(null, null, "MISSING");
+            throw new RefreshTokenException(RefreshTokenException.Kind.MISSING, "Refresh token is missing");
+        }
+        byte[] hash = sha256(rawToken);
+        RefreshToken existing = repository.findByTokenHash(hash)
+                .orElseThrow(() -> {
+                    self().logTokenRefreshFailed(null, null, "NOT_RECOGNISED");
+                    return new RefreshTokenException(
+                            RefreshTokenException.Kind.MISSING, "Refresh token not recognised");
+                });
 
         LocalDateTime now = LocalDateTime.now();
+        User user = existing.getUser();
 
         if (existing.getRevokedAt() != null) {
             repository.revokeFamily(existing.getFamilyId(), RevokedReason.REUSE_DETECTED, now);
             log.warn("Refresh token reuse detected for user={} family={}",
-                    existing.getUser().getId(), existing.getFamilyId());
+                    user.getId(), existing.getFamilyId());
+            self().logTokenRefreshFailed(user.getId(), user.getEmail(), "REUSE_DETECTED");
             throw new RefreshTokenException(RefreshTokenException.Kind.REUSE_DETECTED,
                     "Refresh token reuse detected; all sessions for this device revoked");
         }
@@ -109,6 +142,7 @@ public class RefreshTokenService {
             existing.setRevokedReason(RevokedReason.EXPIRED);
             repository.save(existing);
             repository.revokeFamily(existing.getFamilyId(), RevokedReason.EXPIRED, now);
+            self().logTokenRefreshFailed(user.getId(), user.getEmail(), "ABSOLUTE_EXPIRED");
             throw new RefreshTokenException(RefreshTokenException.Kind.EXPIRED,
                     "Refresh token absolute lifetime exceeded");
         }
@@ -117,11 +151,18 @@ public class RefreshTokenService {
             existing.setRevokedAt(now);
             existing.setRevokedReason(RevokedReason.EXPIRED);
             repository.save(existing);
+            self().logTokenRefreshFailed(user.getId(), user.getEmail(), "EXPIRED");
             throw new RefreshTokenException(RefreshTokenException.Kind.EXPIRED,
                     "Refresh token expired");
         }
 
-        return existing.getUser();
+        if (user.getDeletedAt() != null || !user.isActive()) {
+            self().logTokenRefreshFailed(user.getId(), user.getEmail(), "ACCOUNT_DISABLED");
+            throw new RefreshTokenException(RefreshTokenException.Kind.ACCOUNT_DISABLED,
+                    "User account is disabled or deleted");
+        }
+
+        return user;
     }
 
     @Transactional
@@ -145,6 +186,11 @@ public class RefreshTokenService {
         repository.save(existing);
 
         return issued;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void logTokenRefreshFailed(Long actorId, String actorEmail, String kind) {
+        auditEventPublisher.publishTokenRefreshFailed(actorId, actorEmail, kind);
     }
 
     private IssuedToken issueInternal(User user, String familyId, Long replacedById, HttpServletRequest request, long tokenVersion) {

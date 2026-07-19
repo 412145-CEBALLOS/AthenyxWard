@@ -10,7 +10,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { HomeComponent } from './home';
 import { AuthService } from '../../services/auth.service';
 import { UserInfo } from '../../models/user-info.model';
-import { EmailPageResponse } from '../../models/email-summary.model';
+import { EmailPageResponse, EmailSummary, EmailDetail } from '../../models/email-summary.model';
 import { EmailSearchService } from '../../services/email-search.service';
 import { EmailAnalysisResult } from '../../models/email-analysis.model';
 
@@ -29,6 +29,8 @@ function makeUser(overrides: Partial<UserInfo> = {}): UserInfo {
     trialEndDate: null,
     trialExpired: false,
     accessibilityMode: true,
+    termsAcceptedAt: null,
+    termsVersion: null,
     ...overrides,
   };
 }
@@ -48,7 +50,7 @@ function makeRouteWithParams(initial: Record<string, string> = {}) {
   };
 }
 
-describe('HomeComponent — US 3.7 search bar (desktop default)', () => {
+describe('HomeComponent â€” US 3.7 search bar (desktop default)', () => {
   let component: HomeComponent;
   let fixture: ComponentFixture<HomeComponent>;
   let httpMock: HttpTestingController;
@@ -150,13 +152,13 @@ describe('HomeComponent — US 3.7 search bar (desktop default)', () => {
   it('desktop: clearing the search resets currentQuery to empty', fakeAsync(() => {
     initAndFlush();
 
-    // 1. User types a query — the debounce fires and currentQuery is set to 'zzz'.
+    // 1. User types a query â€” the debounce fires and currentQuery is set to 'zzz'.
     emailSearch.set('zzz');
     tick(300);
     fixture.detectChanges();
     expect(component.currentQuery()).toBe('zzz');
 
-    // 2. User clears the search bar — the debounce fires and with the fix,
+    // 2. User clears the search bar â€” the debounce fires and with the fix,
     // currentQuery resets to '' (instead of staying at 'zzz').
     emailSearch.set('');
     tick(300);
@@ -197,7 +199,7 @@ describe('HomeComponent — US 3.7 search bar (desktop default)', () => {
 
     const empty = fixture.nativeElement.querySelector('.email-empty:not(.email-empty-search)');
     expect(empty).toBeTruthy();
-    expect(empty.textContent).toContain('No hay correos aún');
+    expect(empty.textContent).toContain('No hay correos aÃºn');
   });
 
   it('does NOT show the trial-expired modal for ADMIN users even when trialExpired=true', () => {
@@ -228,11 +230,11 @@ describe('HomeComponent — US 3.7 search bar (desktop default)', () => {
 
     const modal = fixture.nativeElement.querySelector('.modal-card');
     expect(modal).toBeTruthy();
-    expect(modal.textContent).toContain('Período de prueba terminado');
+    expect(modal.textContent).toContain('PerÃ­odo de prueba terminado');
   });
 });
 
-describe('HomeComponent — US 3.7 search bar (mobile)', () => {
+describe('HomeComponent â€” US 3.7 search bar (mobile)', () => {
   let component: HomeComponent;
   let fixture: ComponentFixture<HomeComponent>;
   let httpMock: HttpTestingController;
@@ -306,5 +308,189 @@ describe('HomeComponent — US 3.7 search bar (mobile)', () => {
     expect(matches.length).toBe(1);
     expect(matches[0].request.params.get('q')).toBe('bar');
     matches[0].flush(emptyResponse());
+  }));
+});
+
+describe('HomeComponent â€” bootstrapAnalysis (US 2.8 TRIAL cache restoration)', () => {
+  let component: HomeComponent;
+  let fixture: ComponentFixture<HomeComponent>;
+  let auth: AuthService;
+  let routeHandle: ReturnType<typeof makeRouteWithParams>;
+
+  const makeDetail = (id: number): EmailDetail => ({
+    id,
+    gmailId: 'gmail-1',
+    sender: 'phishing@bad.com',
+    senderName: 'Bad Actor',
+    subject: 'Urgent: Action required',
+    snippet: 'Click this link now!',
+    contentForAnalysis: 'Click this link now!',
+    htmlContent: null,
+    receivedAt: '2026-07-01T10:00:00Z',
+    fetchedAt: '2026-07-01T10:05:00Z',
+    isRead: false,
+    originalDateHeader: null,
+    isImportant: false,
+    isHidden: false,
+    isDeleted: false,
+  });
+
+  const makeCachedAnalysis = (emailId: number): EmailAnalysisResult => ({
+    analysisId: 1,
+    emailId,
+    riskPercentage: 85,
+    riskLevel: 'RED',
+    threatCategories: ['PHISHING'],
+    heuristicFindings: [{ rule: 'SuspiciousSender', description: 'Sender domain is suspicious', score: 30 }],
+    suspiciousUrls: [],
+    senderTrust: {
+      sender: 'phishing@bad.com',
+      displayName: 'Bad Actor',
+      domain: 'bad.com',
+      displayMismatch: false,
+    },
+    aiExplanation: 'This email is highly suspicious.',
+    contentSummary: 'Click this link now!',
+    recommendedActions: [],
+    analyzedAt: '2026-07-01T10:10:00Z',
+    source: 'HEURISTIC',
+  });
+
+  beforeEach(async () => {
+    routeHandle = makeRouteWithParams();
+    await TestBed.configureTestingModule({
+      imports: [HomeComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'home', component: HomeComponent }]),
+        { provide: ActivatedRoute, useValue: routeHandle.route },
+      ],
+    }).compileComponents();
+    auth = TestBed.inject(AuthService);
+    fixture = TestBed.createComponent(HomeComponent);
+    component = fixture.componentInstance;
+  });
+
+  /**
+   * Calls bootstrapAnalysis directly (private method) so we bypass
+   * all the init HTTP requests from fetchEmails$ and focus purely on
+   * the analysis-restoration logic.
+   */
+  function callBootstrap(detail: EmailDetail, summary: EmailSummary): void {
+    (component as any)['bootstrapAnalysis'](detail, summary);
+  }
+
+  it('TRIAL + summary.riskLevel != null + getLatest returns cached â†’ state ready', fakeAsync(() => {
+    auth.currentUser.set(makeUser({ role: 'TRIAL' }));
+    fixture.detectChanges();
+
+    const emailWithRisk: EmailSummary = {
+      id: 42,
+      gmailId: 'g-42',
+      sender: 'x@y.com',
+      senderName: 'X Y',
+      subject: 'Test',
+      snippet: 'Snippet',
+      receivedAt: '2026-07-01T10:00:00Z',
+      fetchedAt: '2026-07-01T10:05:00Z',
+      isRead: false,
+      originalDateHeader: null,
+      isImportant: false,
+      isHidden: false,
+      isDeleted: false,
+      riskLevel: 'RED',
+      riskPercentage: 85,
+    };
+
+    callBootstrap(makeDetail(42), emailWithRisk);
+
+    expect(component.analysisState()).toBe('loading');
+
+    const httpMock = TestBed.inject(HttpTestingController);
+    const req = httpMock.expectOne((r) => r.url === '/api/emails/42/analysis');
+    req.flush(makeCachedAnalysis(42));
+
+    tick();
+    fixture.detectChanges();
+
+    expect(component.analysisState()).toBe('ready');
+    expect(component.analysisResult()).not.toBeNull();
+    expect(component.analysisResult()!.riskPercentage).toBe(85);
+
+    for (const r of httpMock.match(() => true)) r.flush(emptyResponse());
+  }));
+
+  it('TRIAL + summary.riskLevel != null + getLatest returns 404 â†’ state idle', fakeAsync(() => {
+    auth.currentUser.set(makeUser({ role: 'TRIAL' }));
+    fixture.detectChanges();
+
+    const emailWithRisk: EmailSummary = {
+      id: 99,
+      gmailId: 'g-99',
+      sender: 'x@y.com',
+      senderName: 'X Y',
+      subject: 'Test',
+      snippet: 'Snippet',
+      receivedAt: '2026-07-01T10:00:00Z',
+      fetchedAt: '2026-07-01T10:05:00Z',
+      isRead: false,
+      originalDateHeader: null,
+      isImportant: false,
+      isHidden: false,
+      isDeleted: false,
+      riskLevel: 'YELLOW',
+      riskPercentage: 55,
+    };
+
+    callBootstrap(makeDetail(99), emailWithRisk);
+
+    expect(component.analysisState()).toBe('loading');
+
+    const httpMock = TestBed.inject(HttpTestingController);
+    const req = httpMock.expectOne((r) => r.url === '/api/emails/99/analysis');
+    req.flush(null, { status: 404, statusText: 'Not Found' });
+
+    tick();
+    fixture.detectChanges();
+
+    expect(component.analysisState()).toBe('idle');
+    expect(component.analysisResult()).toBeNull();
+
+    for (const r of httpMock.match(() => true)) r.flush(emptyResponse());
+  }));
+
+  it('TRIAL + summary.riskLevel == null â†’ getLatest NOT called, state idle', fakeAsync(() => {
+    auth.currentUser.set(makeUser({ role: 'TRIAL' }));
+    fixture.detectChanges();
+
+    const emailNoRisk: EmailSummary = {
+      id: 7,
+      gmailId: 'g-7',
+      sender: 'x@y.com',
+      senderName: 'X Y',
+      subject: 'Normal email',
+      snippet: 'Hello',
+      receivedAt: '2026-07-01T10:00:00Z',
+      fetchedAt: '2026-07-01T10:05:00Z',
+      isRead: false,
+      originalDateHeader: null,
+      isImportant: false,
+      isHidden: false,
+      isDeleted: false,
+    };
+
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    callBootstrap(makeDetail(7), emailNoRisk);
+    tick();
+    fixture.detectChanges();
+
+    const pending = httpMock.match((r) => r.url.includes('/analysis'));
+    expect(pending.length).toBe(0);
+    expect(component.analysisState()).toBe('idle');
+    expect(component.analysisResult()).toBeNull();
+
+    for (const r of httpMock.match(() => true)) r.flush(emptyResponse());
   }));
 });

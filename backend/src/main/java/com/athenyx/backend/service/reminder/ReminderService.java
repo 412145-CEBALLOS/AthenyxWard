@@ -1,5 +1,7 @@
 package com.athenyx.backend.service.reminder;
 
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
 import com.athenyx.backend.dto.CreateReminderRequest;
 import com.athenyx.backend.dto.ReminderResponse;
 import com.athenyx.backend.dto.ReminderSummary;
@@ -47,6 +49,7 @@ public class ReminderService {
     private final EmailRepository emailRepository;
     private final UserRepository userRepository;
     private final Clock clock;
+    private final ConfigService configService;
 
     /**
      * Throws {@link IllegalArgumentException} when {@code target} is
@@ -76,6 +79,13 @@ public class ReminderService {
         if (user.getRole() == Role.TRIAL) {
             throw new ReminderPremiumRequiredException(
                 "Los recordatorios están disponibles en el plan Premium.");
+        }
+
+        int maxPerUser = configService.getInt(ConfigKey.REMINDER_MAX_PER_USER);
+        long existingCount = repository.countByUserIdAndDoneFalse(userId);
+        if (existingCount >= maxPerUser) {
+            throw new ReminderQuotaExceededException(
+                "Has alcanzado el máximo de " + maxPerUser + " recordatorios activos. Borra o completa uno antes de crear otro.");
         }
 
         Email email = emailRepository.findById(request.emailId())

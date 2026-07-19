@@ -2,6 +2,7 @@ package com.athenyx.backend.repository;
 
 import com.athenyx.backend.entity.Reminder;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -73,4 +74,15 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
      * the number of rows affected. Pending reminders are untouched.
      */
     long deleteByUserIdAndDone(Long userId, boolean done);
+
+    @Query("SELECT r.email.id FROM Reminder r WHERE r.email.id IN :ids AND r.done = false")
+    List<Long> findActiveEmailIds(@Param("ids") List<Long> ids);
+
+    @Modifying
+    @Query("DELETE FROM Reminder r WHERE r.email.id IN :ids")
+    int deleteByEmailIdIn(@Param("ids") Collection<Long> ids);
+
+    long countByUserId(Long userId);
+
+    long countByUserIdAndDoneFalse(Long userId);
 }

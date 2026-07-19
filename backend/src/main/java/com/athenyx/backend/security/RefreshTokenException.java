@@ -11,7 +11,7 @@ public class RefreshTokenException extends RuntimeException {
      * Reason categories. The {@code Kind} is exposed via
      * {@link #getKind()} so clients/tests can branch on the cause.
      */
-    public enum Kind { MISSING, EXPIRED, REUSE_DETECTED, REVOKED }
+    public enum Kind { MISSING, EXPIRED, REUSE_DETECTED, REVOKED, ACCOUNT_DISABLED }
 
     private final Kind kind;
 

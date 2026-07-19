@@ -1,28 +1,26 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { HeaderComponent } from "../header/header";
 import { SidebarComponent } from "../sidebar/sidebar";
 import { RouterOutlet } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-import { NotificationService } from '../../services/notification.service';
+import { AppConfigInitializerService } from '../../services/app-config-initializer.service';
 
 @Component({
   selector: 'app-layout',
-  imports: [HeaderComponent, SidebarComponent, RouterOutlet],
+  imports: [HeaderComponent, SidebarComponent, RouterOutlet, RouterLink],
   templateUrl: './layout.html',
   styleUrl: './layout.css',
 })
 export class LayoutComponent implements OnInit, OnDestroy {
   private readonly elementRef = inject(ElementRef);
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly authService = inject(AuthService);
-  private readonly notificationService = inject(NotificationService);
+  readonly appConfig = inject(AppConfigInitializerService);
   @ViewChild('sidebarRef', { read: ElementRef }) private sidebarEl?: ElementRef;
 
   sidebarOpen = false;
   sidebarClosing = false;
   private openedAt = 0;
-  private pollingStarted = false;
 
   private readonly onDocClick = (event: MouseEvent): void => {
     if (!this.sidebarOpen) return;
@@ -36,14 +34,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
     if (isPlatformBrowser(this.platformId)) {
       document.addEventListener('click', this.onDocClick);
     }
-    this.maybeStartPolling();
+    this.appConfig.load();
   }
 
   ngOnDestroy(): void {
     if (isPlatformBrowser(this.platformId)) {
       document.removeEventListener('click', this.onDocClick);
     }
-    this.notificationService.stopPolling();
   }
 
   toggleSidebar() {
@@ -56,21 +53,6 @@ export class LayoutComponent implements OnInit, OnDestroy {
     } else {
       this.openedAt = Date.now();
       this.sidebarOpen = true;
-    }
-  }
-
-  /**
-   * Starts the notification polling loop if the user is on a plan
-   * that supports reminders (PREMIUM or ADMIN). TRIAL users get
-   * an empty list on the server side, so there's no point
-   * polling them every two minutes. Idempotent.
-   */
-  private maybeStartPolling(): void {
-    if (this.pollingStarted) return;
-    const role = this.authService.user()?.role;
-    if (role === 'PREMIUM' || role === 'ADMIN') {
-      this.notificationService.startPolling(120_000);
-      this.pollingStarted = true;
     }
   }
 }

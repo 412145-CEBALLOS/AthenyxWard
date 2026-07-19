@@ -25,7 +25,7 @@ const buildNotification = (overrides: Partial<UpcomingNotification> = {}): Upcom
 class AuthServiceStub {
   user = (): UserInfo => ({
     id: 1, name: 'U', email: 'u@example.com', pictureUrl: '',
-    role: 'PREMIUM', trialEndDate: null, trialExpired: false, accessibilityMode: true,
+    role: 'PREMIUM', trialEndDate: null, trialExpired: false, accessibilityMode: true, termsAcceptedAt: null, termsVersion: null,
   });
 }
 
@@ -35,7 +35,7 @@ class RouterStub {
   navigate = jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true));
 }
 
-describe('HeaderComponent — bell markDone', () => {
+describe('HeaderComponent â€” bell markDone', () => {
   let fixture: ComponentFixture<HeaderComponent>;
   let component: HeaderComponent;
   let notificationService: {
@@ -122,7 +122,7 @@ describe('HeaderComponent — bell markDone', () => {
     ).not.toThrow();
   });
 
-  it('markDone runs synchronously — no setTimeout deferral (regression for v3 freeze)', async () => {
+  it('markDone runs synchronously â€” no setTimeout deferral (regression for v3 freeze)', async () => {
     await buildModule();
     const start = performance.now();
     component.markDone(
@@ -135,7 +135,7 @@ describe('HeaderComponent — bell markDone', () => {
   });
 });
 
-describe('HeaderComponent — US 3.7 search bar', () => {
+describe('HeaderComponent â€” US 3.7 search bar', () => {
   let fixture: ComponentFixture<HeaderComponent>;
   let component: HeaderComponent;
   let emailSearch: EmailSearchService;

@@ -11,6 +11,8 @@ export interface UserInfo {
   trialEndDate: string | null;
   trialExpired: boolean;
   accessibilityMode: boolean;
+  termsAcceptedAt: string | null;
+  termsVersion: string | null;
 }
 
 /**

@@ -1,5 +1,7 @@
 package com.athenyx.backend.controller;
 
+import com.athenyx.backend.audit.AuditEventPublisher;
+import com.athenyx.backend.dto.AcceptTermsRequest;
 import com.athenyx.backend.dto.RefreshResponse;
 import com.athenyx.backend.dto.UpdateAccessibilityModeRequest;
 import com.athenyx.backend.dto.UserInfo;
@@ -19,6 +21,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -41,6 +44,7 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final RefreshCookieManager refreshCookieManager;
     private final JwtUtil jwtUtil;
+    private final AuditEventPublisher auditEventPublisher;
 
     @GetMapping("/me")
     public ResponseEntity<UserInfo> getCurrentUser(Authentication authentication) {
@@ -60,6 +64,16 @@ public class AuthController {
         return ResponseEntity.ok(authService.updateAccessibilityMode(userId, body.accessibilityMode()));
     }
 
+    @PostMapping("/accept-terms")
+    public ResponseEntity<UserInfo> acceptTerms(
+            Authentication authentication,
+            @Valid @RequestBody AcceptTermsRequest body) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(authService.acceptTerms(userId, body.version()));
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<RefreshResponse> refresh(HttpServletRequest request,
                                                    HttpServletResponse response) {
@@ -75,6 +89,7 @@ public class AuthController {
 
         String rawRefresh = readRefreshCookie(request);
         if (rawRefresh == null) {
+            auditEventPublisher.publishTokenRefreshFailed(null, null, "MISSING_COOKIE");
             throw new RefreshTokenException(RefreshTokenException.Kind.MISSING, "Refresh cookie missing");
         }
 
@@ -106,9 +121,25 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @Transactional
     public ResponseEntity<Map<String, String>> logout(HttpServletRequest request,
                                                      HttpServletResponse response) {
-        refreshTokenService.revoke(readRefreshCookie(request));
+        String rawRefresh = readRefreshCookie(request);
+        Long userId = null;
+        String userEmail = null;
+        if (rawRefresh != null && !rawRefresh.isBlank()) {
+            try {
+                User u = refreshTokenService.findUserByRefreshToken(rawRefresh);
+                userId = u.getId();
+                userEmail = u.getEmail();
+            } catch (RefreshTokenException ignored) {
+            }
+        }
+
+        refreshTokenService.revoke(rawRefresh);
+
+        String actorEmail = userEmail != null ? userEmail : "anonymous";
+        auditEventPublisher.publishLogout(userId, actorEmail);
 
         Cookie cookie = new Cookie("athenyx_token", null);
         cookie.setHttpOnly(true);
@@ -123,17 +154,25 @@ public class AuthController {
     }
 
     @PostMapping("/logout-all")
+    @Transactional
     public ResponseEntity<Map<String, Object>> logoutAll(HttpServletRequest request,
                                                          HttpServletResponse response) {
         String rawRefresh = readRefreshCookie(request);
+        Long userId = null;
+        String userEmail = null;
         int revoked = 0;
         if (rawRefresh != null && !rawRefresh.isBlank()) {
             try {
                 User user = refreshTokenService.resolveUserForRotation(rawRefresh);
+                userId = user.getId();
+                userEmail = user.getEmail();
                 revoked = refreshTokenService.revokeAllForUser(user.getId());
             } catch (RefreshTokenException ignored) {
             }
         }
+
+        String actorEmail = userEmail != null ? userEmail : "anonymous";
+        auditEventPublisher.publishLogout(userId, actorEmail, revoked);
 
         Cookie cookie = new Cookie("athenyx_token", null);
         cookie.setHttpOnly(true);

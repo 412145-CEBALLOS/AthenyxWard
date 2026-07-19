@@ -50,6 +50,7 @@ export class EmailViewerComponent {
   readonly isHidden = input<boolean>(false);
   readonly aiExplanation = input<AiExplanation | null>(null);
   readonly aiState = input<AiState>('idle');
+  readonly aiEnabled = input<boolean>(true);
 
   readonly retry = output<void>();
   readonly analyzeRequest = output<void>();

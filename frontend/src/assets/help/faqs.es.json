@@ -1,0 +1,68 @@
+{
+  "categories": [
+    {
+      "id": "primeros-pasos",
+      "name": "Primeros pasos",
+      "icon": "ti ti-rocket",
+      "items": [
+        {
+          "q": "¿Qué es Athenyx Ward?",
+          "a": "Athenyx Ward es un asistente de seguridad para tu correo electrónico que analiza cada mensaje entrante mediante reglas heurísticas y, si tienes Premium, mediante inteligencia artificial local (Ollama). Te avisa en tiempo real si un correo parece phishing, fraudulento o malicioso."
+        },
+        {
+          "q": "¿Cómo conecto mi cuenta de Gmail?",
+          "a": "Al iniciar sesión por primera vez se te solicitará permiso para acceder a tu correo mediante OAuth2 de Google. Athenyx Ward solo lee los metadatos y el contenido necesario para el análisis; nunca almacena tu contraseña ni accede a otros servicios de tu cuenta de Google."
+        },
+        {
+          "q": "¿Qué diferencia hay entre el plan TRIAL y PREMIUM?",
+          "a": "El plan TRIAL te permite analizar hasta 20 correos con el motor heurístico y consultar el historial de análisis. El plan PREMIUM añade análisis con IA (Explicar con IA), recordatorios personalizados, notificaciones proactivas y acceso al historial completo sin límite."
+        }
+      ]
+    },
+    {
+      "id": "seguridad-y-privacidad",
+      "name": "Seguridad y privacidad",
+      "icon": "ti ti-shield-lock",
+      "items": [
+        {
+          "q": "¿Qué datos almacenáis de mis correos?",
+          "a": "Solo guardamos los datos relevantes para el análisis: remitente, fecha, asunto, contenido (limitado a lo necesario para detectar amenazas), URLs presentes, metadatos de cabecera y el porcentaje de riesgo asignado. No almacenamos el cuerpo completo ni archivos adjuntos de forma permanente."
+        },
+        {
+          "q": "¿La IA se ejecuta en la nube?",
+          "a": "No. El análisis con IA usa Ollama ejecutándose en local (tu propia máquina o servidor). Ningún correo, metadato ni contenido sale de tu entorno hacia servicios externos de IA. Toda la información permanece bajo tu control."
+        }
+      ]
+    },
+    {
+      "id": "planes-y-facturacion",
+      "name": "Planes y facturación",
+      "icon": "ti ti-credit-card",
+      "items": [
+        {
+          "q": "¿Puedo cambiar de plan en cualquier momento?",
+          "a": "Sí. Desde la sección Mi plan puedes cambiar tu suscripción cuando quieras, sin permanencia forzada. Los cambios de TRIAL a PREMIUM son inmediatos; la facturación se ajusta al ciclo natural de tu suscripción."
+        },
+        {
+          "q": "¿Qué incluye el plan PREMIUM que no tenga TRIAL?",
+          "a": "PREMIUM incluye: análisis con IA (Explicar con IA), hasta 5 cuentas adicionales (plan Familia), recordatorios personalizados por correo, notificaciones proactivas las 24 h, historial de análisis ilimitado y acceso anticipado a nuevas funciones de seguridad."
+        }
+      ]
+    },
+    {
+      "id": "analisis-e-ia",
+      "name": "Análisis e IA",
+      "icon": "ti ti-brain",
+      "items": [
+        {
+          "q": "¿Qué significa el porcentaje de riesgo?",
+          "a": "El porcentaje de riesgo lo calcula el motor heurístico propietario de Athenyx Ward mediante 19 reglas que evalúan remitente, estructura del mensaje, URLs, frases sospechosas y patrones típicos de phishing. Un valor alto (por encima de 70) indica alta probabilidad de amenaza; entre 40 y 70, riesgo moderado; por debajo de 40, generalmente seguro."
+        },
+        {
+          "q": "¿Cómo funciona la explicación con IA?",
+          "a": "Al hacer clic en 'Explicar con IA', el sistema envía un resumen del correo a tu Ollama local (modelo Qwen 2.5). La IA devuelve una explicación estructurada en tres secciones: un resumen del mensaje, por qué el análisis heurístico dio ese resultado, y una segunda opinión independiente. Si Ollama no está disponible o falla, se muestra una explicación heurística de respaldo."
+        }
+      ]
+    }
+  ]
+}

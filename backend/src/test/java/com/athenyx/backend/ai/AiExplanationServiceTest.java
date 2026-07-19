@@ -1,5 +1,8 @@
 package com.athenyx.backend.ai;
 
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
+import com.athenyx.backend.security.FeatureToggleService;
 import com.athenyx.backend.dto.AiExplanationResponse;
 import com.athenyx.backend.entity.Email;
 import com.athenyx.backend.entity.EmailAnalysis;
@@ -62,6 +65,12 @@ class AiExplanationServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ConfigService configService;
+
+    @Mock
+    private FeatureToggleService featureToggleService;
+
     private AiExplanationService service;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Clock fixedClock = Clock.fixed(
@@ -76,7 +85,7 @@ class AiExplanationServiceTest {
         service = new AiExplanationService(
                 chatClient, aiProperties, emailRepository,
                 analysisRepository, aiExplanationRepository,
-                userRepository, objectMapper, fixedClock);
+                userRepository, objectMapper, fixedClock, configService, featureToggleService);
 
         premiumUser = User.builder()
                 .id(1L).googleId("gid").email("u@example.com").name("U")
@@ -190,7 +199,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(false);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(false);
 
         AiExplanationResponse result = service.explain(1L, 10L).get();
 
@@ -214,7 +223,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(chatClient.prompt()).thenReturn(userSpec);
         when(userSpec.user(any(String.class))).thenReturn(userSpec);
         when(userSpec.call()).thenThrow(new RuntimeException("Connection refused"));
@@ -238,7 +247,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(chatClient.prompt()).thenReturn(userSpec);
         when(userSpec.user(any(String.class))).thenReturn(userSpec);
         when(userSpec.call()).thenReturn(callResponse);
@@ -261,7 +270,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(chatClient.prompt()).thenReturn(userSpec);
         when(userSpec.user(any(String.class))).thenReturn(userSpec);
         when(userSpec.call()).thenThrow(new AiUnavailableException("timeout"));
@@ -292,7 +301,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.modelName()).thenReturn("llama3");
         stubLlmSuccess(jsonResponse);
 
@@ -331,7 +340,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.modelName()).thenReturn("llama3");
         stubLlmSuccess(jsonResponse);
 
@@ -355,7 +364,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.numPredict()).thenReturn(1500);
         stubLlmSuccess("Esto no es JSON {");
 
@@ -384,7 +393,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         stubLlmSuccess(jsonResponse);
 
         AiExplanationResponse result = service.explain(1L, 10L).get();
@@ -415,7 +424,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.modelName()).thenReturn("llama3");
         stubLlmSuccess(markdownJson);
 
@@ -447,7 +456,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.modelName()).thenReturn("llama3");
         stubLlmSuccess(jsonWithPreamble);
 
@@ -472,7 +481,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.numPredict()).thenReturn(1500);
         stubLlmSuccess(longNonJson);
 
@@ -483,39 +492,22 @@ class AiExplanationServiceTest {
         assertStructuredLog(appender, 1L, 10L, AiOrigin.FALLBACK, true);
     }
 
-    // --- TRIAL limit ---
+    // --- TRIAL success increments count (PREMIUM user — TRIAL is blocked by role check) ---
 
     @Test
-    void trialUserAtLimit_throwsTrialLimitExceeded() {
-        Email trialEmail = Email.builder()
-                .id(20L).gmailId("msg-2").sender("c@d.com").senderName("C")
-                .subject("S2").snippet("snip2").contentForAnalysis("body2")
-                .isRead(false).isImportant(false).user(trialUserAtLimit)
-                .build();
-
-        when(userRepository.findById(2L)).thenReturn(Optional.of(trialUserAtLimit));
-        when(emailRepository.findById(20L)).thenReturn(Optional.of(trialEmail));
-
-        assertThatThrownBy(() -> service.explain(2L, 20L))
-                .isInstanceOf(TrialLimitExceededException.class);
-    }
-
-    // --- TRIAL success increments count ---
-
-    @Test
-    void trialUser_llmSuccess_incrementsAnalysisCount() throws Exception {
+    void premiumUser_llmSuccess_returnsLlmResponse() throws Exception {
         ListAppender<ILoggingEvent> appender = installLogCaptor();
-        User trialUser = User.builder()
-                .id(3L).googleId("gid3").email("trial2@example.com").name("T2")
-                .role(Role.TRIAL).analysisCount(5)
+        User premiumUser2 = User.builder()
+                .id(3L).googleId("gid3").email("prem2@example.com").name("P2")
+                .role(Role.PREMIUM).analysisCount(5)
                 .build();
-        Email trialEmail = Email.builder()
+        Email premiumEmail = Email.builder()
                 .id(30L).gmailId("msg-3").sender("e@f.com").senderName("E")
                 .subject("S3").snippet("snip3").contentForAnalysis("body3")
-                .isRead(false).isImportant(false).user(trialUser)
+                .isRead(false).isImportant(false).user(premiumUser2)
                 .build();
         EmailAnalysis latest = EmailAnalysis.builder()
-                .id(100L).email(trialEmail).user(trialUser)
+                .id(100L).email(premiumEmail).user(premiumUser2)
                 .riskLevel(ThreatLevel.YELLOW).riskPercentage(65)
                 .findings("[]")
                 .recommendedActions("[]")
@@ -528,20 +520,76 @@ class AiExplanationServiceTest {
               "secondOpinion": "Op."
             }""";
 
-        when(userRepository.findById(3L)).thenReturn(Optional.of(trialUser));
-        when(emailRepository.findById(30L)).thenReturn(Optional.of(trialEmail));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(premiumUser2));
+        when(emailRepository.findById(30L)).thenReturn(Optional.of(premiumEmail));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(30L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.modelName()).thenReturn("llama3");
         stubLlmSuccess(jsonResponse);
 
-        service.explain(3L, 30L).get();
+        AiExplanationResponse result = service.explain(3L, 30L).get();
 
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        assertThat(userCaptor.getValue().getAnalysisCount()).isEqualTo(6);
+        assertThat(result.origin()).isEqualTo(AiOrigin.LLM);
         assertStructuredLog(appender, 3L, 30L, AiOrigin.LLM, false);
+    }
+
+    // --- TRIAL role check ---
+
+    @Test
+    void trialUser_throwsAiPremiumRequired() {
+        User trialUser = User.builder()
+                .id(4L).googleId("gid4").email("trial4@example.com").name("T4")
+                .role(Role.TRIAL).analysisCount(5)
+                .build();
+        Email trialEmail = Email.builder()
+                .id(40L).gmailId("msg-4").sender("g@h.com").senderName("G")
+                .subject("S4").snippet("snip4").contentForAnalysis("body4")
+                .isRead(false).isImportant(false).user(trialUser)
+                .build();
+
+        when(userRepository.findById(4L)).thenReturn(Optional.of(trialUser));
+        when(emailRepository.findById(40L)).thenReturn(Optional.of(trialEmail));
+
+        assertThatThrownBy(() -> service.explain(4L, 40L))
+                .isInstanceOf(AiPremiumRequiredException.class);
+    }
+
+    // --- Safety net (unreachable for TRIAL — role check guards first) ---
+    // PREMIUM user with any analysisCount proceeds to AI path.
+
+    @Test
+    void premiumUser_highAnalysisCount_proceedsToAI() throws Exception {
+        User premiumAtLimit = User.builder()
+                .id(5L).googleId("gid5").email("prem5@example.com").name("P5")
+                .role(Role.PREMIUM).analysisCount(1000)
+                .build();
+        Email premiumEmail = Email.builder()
+                .id(50L).gmailId("msg-5").sender("i@j.com").senderName("I")
+                .subject("S5").snippet("snip5").contentForAnalysis("body5")
+                .isRead(false).isImportant(false).user(premiumAtLimit)
+                .build();
+        EmailAnalysis latest = EmailAnalysis.builder()
+                .id(200L).email(premiumEmail).user(premiumAtLimit)
+                .riskLevel(ThreatLevel.YELLOW).riskPercentage(65)
+                .findings("[]")
+                .recommendedActions("[]")
+                .analyzedAt(LocalDateTime.now(fixedClock))
+                .build();
+        String jsonResponse = """
+            {"summary": "R.", "heuristicExplanation": "E.", "secondOpinion": "O."}""";
+
+        when(userRepository.findById(5L)).thenReturn(Optional.of(premiumAtLimit));
+        when(emailRepository.findById(50L)).thenReturn(Optional.of(premiumEmail));
+        when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(50L))
+                .thenReturn(Optional.of(latest));
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
+        when(aiProperties.modelName()).thenReturn("llama3");
+        stubLlmSuccess(jsonResponse);
+
+        service.explain(5L, 50L).get();
+
+        verify(userRepository, never()).save(any());
     }
 
     // --- Security: foreign email → RuntimeException ---
@@ -581,7 +629,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.numPredict()).thenReturn(1500);
         stubLlmSuccess(truncatedJson);
 
@@ -614,7 +662,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.numPredict()).thenReturn(1500);
         stubLlmSuccess(unbalancedJson);
 
@@ -648,7 +696,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.modelName()).thenReturn("llama3");
         stubLlmSuccess(completeJson);
 
@@ -675,7 +723,7 @@ class AiExplanationServiceTest {
         when(emailRepository.findById(10L)).thenReturn(Optional.of(email));
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
                 .thenReturn(Optional.of(latest));
-        when(aiProperties.enabled()).thenReturn(true);
+        when(featureToggleService.isEnabled(ConfigKey.AI_ENABLED)).thenReturn(true);
         when(aiProperties.numPredict()).thenReturn(1500);
         stubLlmSuccess(shortInvalidJson);
 

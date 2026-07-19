@@ -3,22 +3,68 @@
   pageTitle="Centro de ayuda"
   subtitle="Preguntas frecuentes y respuestas rápidas.">
 
-  <div class="help-card">
-    @for (group of faqs(); track group.category) {
-      <section class="help-group">
-        <h2 class="help-category">{{ group.category }}</h2>
-        <div class="help-items">
-          @for (item of group.items; track item.q) {
-            <details class="help-item">
-              <summary class="help-question">
-                <span>{{ item.q }}</span>
-                <i class="ti ti-chevron-down help-chevron"></i>
-              </summary>
-              <p class="help-answer">{{ item.a }}</p>
-            </details>
-          }
+  @if (loading()) {
+    <div class="help-state-container">
+      <span class="spinner large"></span>
+      <span>Cargando…</span>
+    </div>
+  } @else if (error()) {
+    <div class="help-state-container help-state-error">
+      <i class="ti ti-alert-circle help-state-icon"></i>
+      <span class="help-state-title">No se pudo cargar el FAQ</span>
+      <span class="help-state-subtitle">Comprueba tu conexión e inténtalo de nuevo.</span>
+      <button class="btn-retry" (click)="loadFaqs()">Reintentar</button>
+    </div>
+  } @else {
+    <div class="help-card">
+      <div class="help-search-wrap" role="search">
+        <i class="ti ti-search help-search-icon" aria-hidden="true"></i>
+        <input
+          type="text"
+          class="help-search-input"
+          placeholder="Buscar en preguntas frecuentes…"
+          [value]="query()"
+          (input)="onQueryInput($event)"
+          aria-label="Buscar en preguntas frecuentes"
+        />
+        @if (query().length > 0) {
+          <button class="help-search-clear" (click)="query.set('')" aria-label="Limpiar búsqueda">
+            <i class="ti ti-x"></i>
+          </button>
+        }
+      </div>
+
+      @if (noResults()) {
+        <div class="help-state-container">
+          <i class="ti ti-search help-state-icon"></i>
+          <span class="help-state-title">No se encontraron preguntas para «{{ query() }}»</span>
+          <span class="help-state-subtitle">
+            Prueba con otros términos o
+            <a [href]="'mailto:' + supportEmail + '?subject=Consulta desde Centro de Ayuda: ' + query()"
+               class="help-support-link">contacta con soporte</a>.
+          </span>
         </div>
-      </section>
-    }
-  </div>
+      } @else {
+        @for (group of filteredCategories(); track group.id) {
+          <section class="help-group">
+            <h2 class="help-category">
+              <i class="{{ group.icon }} help-category-icon" aria-hidden="true"></i>
+              {{ group.name }}
+            </h2>
+            <div class="help-items">
+              @for (item of group.items; track item.q) {
+                <details class="help-item">
+                  <summary class="help-question">
+                    <span>{{ item.q }}</span>
+                    <i class="ti ti-chevron-down help-chevron"></i>
+                  </summary>
+                  <p class="help-answer">{{ item.a }}</p>
+                </details>
+              }
+            </div>
+          </section>
+        }
+      }
+    </div>
+  }
 </app-page-shell>

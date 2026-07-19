@@ -1,6 +1,6 @@
-import { Component, inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { Component, inject, OnInit, PLATFORM_ID, signal, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -13,11 +13,20 @@ export class LoginComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly termsAccepted = signal(false);
+  readonly privacyAccepted = signal(false);
+  readonly canLogin = computed(() => this.termsAccepted() && this.privacyAccepted());
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       if (this.authService.refreshFailed()) {
         this.authService.refreshFailed.set(false);
+        return;
+      }
+      if (this.route.snapshot.queryParamMap.get('error') === 'account_disabled') {
+        this.router.navigate(['/account-disabled']);
         return;
       }
       this.authService.checkAuth().subscribe((user) => {

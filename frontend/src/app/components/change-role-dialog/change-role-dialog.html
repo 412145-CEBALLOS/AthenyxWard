@@ -1,0 +1,47 @@
+<div class="modal-overlay" (click)="onCancel()">
+  <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+    <h2 id="dialog-title" class="dialog-title">Cambiar rol</h2>
+    <p class="dialog-subtitle">
+      Usuario: <strong>{{ userName() }}</strong>
+    </p>
+
+    <div class="form-group">
+      <label for="role-select" class="form-label">Nuevo rol</label>
+      <select id="role-select" class="form-select" (change)="selectedRole.set($any($event.target).value)">
+        <option value="" disabled selected>Seleccionar rol…</option>
+        @for (role of roles; track role) {
+          <option [value]="role" [selected]="role === currentRole()">
+            {{ roleLabel(role) }}
+          </option>
+        }
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="confirm-input" class="form-label">
+        Escribe <code>confirmar</code> para aplicar el cambio
+      </label>
+      <input
+        id="confirm-input"
+        type="text"
+        class="form-input"
+        placeholder="confirmar"
+        autocomplete="off"
+        [value]="confirmText()"
+        (input)="confirmText.set($any($event.target).value)" />
+    </div>
+
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" (click)="onCancel()">
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn-primary"
+        [disabled]="!canConfirm()"
+        (click)="onConfirm()">
+        Aplicar
+      </button>
+    </div>
+  </div>
+</div>

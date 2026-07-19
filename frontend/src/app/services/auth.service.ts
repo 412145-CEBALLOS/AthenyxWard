@@ -114,4 +114,23 @@ export class AuthService {
         tap((user) => this.currentUser.set(user)),
       );
   }
+
+  /**
+   * Persists the legal terms acceptance and updates the cached user signal.
+   * Idempotent — a second call with the same version returns the existing user
+   * without modifying the original acceptance timestamp.
+   *
+   * @param version the version identifier of the accepted terms (e.g. "v1.0")
+   */
+  acceptTerms(version: string): Observable<UserInfo> {
+    return this.http
+      .post<UserInfo>(
+        `${environment.apiUrl}/auth/accept-terms`,
+        { version },
+        { withCredentials: true },
+      )
+      .pipe(
+        tap((user) => this.currentUser.set(user)),
+      );
+  }
 }

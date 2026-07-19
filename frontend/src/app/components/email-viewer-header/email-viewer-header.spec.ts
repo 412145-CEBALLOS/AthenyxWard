@@ -68,6 +68,24 @@ describe('EmailViewerHeaderComponent', () => {
     expect(btn.title).toBe('Analiza primero el correo');
   });
 
+  it('AI button is disabled when aiEnabled=false with tooltip', () => {
+    fixture.componentRef.setInput('userRole', 'PREMIUM');
+    fixture.componentRef.setInput('aiEnabled', false);
+    fixture.detectChanges();
+    const btn = fixture.nativeElement.querySelector('.ai-explain-btn') as HTMLButtonElement;
+    expect(btn.disabled).toBeTrue();
+    expect(btn.title).toBe('La IA está deshabilitada por el administrador');
+  });
+
+  it('AI button is enabled when aiEnabled=true and other conditions met', () => {
+    fixture.componentRef.setInput('userRole', 'PREMIUM');
+    fixture.componentRef.setInput('aiEnabled', true);
+    fixture.detectChanges();
+    const btn = fixture.nativeElement.querySelector('.ai-explain-btn') as HTMLButtonElement;
+    expect(btn.disabled).toBeFalse();
+    expect(btn.title).toBe('');
+  });
+
   it('AI button is disabled when isDeleted=true with tooltip', () => {
     fixture.componentRef.setInput('userRole', 'PREMIUM');
     fixture.componentRef.setInput('isDeleted', true);
@@ -83,6 +101,23 @@ describe('EmailViewerHeaderComponent', () => {
     const btn = fixture.nativeElement.querySelector('.ai-explain-btn') as HTMLButtonElement;
     expect(btn.disabled).toBeFalse();
     expect(btn.title).toBe('');
+  });
+
+  it('TRIAL: AI button is not rendered', () => {
+    fixture.componentRef.setInput('userRole', 'TRIAL');
+    fixture.componentRef.setInput('canExplain', true);
+    fixture.detectChanges();
+    const btn = fixture.nativeElement.querySelector('.ai-explain-btn');
+    expect(btn).toBeNull();
+  });
+
+  it('PREMIUM: AI button is rendered', () => {
+    fixture.componentRef.setInput('userRole', 'PREMIUM');
+    fixture.componentRef.setInput('canExplain', true);
+    fixture.detectChanges();
+    const btn = fixture.nativeElement.querySelector('.ai-explain-btn') as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    expect(btn.disabled).toBeFalse();
   });
 
   it('emits hide action', () => {

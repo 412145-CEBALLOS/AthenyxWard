@@ -1,5 +1,8 @@
 package com.athenyx.backend.heuristics;
 
+import com.athenyx.backend.audit.AuditEventPublisher;
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
 import com.athenyx.backend.dto.HeuristicAnalysisResponse;
 import com.athenyx.backend.entity.Email;
 import com.athenyx.backend.entity.EmailAnalysis;
@@ -58,6 +61,11 @@ class HeuristicAnalysisServiceTest {
     private HeuristicEngine engine;
     @Mock
     private EmailHeaderCache emailHeaderCache;
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
+
+    @Mock
+    private ConfigService configService;
 
     private HeuristicAnalysisService service;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -69,9 +77,11 @@ class HeuristicAnalysisServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(configService.getInt(ConfigKey.HEURISTIC_CACHE_HOURS)).thenReturn(24);
+        lenient().when(configService.getInt(ConfigKey.TRIAL_ANALYSIS_LIMIT)).thenReturn(20);
         service = new HeuristicAnalysisService(
             emailRepository, analysisRepository, userRepository,
-            engine, emailHeaderCache, objectMapper, clock
+            engine, emailHeaderCache, objectMapper, clock, auditEventPublisher, configService
         );
 
         user = User.builder()
@@ -126,7 +136,7 @@ class HeuristicAnalysisServiceTest {
                 return a;
             });
 
-        HeuristicAnalysisResponse result = service.analyze(1L, 10L).get();
+        HeuristicAnalysisResponse result = service.analyze(1L, 10L, null, null, null).get();
 
         ArgumentCaptor<EmailAnalysis> captor = ArgumentCaptor.forClass(EmailAnalysis.class);
         verify(analysisRepository, times(1)).save(captor.capture());
@@ -153,7 +163,7 @@ class HeuristicAnalysisServiceTest {
         when(analysisRepository.findFirstByEmailIdOrderByAnalyzedAtDesc(10L))
             .thenReturn(Optional.of(cached));
 
-        CompletableFuture<HeuristicAnalysisResponse> future = service.analyze(1L, 10L);
+        CompletableFuture<HeuristicAnalysisResponse> future = service.analyze(1L, 10L, null, null, null);
         HeuristicAnalysisResponse result = future.get();
 
         assertThat(result.riskPercentage()).isEqualTo(15);
@@ -188,7 +198,7 @@ class HeuristicAnalysisServiceTest {
                 return a;
             });
 
-        CompletableFuture<HeuristicAnalysisResponse> future = service.analyze(1L, 10L);
+        CompletableFuture<HeuristicAnalysisResponse> future = service.analyze(1L, 10L, null, null, null);
         HeuristicAnalysisResponse result = future.get();
 
         assertThat(result.riskPercentage()).isEqualTo(22);
@@ -213,7 +223,7 @@ class HeuristicAnalysisServiceTest {
                 return a;
             });
 
-        HeuristicAnalysisResponse result = service.analyze(1L, 10L).get();
+        HeuristicAnalysisResponse result = service.analyze(1L, 10L, null, null, null).get();
 
         assertThat(result.riskPercentage()).isEqualTo(80);
         assertThat(result.riskLevel()).isEqualTo(ThreatLevel.RED);
@@ -236,7 +246,7 @@ class HeuristicAnalysisServiceTest {
         when(analysisRepository.save(any(EmailAnalysis.class)))
             .thenAnswer(inv -> inv.getArgument(0));
 
-        service.analyze(1L, 10L).get();
+        service.analyze(1L, 10L, null, null, null).get();
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -249,7 +259,7 @@ class HeuristicAnalysisServiceTest {
         user.setAnalysisCount(20);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> service.analyze(1L, 10L))
+        assertThatThrownBy(() -> service.analyze(1L, 10L, null, null, null))
             .isInstanceOf(TrialLimitExceededException.class);
         verify(engine, never()).run(any());
         verify(analysisRepository, never()).save(any());
@@ -270,7 +280,7 @@ class HeuristicAnalysisServiceTest {
         when(analysisRepository.save(any(EmailAnalysis.class)))
             .thenAnswer(inv -> inv.getArgument(0));
 
-        service.analyze(1L, 10L).get();
+        service.analyze(1L, 10L, null, null, null).get();
 
         verify(userRepository, never()).save(any());
     }

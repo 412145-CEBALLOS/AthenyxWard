@@ -8,19 +8,176 @@
   overflow-y: auto;
 }
 
+/* ─── Filtros ─── */
+.audit-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.period-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.period-buttons button {
+  padding: 7px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.period-buttons button:hover {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.period-buttons button.active {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.filter-input {
+  padding: 8px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #334155;
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  min-width: 140px;
+}
+
+.filter-input::placeholder {
+  color: #94a3b8;
+}
+
+.filter-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.filter-input.search-input {
+  min-width: 200px;
+}
+
+.filter-select {
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #334155;
+  font-size: 0.88rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.filter-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+/* ─── Botón Exportar ─── */
+.btn-export {
+  margin-left: auto;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.btn-export:hover {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35);
+  transform: translateY(-1px);
+}
+
+/* ─── Estados (loading / error / empty) ─── */
+.state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: #64748b;
+  gap: 12px;
+}
+
+.state-container p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(59, 130, 246, 0.2);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-state {
+  color: #64748b;
+}
+
+.btn-retry {
+  background: none;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 8px;
+  padding: 6px 16px;
+  cursor: pointer;
+  color: #334155;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.btn-retry:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+/* ─── Tarjeta de la tabla ─── */
 .audit-card {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 14px;
-  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.05);
-  overflow: hidden;
+  background: #000000;
+  border-radius: 0;
+  border: 1px solid #00ff00;
+  box-shadow: 0 0 16px rgba(0, 255, 0, 0.15);
+}
+
+.audit-table-wrapper {
+  overflow-x: auto;
 }
 
 .audit-table {
   width: 100%;
   border-collapse: collapse;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  color: #00ff00;
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
 }
 
 .audit-table thead {
@@ -39,59 +196,196 @@
 }
 
 .audit-table td {
-  padding: 10px 16px;
-  font-size: 0.85rem;
-  color: #334155;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  color: #00ff00;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+  vertical-align: middle;
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
 }
 
 .audit-table tr:last-child td {
   border-bottom: none;
 }
 
-.audit-table tr:hover {
-  background: rgba(59, 130, 246, 0.03);
+.audit-table tr:hover td {
+  background: rgba(0, 255, 0, 0.08);
+}
+
+.clickable-row {
+  cursor: pointer;
 }
 
 .td-date {
-  color: #64748b;
-  font-size: 0.8rem;
+  color: #00cc00;
+  font-size: 0.82rem;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 3px rgba(0, 255, 0, 0.4);
 }
 
 .td-target {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.8rem;
-  color: #475569;
-  word-break: break-all;
+  color: #00cc00;
+  font-size: 0.82rem;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 3px rgba(0, 255, 0, 0.4);
 }
 
+/* ─── Chips (acción / severidad) — estilo terminal ─── */
 .action-chip {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 2px 8px;
   font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.3px;
+  font-weight: 500;
+  letter-spacing: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
+}
+
+.action-chip[data-severity='info'] {
+  color: #33ff33;
+  border-color: #33ff33;
+  text-shadow: 0 0 6px rgba(0, 255, 0, 0.7);
+}
+
+.action-chip[data-severity='warning'] {
+  color: #ffcc00;
+  border-color: #ffcc00;
+  text-shadow: 0 0 6px rgba(255, 204, 0, 0.5);
+}
+
+.action-chip[data-severity='critical'] {
+  color: #ff4444;
+  border-color: #ff4444;
+  text-shadow: 0 0 6px rgba(255, 68, 68, 0.5);
+}
+
+.severity-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
+}
+
+.severity-chip[data-severity='info'] {
+  color: #33ff33;
+  border-color: #33ff33;
+  text-shadow: 0 0 6px rgba(0, 255, 0, 0.7);
+}
+
+.severity-chip[data-severity='warning'] {
+  color: #ffcc00;
+  border-color: #ffcc00;
+  text-shadow: 0 0 6px rgba(255, 204, 0, 0.5);
+}
+
+.severity-chip[data-severity='critical'] {
+  color: #ff4444;
+  border-color: #ff4444;
+  text-shadow: 0 0 6px rgba(255, 68, 68, 0.5);
+}
+
+/* ─── Scrollbar verde (solo este componente) ─── */
+:host::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+:host::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+:host::-webkit-scrollbar-thumb {
+  background: #00ff00;
   border-radius: 6px;
-  background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
 }
 
-.action-chip[data-action="PHISHING_DETECTED"],
-.action-chip[data-action="USER_DEACTIVATED"],
-.action-chip[data-action="TOKEN_REFRESH_FAILED"] {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
+:host::-webkit-scrollbar-thumb:hover {
+  background: #33ff33;
 }
 
-.action-chip[data-action="LOGIN"] {
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
+/* ─── Mobile ≤700px ─── */
+@media (max-width: 700px) {
+  .audit-filters {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .period-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+
+  .period-buttons button {
+    font-size: 0.78rem;
+    padding: 6px 4px;
+    text-align: center;
+  }
+
+  .filter-input,
+  .filter-select,
+  .filter-input.search-input {
+    width: 100%;
+    min-width: 0;
+    font-size: 0.82rem;
+  }
+
+  .btn-export {
+    display: none;
+  }
+
+  /* Scroll horizontal en la tabla */
+  .audit-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .audit-table {
+    min-width: 600px;
+  }
+
+  .audit-table th,
+  .audit-table td {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+
+  .audit-table th {
+    font-size: 0.68rem;
+  }
 }
 
-.action-chip[data-action="ROLE_CHANGE"],
-.action-chip[data-action="CONFIG_UPDATE"] {
-  background: rgba(245, 158, 11, 0.15);
-  color: #b45309;
+/* ─── Mobile extra-pequeño ≤640px ─── */
+@media (max-width: 640px) {
+  .audit-filters {
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .period-buttons button {
+    font-size: 0.72rem;
+  }
+
+  .filter-input,
+  .filter-select,
+  .filter-input.search-input {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+  }
 }

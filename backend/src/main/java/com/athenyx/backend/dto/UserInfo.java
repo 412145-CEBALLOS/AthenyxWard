@@ -17,5 +17,7 @@ public record UserInfo(
     Role role,
     LocalDateTime trialEndDate,
     boolean trialExpired,
-    boolean accessibilityMode
+    boolean accessibilityMode,
+    LocalDateTime termsAcceptedAt,
+    String termsVersion
 ) {}

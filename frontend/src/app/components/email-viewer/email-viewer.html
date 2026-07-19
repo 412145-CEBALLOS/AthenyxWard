@@ -15,6 +15,7 @@
     [isHidden]="isHidden()"
     [isDeleted]="email().isDeleted"
     [canExplain]="analysis()?.riskLevel != null"
+    [aiEnabled]="aiEnabled()"
     (action)="action.emit($event)"
     (explainRequest)="onExplainRequest()" />
   <app-email-analysis

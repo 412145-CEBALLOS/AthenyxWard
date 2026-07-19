@@ -37,9 +37,11 @@ npm run serve:ssr:frontend      # Run SSR server (port 4000)
 - `repository/` — Spring Data JPA interfaces
 - `service/` — Business logic
   - `service/reminder/` — Reminder CRUD + Premium/Admin gating (US 2.6)
+  - `service/audit/` — AuditLog reading and retention purging
 - `controller/` — REST endpoints
 - `config/` — Spring configuration (SecurityFilterChain, CORS, etc.)
 - `security/` — JWT filters, auth providers
+- `audit/` — Audit event publisher, listener, correlation ID filter, domain events
 - `ai/` — Spring AI + Ollama integration
 - `gmail/` — Gmail API integration
 - `heuristics/` — Rule-based threat detection (`ThreatScorer`, `HeuristicEngine`, `HeuristicAnalysisService`, 19 rules)
@@ -284,6 +286,174 @@ Frontend (`AnalysisHistoryComponent`):
 - Native `<input type="date">` controls for the range; no date library required.
 - Reuses `<app-page-shell>` and `<app-email-paginator>`.
 - Click on a card navigates to `/home?emailId={id}` so the existing viewer + analysis panel is reused.
+
+## Audit Log (US 4.2)
+
+Immutable log of security-relevant platform events. Events are persisted
+asynchronously after the originating transaction commits, so audit failures
+never affect the caller's operation.
+
+### Backend architecture
+
+**Entity**: `AuditLog` (JPA) with columns: `id`, `createdAt`, `actorId` (FK, denormalised `insertable=false, updatable=false`), `actorEmail`, `actorRole`, `actionType` (`AuditActionType` enum, 19 types), `targetType`, `targetId`, `severity` (`AuditSeverity`: INFO/WARNING/CRITICAL), `result` (`AuditResult`: SUCCESS/FAILURE), `payload` (JSON TEXT), `ipAddress`, `userAgent`, `correlationId`.
+
+**Indices**: `idx_audit_created_at` on `created_at`, `idx_audit_actor_id` on `actor_id`, `idx_audit_action_type` on `action_type`, `idx_audit_correlation_id` on `correlation_id`.
+
+**Correlation ID**: `CorrelationIdFilter` (`@Order(0)`, before `JwtAuthenticationFilter`) extracts `X-Correlation-ID` header or generates `UUID.randomUUID()`, sets MDC + request attribute, cleans up in `finally` block.
+
+**Event pattern**:
+- Each domain event extends `ApplicationEvent` (e.g. `LoginSuccessEvent`, `PhishingDetectedEvent`, `TokenRefreshFailedEvent`, `EmailMarkedImportantEvent`, etc.)
+- `AuditEventPublisher` wraps `ApplicationEventPublisher` with typed helper methods
+- `AuditEventListener` consumes via `@TransactionalEventListener(phase = AFTER_COMMIT, fallbackExecution = true)` — persists in a **dedicated `REQUIRES_NEW` transaction** so the audit write never interferes with the caller's commit
+- Persistence failure is caught and logged but **never propagated** to the caller
+
+> ⚠️ **CRITICAL RULE — `@Transactional` on every publisher**: Every method that calls `auditEventPublisher.publishXxx(...)` **must be annotated `@Transactional`**. Without it, `AFTER_COMMIT` silently discards the event. The `REQUIRES_NEW` on `persist()` ensures the audit row is committed independently of the caller's outcome. The `fallbackExecution = true` is a safety net for edge cases (e.g., calls from non-transactional code); it does **not** replace the need for `@Transactional` on the caller.
+>
+> ⚠️ **Self-invocation pitfall**: `persist()` is called via `self().persist(...)` (through `ApplicationContext.getBean`) to bypass Spring's self-invocation restriction. Never call `this.persist(...)` from within `AuditEventListener` — it bypasses the CGLIB proxy and the `@Transactional(REQUIRES_NEW)` annotation is ignored, causing the save to run without a transaction context and fail silently.
+>
+> ⚠️ **Audit context for async services**: `HeuristicAnalysisService.analyze` runs `@Async("heuristicsExecutor")`. Since `AuditContext` reads from `RequestContextHolder` (thread-local request scope), it returns null on the async thread. To preserve `ip_address`, `user_agent` and `correlation_id` in audit rows for phishing events, the controller must capture these from the HTTP request **before** calling the async service and pass them as parameters. `AuditEventListener.onPhishingDetected` uses the event's context fields when present, falling back to `AuditContext`. The same pattern applies to any other `@Async` publisher.
+
+**Retention**: `AuditRetentionService` runs monthly (`@Scheduled(cron = "0 0 3 1 * *")`), purges entries older than `app.audit.retention-days` (default 365, configurable in `application.properties`).
+
+**Endpoints** (`AuditController`, ADMIN only):
+- `GET /api/admin/audit` — paginated list with filters: `page`, `size`, `from`, `to`, `actor`, `action`, `severity`, `query` (free-text search)
+- `GET /api/admin/audit/export` — streaming CSV download; same filters, no pagination; anti-injection CSV escaping (cells starting with `=`, `+`, `-`, `@`, CR get `'` prefix; cells with commas/quotes/newlines are wrapped in `"`)
+
+### Wired events
+
+| Event | Trigger | Notes |
+|-------|---------|-------|
+| `LoginSuccessEvent` | `OAuth2LoginSuccessHandler.onAuthenticationSuccess` | |
+| `LoginFailedEvent` | `OAuth2LoginFailureHandler` | |
+| `LogoutEvent` | `AuthController.logout` | Anonymous actor when no valid refresh token |
+| `LogoutEvent` (all devices) | `AuthController.logoutAll` | `payload.revokedCount = N` |
+| `TokenRefreshFailedEvent` | `RefreshTokenService.resolveUserForRotation` (MISSING, NOT_RECOGNISED, REUSE_DETECTED, ABSOLUTE_EXPIRED, EXPIRED) | |
+| `PhishingDetectedEvent` | `HeuristicAnalysisService` when `ThreatLevel.RED` | |
+| `EmailMarkedImportantEvent` | `GmailController.toggleImportant` | |
+| `EmailHiddenEvent` | `GmailController.hideEmail` | |
+| `EmailUnhiddenEvent` | `GmailController.unhideEmail` | Uses same event class with `unhidden=true` |
+| `EmailDeletedEvent` | `GmailController.deleteEmail` | |
+| `ExportCsvEvent` | `AuditController.getExportCsv` | |
+| `AutoAnalysisCompletedEvent` | Placeholder — hook ready, not yet wired | |
+| `RoleChangedEvent`, `UserDeactivatedEvent` | Placeholder — hook ready, wired in US 4.3 | |
+| `ConfigUpdateEvent` | Placeholder — hook ready, wired in US 4.4 | |
+
+### Frontend architecture
+
+- `AuditService` — `getEntries(filters)` → `GET /api/admin/audit`, `getExportUrl(filters)` → `GET /api/admin/audit/export`
+- `AdminAuditComponent` — standalone page with filters (period preset buttons, date range, actor, action, severity, free-text query with 300ms debounce), paginated table, export CSV button, drawer trigger
+- `AuditDetailDrawerComponent` — side drawer showing full entry detail: timestamp, actor, action, target, severity/result badges, IP, user agent, correlation ID, parsed JSON payload
+- `environment.auditTopResults: 10` — configurable top-N for ranked free-text search results
+- Both components use `DatePipe` and `takeUntil(this.onDestroy)` for subscription management
+
+## Global Config (US 4.4 / US 4.5)
+
+ADMIN panel for 18 platform-wide configuration keys grouped into 7 categories (AI, Análisis Heurístico, Retención de Datos, Cuotas, Rate Limiting, Notificaciones, Seguridad).
+
+### Backend
+
+**Entity**: `AppConfig` with `config_key` (PK), `config_value` (TEXT), `type` (VARCHAR), `category` (VARCHAR), `updated_at`, `updated_by`. Uses `ddl-auto=update`. Column named `config_value` (not `value`) to avoid H2 reserved word conflicts.
+
+**`ConfigKey` enum** (16 keys):
+- `AI_ENABLED`, `AI_MODEL` — AI
+- `HEURISTIC_RISK_THRESHOLD_LOW` (INT, 0-100), `HEURISTIC_RISK_THRESHOLD_MEDIUM` (INT, 0-100), `HEURISTIC_CACHE_HOURS` — Análisis heurístico
+- `AUDIT_RETENTION_DAYS`, `EMAIL_RETENTION_DAYS` — Retención
+- `TRIAL_ANALYSIS_LIMIT`, `REMINDER_MAX_PER_USER` — Cuotas
+- `NOTIFICATIONS_UPCOMING_WINDOW_HOURS`, `NOTIFICATIONS_POLL_INTERVAL_SECONDS` — Notificaciones
+- `RATELIMIT_EXPLAIN_PER_HOUR` — Rate Limiting (`ANALYSIS_PER_HOUR = 60` hardcoded en `RateLimiter`)
+- `COPY_SUPPORT_EMAIL` — Copy y contenido
+- `OAUTH_ALLOWED_DOMAINS`, `SECURITY_MAX_FAILED_LOGINS`, `SECURITY_IP_BLOCKLIST` — Seguridad
+
+**`ConfigService`**:
+- `@Cacheable("config")` on `getEntry`/`getAllGrouped` — Caffeine, `expireAfterWrite=60s`
+- `@CacheEvict(allEntries=true)` on `setEntry`, executed via `TransactionSynchronization.afterCommit()` to ensure cache is only evicted after DB commit
+- Type validation: `INT` → `Integer.parseInt` + range check; `BOOLEAN` → `Boolean.parseBoolean`; `STRING` → non-blank check
+- `toResponse()` converts `ConfigType.valueOf(cfg.getType())` for safe enum lookup
+
+**`ConfigController`** (`/api/admin/config` — ADMIN only):
+- `GET /` → grouped categories with entries (all 16 keys)
+- `GET /{key}` → single entry
+- `PUT /{key}` → update value + validates type/range → returns `ConfigEntryResponse`
+- `POST /{key}/purge-now` → for `AUDIT_RETENTION_DAYS` and `EMAIL_RETENTION_DAYS`; calls `AuditRetentionService.purgeNow()` or `EmailRetentionService.purgeNow()`; returns `PurgeResultResponse`
+- `GET /api/public/config` → only publicly visible keys (for SPA bootstrap)
+
+**Audit events**: `CONFIG_UPDATE` on every PUT; `CONFIG_PURGE` on every purge-now. `AuditRetentionService.purgeNow()` runs in its own `@Transactional` method.
+
+**Seed**: `ConfigDataInitializer` (ApplicationRunner) inserts all 16 rows only if `repository.count() == 0`.
+
+### Config-driven services
+
+| Service | Config key | Notes |
+|---------|-----------|-------|
+| `HeuristicAnalysisService` | `TRIAL_ANALYSIS_LIMIT`, `HEURISTIC_CACHE_HOURS` | `TRIAL_LIMIT` field removed; uses `configService.getInt(TRIAL_ANALYSIS_LIMIT)` |
+| `AiExplanationService` | `AI_ENABLED` | Runtime check via `FeatureToggleService.isEnabled(ConfigKey.AI_ENABLED)` — toggle takes effect immediately, no restart needed |
+| `AiConfig` | `AI_ENABLED` | `AiProperties` bean holds only static values; `enabled` is a placeholder (`true`); real runtime check delegated to `FeatureToggleService` |
+| `NotificationService` | `NOTIFICATIONS_UPCOMING_WINDOW_HOURS` | `UPCOMING_WINDOW` field removed; uses `configService.getInt(NOTIFICATIONS_UPCOMING_WINDOW_HOURS)` |
+| `ReminderService` | `REMINDER_MAX_PER_USER` | Quota check uses `configService.getInt(REMINDER_MAX_PER_USER)`; throws `ReminderQuotaExceededException` → 409 |
+| `GlobalExceptionHandler` | — | Handles `ConfigValidationException` (400), `ConfigNotFoundException` (404), `FeatureDisabledException` (404), `ReminderQuotaExceededException` (409) |
+
+### Login Security (US 4.5)
+
+**`LoginAttemptService`**:
+- In-memory `ConcurrentHashMap<String, LoginAttempt>` keyed by IP
+- Sliding window: failed attempts tracked for 15 min (configurable via `LOGIN_BLOCK_DURATION_MINUTES`)
+- `isBlocked(ip)` → true if attempts ≥ `LOGIN_MAX_ATTEMPTS` within window
+- `recordFailedAttempt(ip)`, `recordSuccessfulLogin(ip)`, `getRemainingLockoutTime(ip)`
+
+**`RateLimiter`**:
+- Per-user + per-endpoint sliding window (1 hour window)
+- `ConcurrentHashMap<String, RateLimitBucket>` where key = `userId:endpoint`
+- Bucket: `long[] timestamps` array + count; oldest timestamp evicted on each new request
+- `analysis` endpoint: hardcoded 60 requests/hour; `explain` endpoint: configurable via `RATELIMIT_EXPLAIN_PER_HOUR`
+
+**`RateLimitFilter`** (`@Order(20)`, after `JwtAuthenticationFilter`):
+- Extracts `userId` from `Authentication.getPrincipal().getName()`
+- For anonymous: uses IP address as key
+- Returns 429 + `Retry-After` header when limit exceeded
+
+**`OAuth2LoginSuccessHandler`**:
+- Injects `LoginAttemptService` + `ConfigService`
+- IP block check before redirect: if `loginAttemptService.isBlocked(requestIp)` → clears session, redirects to `/login?blocked`
+- Domain whitelist: `configService.getString(OAUTH_ALLOWED_DOMAINS)` → CSV split; empty = allow all; else checks `Google OAuth2 sub` domain suffix
+
+**`OAuth2LoginFailureHandler`**:
+- Injects `LoginAttemptService` → calls `recordFailedAttempt(clientIp)` on auth failure
+
+**`FeatureToggleService`**: `isFeatureEnabled(key)` → `configService.getBoolean(key)`. `FeatureDisabledException` extends `RuntimeException` → `404` via `GlobalExceptionHandler`.
+
+### Frontend
+
+- `ConfigService` — HTTP wrapper for all config endpoints
+- `models/config.model.ts` — `ConfigEntry`, `ConfigCategory`, `PurgeResult`, `RiskThresholds`; `ConfigType` = `'INT' | 'BOOLEAN' | 'STRING'` (no JSON)
+- `AppConfigInitializerService` — singleton signals: `supportEmail`, `pollIntervalSeconds`, `riskThresholds`, `aiEnabled`, `loading`; fetches `/api/public/config` on `load()`; reads `COPY_SUPPORT_EMAIL`, `NOTIFICATIONS_POLL_INTERVAL_SECONDS`, `HEURISTIC_RISK_THRESHOLD_LOW`, `HEURISTIC_RISK_THRESHOLD_MEDIUM`, `AI_ENABLED` (pública para deshabilitar el botón "Explicar con IA" sin necesidad de llamada autenticada)
+- `LayoutComponent` — uses `AppConfigInitializerService`; polling interval = `appConfig.pollIntervalSeconds() * 1000`; support email from `appConfig.supportEmail()`
+- `AdminConfigComponent` (`/admin/config`): grouped `<details open>` per categoría, cards con inputs por tipo (boolean switch, number input, text input), label en español hardcodeado en `LABELS` (synchronized con claves del backend), badge "Valor actual" prominente, purge confirm dialog para claves de retención
+- Sidebar: "Configuración global" nav item (ADMIN only) → `routerLink="admin/config"`
+
+**Stale DB rows**: If `app_config` contains rows from a previous 18-key schema (e.g. `TRIAL_AI_EXPLANATION_LIMIT`, `HEURISTIC_RISK_THRESHOLDS`, `OAUTH_SESSION_HOURS`), `AdminConfigComponent` filters them out automatically (frontend defensive filter). A `console.warn('[AdminConfig] Stale config rows filtered out:', [...])` is emitted in dev mode. To permanently clean the DB, run this SQL once:
+
+```sql
+-- Remove stale config rows from previous schema
+DELETE FROM app_config WHERE config_key NOT IN (
+  'AUDIT_RETENTION_DAYS','EMAIL_RETENTION_DAYS',
+  'AI_ENABLED','AI_MODEL',
+  'TRIAL_ANALYSIS_LIMIT','REMINDER_MAX_PER_USER',
+  'HEURISTIC_RISK_THRESHOLD_LOW','HEURISTIC_RISK_THRESHOLD_MEDIUM',
+  'HEURISTIC_CACHE_HOURS',
+  'NOTIFICATIONS_UPCOMING_WINDOW_HOURS','NOTIFICATIONS_POLL_INTERVAL_SECONDS',
+  'RATELIMIT_EXPLAIN_PER_HOUR',
+  'COPY_SUPPORT_EMAIL','OAUTH_ALLOWED_DOMAINS',
+  'SECURITY_MAX_FAILED_LOGINS','SECURITY_IP_BLOCKLIST'
+);
+
+-- Fix any INT keys that ended up with empty values (defaults shown)
+UPDATE app_config SET config_value = '24' WHERE config_key = 'NOTIFICATIONS_UPCOMING_WINDOW_HOURS' AND (config_value IS NULL OR config_value = '');
+```
+
+### Pre-existing Test Issues (not from US 4.5)
+
+- `stats.spec.ts`: 4 failures due to UTF-8 encoding issues with accented characters (í → Ã­) — Karma charset configuration issue
+- `adminGuard.spec.ts`: `auth.checkAuth is not a function` — stub mismatch, pre-existing
 
 ## Known Issues
 

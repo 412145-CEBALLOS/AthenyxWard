@@ -1,5 +1,7 @@
 package com.athenyx.backend.service;
 
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
 import com.athenyx.backend.dto.UpcomingReminderNotification;
 import com.athenyx.backend.entity.Email;
 import com.athenyx.backend.entity.Reminder;
@@ -34,6 +36,7 @@ import static org.mockito.Mockito.when;
 class NotificationServiceTest {
 
     @Mock private ReminderRepository repository;
+    @Mock private ConfigService configService;
     private Clock fixedClock;
     private NotificationService service;
 
@@ -45,7 +48,8 @@ class NotificationServiceTest {
             NOW.toInstant(ZoneOffset.UTC),
             ZoneOffset.UTC
         );
-        service = new NotificationService(repository, fixedClock);
+        when(configService.getInt(ConfigKey.NOTIFICATIONS_UPCOMING_WINDOW_HOURS)).thenReturn(24);
+        service = new NotificationService(repository, fixedClock, configService);
     }
 
     @Test
@@ -159,7 +163,7 @@ class NotificationServiceTest {
             NOW.plusHours(25).toInstant(ZoneOffset.UTC),
             ZoneOffset.UTC
         );
-        NotificationService futureService = new NotificationService(repository, futureClock);
+        NotificationService futureService = new NotificationService(repository, futureClock, configService);
 
         List<UpcomingReminderNotification> result = futureService.getUpcomingReminders(1L);
 

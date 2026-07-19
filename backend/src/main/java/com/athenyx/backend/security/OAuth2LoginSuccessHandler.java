@@ -1,6 +1,8 @@
 package com.athenyx.backend.security;
 
+import com.athenyx.backend.audit.AuditEventPublisher;
 import com.athenyx.backend.entity.Role;
+import org.slf4j.MDC;
 import com.athenyx.backend.entity.User;
 import com.athenyx.backend.repository.UserRepository;
 import com.athenyx.backend.service.RefreshTokenService;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
@@ -51,6 +54,9 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private final OAuth2AuthorizedClientService authorizedClientService;
     private final TokenEncryptionService tokenEncryptionService;
     private final RefreshTokenService refreshTokenService;
+    private final AuditEventPublisher auditEventPublisher;
+    private final LoginAttemptService loginAttemptService;
+    private final com.athenyx.backend.config.ConfigService configService;
     //private final RefreshCookieManager refreshCookieManager;
 
     @Value("${app.frontend.url}")
@@ -60,6 +66,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private boolean cookieSecure;
 
     @Override
+    @Transactional
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
@@ -80,10 +87,39 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 ? LocalDateTime.ofInstant(client.getAccessToken().getExpiresAt(), ZoneOffset.UTC)
                 : null;
 
+        String ip = getClientIp(request);
+        if (loginAttemptService.isIpBlocked(ip)) {
+            auditEventPublisher.publishLoginFailed(email, "ip_blocked");
+            getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/login?error=ip_blocked");
+            return;
+        }
+
+        String allowedDomains = configService.getString(com.athenyx.backend.config.ConfigKey.OAUTH_ALLOWED_DOMAINS);
+        if (allowedDomains != null && !allowedDomains.isBlank()) {
+            String emailDomain = email.substring(email.indexOf('@') + 1);
+            boolean allowed = java.util.Arrays.stream(allowedDomains.split(","))
+                    .map(String::trim)
+                    .anyMatch(d -> d.equalsIgnoreCase(emailDomain));
+            if (!allowed) {
+                auditEventPublisher.publishLoginFailed(email, "domain_not_allowed");
+                getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/login?error=domain_not_allowed");
+                return;
+            }
+        }
+
         String encryptedAccessToken = tokenEncryptionService.encrypt(accessToken);
         String encryptedRefreshToken = refreshToken != null ? tokenEncryptionService.encrypt(refreshToken) : null;
 
         java.util.Optional<User> existingOpt = userRepository.findByGoogleId(googleId);
+
+        if (existingOpt.isPresent()) {
+            User existing = existingOpt.get();
+            if (existing.getDeletedAt() != null || !existing.isActive()) {
+                auditEventPublisher.publishLoginFailed(email, "account_disabled");
+                getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/login?error=account_disabled");
+                return;
+            }
+        }
 
         User user = existingOpt
                 .map(existing -> {
@@ -109,6 +145,9 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                         .build());
 
         user = userRepository.save(user);
+
+        String correlationId = extractCorrelationId(request);
+        auditEventPublisher.publishLoginSuccess(user, correlationId);
 
         long tokenVersion;
         if (existingOpt.isPresent()) {
@@ -138,7 +177,31 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie);
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie);
 
-        getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/home");
+        String redirectUrl = determineRedirectUrl(user, frontendUrl);
+        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+    }
+
+    private String determineRedirectUrl(User user, String frontendUrl) {
+        if (user.getTermsAcceptedAt() == null) {
+            return frontendUrl + "/legal/terms?from=oauth&next=/home";
+        }
+        return frontendUrl + "/home";
+    }
+
+    private String extractCorrelationId(HttpServletRequest request) {
+        Object attr = request.getAttribute(CorrelationIdFilter.ATTRIBUTE);
+        String mdc = MDC.get("correlationId");
+        log.debug("extractCorrelationId: request_attr={} mdc={}", attr, mdc);
+        if (attr instanceof String s) return s;
+        return mdc;
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xForwarded = request.getHeader("X-Forwarded-For");
+        if (xForwarded != null && !xForwarded.isBlank()) {
+            return xForwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     private String buildSetCookie(String name, String value, String path, long maxAgeSeconds, boolean sameSiteStrict) {

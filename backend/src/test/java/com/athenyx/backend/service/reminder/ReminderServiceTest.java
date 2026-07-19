@@ -1,5 +1,7 @@
 package com.athenyx.backend.service.reminder;
 
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
 import com.athenyx.backend.dto.CreateReminderRequest;
 import com.athenyx.backend.dto.ReminderResponse;
 import com.athenyx.backend.dto.ReminderSummary;
@@ -40,11 +42,13 @@ import static org.mockito.Mockito.when;
  * mocked; we only exercise the service's business rules.
  */
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class ReminderServiceTest {
 
     @Mock private ReminderRepository repository;
     @Mock private EmailRepository emailRepository;
     @Mock private UserRepository userRepository;
+    @Mock private ConfigService configService;
 
     private ReminderService service;
 
@@ -60,7 +64,8 @@ class ReminderServiceTest {
             LocalDateTime.of(2026, 6, 24, 12, 0).toInstant(ZoneOffset.UTC),
             ZoneOffset.UTC
         );
-        service = new ReminderService(repository, emailRepository, userRepository, fixedClock);
+        when(configService.getInt(ConfigKey.REMINDER_MAX_PER_USER)).thenReturn(50);
+        service = new ReminderService(repository, emailRepository, userRepository, fixedClock, configService);
 
         premium = User.builder().id(1L).email("p@example.com").role(Role.PREMIUM).build();
         trial = User.builder().id(2L).email("t@example.com").role(Role.TRIAL).build();

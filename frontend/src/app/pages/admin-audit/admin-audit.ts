@@ -1,35 +1,208 @@
+import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
+  computed,
+  inject,
+  OnDestroy,
+  OnInit,
+  PLATFORM_ID,
   signal,
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { PageShellComponent } from '../../components/page-shell/page-shell';
+import { EmailPaginatorComponent } from '../../components/email-paginator/email-paginator';
+import { AuditDetailDrawerComponent } from '../../components/audit-detail-drawer/audit-detail-drawer';
+import { AuditService } from '../../services/audit.service';
+import {
+  AuditActionType,
+  AuditEntryResponse,
+  AuditFilters,
+  AuditSeverity,
+} from '../../models/audit.model';
+import { environment } from '../../../environments/environment';
 
-interface AuditEntry {
-  id: number;
-  actor: string;
-  action: string;
-  target: string;
-  at: string;
-}
+type Period = '1w' | '1m' | '1y' | 'all';
 
 @Component({
   selector: 'app-admin-audit',
   standalone: true,
-  imports: [PageShellComponent],
+  imports: [PageShellComponent, EmailPaginatorComponent, AuditDetailDrawerComponent, DatePipe],
   templateUrl: './admin-audit.html',
   styleUrl: './admin-audit.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AdminAuditComponent {
-  readonly entries = signal<AuditEntry[]>([
-    { id: 1, actor: 'maria.g@example.com', action: 'ROLE_CHANGE', target: 'carlos.perez@example.com', at: '2026-06-08 09:24' },
-    { id: 2, actor: 'sistema', action: 'AUTO_ANALYSIS', target: 'gmail:18f4...a1c2', at: '2026-06-08 09:14' },
-    { id: 3, actor: 'javier.l@example.com', action: 'LOGIN', target: 'javier.l@example.com', at: '2026-06-08 08:55' },
-    { id: 4, actor: 'maria.g@example.com', action: 'CONFIG_UPDATE', target: 'global.max_analyses_per_day', at: '2026-06-08 08:11' },
-    { id: 5, actor: 'sistema', action: 'PHISHING_DETECTED', target: 'gmail:7bc3...d91e', at: '2026-06-08 07:42' },
-    { id: 6, actor: 'carlos.perez@example.com', action: 'EMAIL_MARKED_IMPORTANT', target: 'gmail:c2a1...88f0', at: '2026-06-07 22:45' },
-    { id: 7, actor: 'sistema', action: 'TOKEN_REFRESH_FAILED', target: 'ana.torres@example.com', at: '2026-06-07 21:10' },
-    { id: 8, actor: 'maria.g@example.com', action: 'USER_DEACTIVATED', target: 'ana.torres@example.com', at: '2026-06-07 19:01' },
-  ]);
+export class AdminAuditComponent implements OnInit, OnDestroy {
+  private readonly auditService = inject(AuditService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly onDestroy = new Subject<void>();
+  private readonly querySubject = new Subject<string>();
+  private readonly platformId = inject(PLATFORM_ID);
+
+  readonly entries = signal<AuditEntryResponse[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal(false);
+  readonly currentPage = signal(0);
+  readonly totalPages = signal(0);
+  readonly totalItems = signal(0);
+  readonly selectedEntry = signal<AuditEntryResponse | null>(null);
+  readonly drawerOpen = signal(false);
+
+  readonly period = signal<Period>('all');
+  readonly actorFilter = signal('');
+  readonly actionFilter = signal<AuditActionType | ''>('');
+  readonly severityFilter = signal<AuditSeverity | ''>('');
+  readonly query = signal('');
+
+  readonly hasNextPage = computed(() => this.currentPage() < this.totalPages() - 1);
+  readonly emptyState = computed(() => !this.loading() && !this.error() && this.totalItems() === 0);
+  readonly maxDate = new Date().toISOString().split('T')[0];
+
+  ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.querySubject
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.onDestroy))
+      .subscribe((q) => {
+        this.query.set(q);
+        this.currentPage.set(0);
+        this.loadEntries();
+      });
+
+    this.loadEntries();
+  }
+
+  ngOnDestroy(): void {
+    this.onDestroy.next();
+    this.onDestroy.complete();
+  }
+
+  setPeriod(p: Period): void {
+    this.period.set(p);
+    this.currentPage.set(0);
+    this.loadEntries();
+  }
+
+  onActorChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.actorFilter.set(value);
+    this.currentPage.set(0);
+    this.loadEntries();
+  }
+
+  onActionChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as AuditActionType | '';
+    this.actionFilter.set(value);
+    this.currentPage.set(0);
+    this.loadEntries();
+  }
+
+  onSeverityChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as AuditSeverity | '';
+    this.severityFilter.set(value);
+    this.currentPage.set(0);
+    this.loadEntries();
+  }
+
+  onQueryInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.querySubject.next(value);
+  }
+
+  onPageChange(page: number): void {
+    const safe = Math.max(0, page);
+    if (safe === this.currentPage()) return;
+    this.currentPage.set(safe);
+    this.loadEntries();
+  }
+
+  openDrawer(entry: AuditEntryResponse): void {
+    this.selectedEntry.set(entry);
+    this.drawerOpen.set(true);
+  }
+
+  closeDrawer(): void {
+    this.drawerOpen.set(false);
+  }
+
+  onCorrelationClick(correlationId: string): void {
+    this.actorFilter.set('');
+    this.query.set(correlationId);
+    this.querySubject.next(correlationId);
+    this.currentPage.set(0);
+    this.loadEntries();
+  }
+
+  exportCsv(): void {
+    const filters: AuditFilters = this.buildFilters(true);
+    const url = this.auditService.getExportUrl(filters);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  private fromDate(): string | undefined {
+    const now = new Date();
+    const p = this.period();
+    if (p === 'all') return undefined;
+    const d = new Date(now);
+    if (p === '1w') d.setDate(d.getDate() - 7);
+    if (p === '1m') d.setMonth(d.getMonth() - 1);
+    if (p === '1y') d.setFullYear(d.getFullYear() - 1);
+    return d.toISOString().split('T')[0];
+  }
+
+  private toDate(): string | undefined {
+    if (this.period() === 'all') return undefined;
+    return new Date().toISOString().split('T')[0];
+  }
+
+  private buildFilters(isExport = false): AuditFilters {
+    const f: AuditFilters = {
+      from: this.fromDate(),
+      to: this.toDate(),
+      actor: this.actorFilter() || undefined,
+      action: this.actionFilter() || undefined,
+      severity: this.severityFilter() || undefined,
+      page: isExport ? undefined : this.currentPage(),
+      size: isExport ? undefined : 20,
+    };
+    if (isExport) {
+      f.query = undefined;
+    } else {
+      f.query = this.query() || undefined;
+    }
+    return f;
+  }
+
+  loadEntries(): void {
+    this.loading.set(true);
+    this.error.set(false);
+    this.auditService
+      .getEntries(this.buildFilters())
+      .pipe(takeUntil(this.onDestroy))
+      .subscribe({
+        next: (response) => {
+          this.entries.set(response.items);
+          this.currentPage.set(response.currentPage);
+          this.totalPages.set(response.totalPages);
+          this.totalItems.set(response.totalItems);
+          this.loading.set(false);
+          this.error.set(false);
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.error.set(true);
+          this.loading.set(false);
+          this.cdr.markForCheck();
+        },
+      });
+  }
 }

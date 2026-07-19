@@ -3,51 +3,176 @@
   pageTitle="Gestión de usuarios"
   subtitle="Administra las cuentas registradas en la plataforma.">
 
-  <div class="users-card">
-    <table class="users-table">
-      <thead>
-        <tr>
-          <th>Usuario</th>
-          <th>Rol</th>
-          <th>Último acceso</th>
-          <th>Estado</th>
-          <th class="th-actions">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (user of users(); track user.id) {
-          <tr>
-            <td>
-              <div class="user-cell">
-                <div class="user-avatar">{{ user.name.charAt(0) }}</div>
-                <div>
-                  <span class="user-name">{{ user.name }}</span>
-                  <span class="user-email">{{ user.email }}</span>
-                </div>
-              </div>
-            </td>
-            <td>
-              <span class="role-badge" [attr.data-role]="user.role">
-                {{ roleLabel(user.role) }}
-              </span>
-            </td>
-            <td class="td-date">{{ user.lastLogin }}</td>
-            <td>
-              <span class="status-dot" [attr.data-active]="user.active"></span>
-              {{ user.active ? 'Activo' : 'Inactivo' }}
-            </td>
-            <td class="td-actions">
-              <button
-                type="button"
-                class="action-btn"
-                [title]="user.active ? 'Desactivar' : 'Activar'"
-                (click)="toggleActive(user.id)">
-                <i class="ti" [class.ti-user-off]="user.active" [class.ti-user-check]="!user.active"></i>
-              </button>
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+  <div class="users-filters">
+    <input
+      type="text"
+      class="filter-input"
+      placeholder="Buscar por nombre o email…"
+      (input)="onQueryInput($event)" />
+
+    <select class="filter-select" (change)="onRoleFilterChange($event)">
+      <option value="">Todos los roles</option>
+      <option value="ADMIN">Admin</option>
+      <option value="PREMIUM">Premium</option>
+      <option value="TRIAL">Prueba</option>
+    </select>
+
+    <select class="filter-select" (change)="onActiveFilterChange($event)">
+      <option value="">Todos los estados</option>
+      <option value="true">Activo</option>
+      <option value="false">Inactivo</option>
+    </select>
   </div>
+
+  @if (loading()) {
+    <div class="state-container">
+      <span class="spinner"></span>
+      <span>Cargando usuarios…</span>
+    </div>
+  } @else if (error()) {
+    <div class="state-container">
+      <i class="ti ti-alert-circle"></i>
+      <span>Error al cargar los usuarios</span>
+      <button type="button" class="btn-retry" (click)="loadUsers()">Reintentar</button>
+    </div>
+  } @else if (emptyState()) {
+    <div class="state-container">
+      <i class="ti ti-users"></i>
+      <span>No se encontraron usuarios</span>
+    </div>
+  } @else {
+    <div class="users-card">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Rol</th>
+            <th>Último acceso</th>
+            <th>Estado</th>
+            <th class="th-actions">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of users(); track user.id) {
+            <tr>
+              <td>
+                <div class="user-cell">
+                  <div class="user-avatar">{{ user.name.charAt(0) }}</div>
+                  <div>
+                    <span class="user-name">{{ user.name }}</span>
+                    <span class="user-email">{{ user.email }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="role-badge" [attr.data-role]="user.role">
+                  {{ roleLabel(user.role) }}
+                </span>
+              </td>
+              <td class="td-date">{{ user.lastLogin || 'Nunca' }}</td>
+              <td>
+                <span class="status-dot" [attr.data-active]="user.isActive"></span>
+                {{ user.isActive ? 'Activo' : 'Inactivo' }}
+              </td>
+              <td class="td-actions">
+                <div class="kebab-wrapper">
+                  <button
+                    type="button"
+                    class="kebab-btn"
+                    [class.open]="openKebabId() === user.id"
+                    (click)="toggleKebab(user.id, $event)"
+                    title="Acciones">
+                    <i class="ti ti-dots-vertical"></i>
+                  </button>
+                  @if (openKebabId() === user.id) {
+                    <div class="kebab-dropdown" (click)="$event.stopPropagation()">
+                      <button type="button" class="kebab-item" (click)="openDetail(user)">
+                        <i class="ti ti-eye"></i>
+                        Ver detalle
+                      </button>
+                      <button type="button" class="kebab-item" (click)="openRoleDialog(user)">
+                        <i class="ti ti-user-cog"></i>
+                        Cambiar rol
+                      </button>
+                      <button type="button" class="kebab-item" (click)="toggleActive(user)">
+                        <i class="ti" [class.ti-user-off]="user.isActive" [class.ti-user-check]="!user.isActive"></i>
+                        {{ user.isActive ? 'Desactivar' : 'Activar' }}
+                      </button>
+                    </div>
+                    <div class="kebab-backdrop" (click)="closeKebab()"></div>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <app-email-paginator
+      [currentPage]="currentPage()"
+      [hasNextPage]="hasNextPage()"
+      [lastKnownPage]="totalPages() - 1"
+      (page)="onPageChange($event)">
+    </app-email-paginator>
+  }
 </app-page-shell>
+
+<!-- Dialogs -->
+@if (roleDialogUser()) {
+  <app-change-role-dialog
+    [userId]="roleDialogUser()!.id"
+    [userName]="roleDialogUser()!.name"
+    [currentRole]="roleDialogUser()!.role"
+    (changeRole)="onRoleChange($event)"
+    (cancel)="closeRoleDialog()">
+  </app-change-role-dialog>
+}
+
+@if (deleteConfirmUser()) {
+  <div class="modal-overlay" (click)="closeDeleteConfirm()">
+    <div class="modal-card confirm-card" (click)="$event.stopPropagation()" role="alertdialog" aria-modal="true">
+      <h2 class="confirm-title">Eliminar usuario</h2>
+      <p class="confirm-message">
+        ¿Estás seguro de eliminar a <strong>{{ deleteConfirmUser()!.name }}</strong>?
+        Esta acción es irreversible.
+      </p>
+      <div class="form-group">
+        <label for="delete-confirm-input" class="form-label">
+          Escribe <code>eliminar</code> para confirmar
+        </label>
+        <input
+          id="delete-confirm-input"
+          type="text"
+          class="form-input"
+          placeholder="eliminar"
+          autocomplete="off"
+          [value]="confirmDeleteText()"
+          (input)="confirmDeleteText.set($any($event.target).value)" />
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn-secondary" (click)="closeDeleteConfirm()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn-danger"
+          [disabled]="confirmDeleteText().trim().toLowerCase() !== 'eliminar'"
+          (click)="onDeleteConfirm()">
+          Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- User detail drawer -->
+<app-user-detail-drawer
+  [user]="selectedUser()"
+  [open]="drawerOpen()"
+  (close)="closeDrawer()"
+  (changeRole)="onDrawerChangeRole()"
+  (resetTrial)="onResetTrial()"
+  (deleteUser)="onDeleteRequest(selectedUser()!.id)"
+  (viewAuditHistory)="onViewAuditHistory($event)">
+</app-user-detail-drawer>

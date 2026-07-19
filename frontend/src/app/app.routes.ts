@@ -9,6 +9,18 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/login/login').then((m) => m.LoginComponent),
   },
   {
+    path: 'account-disabled',
+    loadComponent: () => import('./pages/account-disabled/account-disabled').then((m) => m.AccountDisabledComponent),
+  },
+  {
+    path: 'legal/terms',
+    loadComponent: () => import('./pages/legal/legal').then((m) => m.LegalComponent),
+  },
+  {
+    path: 'legal/privacy',
+    loadComponent: () => import('./pages/legal/legal').then((m) => m.LegalComponent),
+  },
+  {
     path: '',
     component: LayoutComponent,
     children: [
@@ -89,6 +101,11 @@ export const routes: Routes = [
             path: 'audit',
             loadComponent: () =>
               import('./pages/admin-audit/admin-audit').then((m) => m.AdminAuditComponent),
+          },
+          {
+            path: 'config',
+            loadComponent: () =>
+              import('./pages/admin-config/admin-config').then((m) => m.AdminConfigComponent),
           },
           {
             path: 'settings',

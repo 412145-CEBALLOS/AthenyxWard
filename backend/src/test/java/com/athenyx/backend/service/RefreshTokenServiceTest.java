@@ -1,5 +1,6 @@
 package com.athenyx.backend.service;
 
+import com.athenyx.backend.audit.AuditEventPublisher;
 import com.athenyx.backend.entity.RefreshToken;
 import com.athenyx.backend.entity.RevokedReason;
 import com.athenyx.backend.entity.Role;
@@ -14,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationContext;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.lang.reflect.Field;
@@ -26,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class RefreshTokenServiceTest {
@@ -36,6 +39,12 @@ class RefreshTokenServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
+
+    @Mock
+    private ApplicationContext applicationContext;
+
     @InjectMocks
     private RefreshTokenService service;
 
@@ -43,6 +52,9 @@ class RefreshTokenServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        service.setApplicationContext(applicationContext);
+        lenient().when(applicationContext.getBean(RefreshTokenService.class)).thenReturn(service);
+
         user = User.builder()
                 .id(1L)
                 .googleId("gid")
@@ -51,12 +63,7 @@ class RefreshTokenServiceTest {
                 .role(Role.TRIAL)
                 .build();
 
-        Field refreshField = RefreshTokenService.class.getDeclaredField("refreshExpirationMs");
-        refreshField.setAccessible(true);
         ReflectionTestUtils.setField(service, "refreshExpirationMs", 2_592_000_000L);
-
-        Field absField = RefreshTokenService.class.getDeclaredField("refreshAbsoluteExpirationMs");
-        absField.setAccessible(true);
         ReflectionTestUtils.setField(service, "refreshAbsoluteExpirationMs", 7_776_000_000L);
 
         lenient().when(repository.save(any(RefreshToken.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -224,5 +231,42 @@ class RefreshTokenServiceTest {
         int n = service.revokeAllForUser(1L);
 
         assertThat(n).isEqualTo(3);
+    }
+
+    @Test
+    void logTokenRefreshFailed_publishesEvent() {
+        service.logTokenRefreshFailed(1L, "u@test.com", "EXPIRED");
+
+        verify(auditEventPublisher).publishTokenRefreshFailed(1L, "u@test.com", "EXPIRED");
+    }
+
+    @Test
+    void resolveUser_inactiveUser_throwsAccountDisabled() {
+        user.setActive(false);
+        RefreshTokenService.IssuedToken first = service.issue(user, null, 0L);
+        RefreshToken existing = first.row();
+        existing.setId(10L);
+        existing.setUser(user);
+
+        when(repository.findByTokenHash(any(byte[].class))).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.resolveUserForRotation(first.raw()))
+                .isInstanceOf(RefreshTokenException.class)
+                .extracting("kind").isEqualTo(RefreshTokenException.Kind.ACCOUNT_DISABLED);
+    }
+
+    @Test
+    void resolveUser_deletedUser_throwsAccountDisabled() {
+        user.setDeletedAt(LocalDateTime.now());
+        RefreshTokenService.IssuedToken first = service.issue(user, null, 0L);
+        RefreshToken existing = first.row();
+        existing.setId(10L);
+        existing.setUser(user);
+
+        when(repository.findByTokenHash(any(byte[].class))).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.resolveUserForRotation(first.raw()))
+                .isInstanceOf(RefreshTokenException.class)
+                .extracting("kind").isEqualTo(RefreshTokenException.Kind.ACCOUNT_DISABLED);
     }
 }

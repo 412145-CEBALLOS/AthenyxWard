@@ -1,4 +1,4 @@
-<div class="viewer-header">
+  <div class="viewer-header">
   <app-sender-avatar
     size="lg"
     [sender]="email().sender"
@@ -11,13 +11,14 @@
     <div class="viewer-date-row">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-        <line x1="16" y1="2" x2="16" y2="6"/>
-        <line x1="8" y1="2" x2="8" y2="6"/>
-        <line x1="3" y1="10" x2="21" y2="10"/>
+        <line x1="16" x2="16" y2="6"/>
+        <line x1="8" x2="8" y2="6"/>
+        <line x1="3" x2="21" y2="10"/>
       </svg>
       {{ email() | emailDate }}
     </div>
   </div>
+    @if (!isTrial()) {
     <button
     type="button"
     class="ai-explain-btn"
@@ -28,6 +29,7 @@
     <i class="ti ti-robot" aria-hidden="true"></i>
     <span class="ai-btn-text">Análisis por IA</span>
   </button>
+    }
   <app-kebab-menu
     [items]="items()"
     [label]="'Acciones del correo'"

@@ -3,30 +3,117 @@
   pageTitle="Registros / Auditoría"
   subtitle="Trazabilidad de las acciones realizadas en la plataforma.">
 
-  <div class="audit-card">
-    <table class="audit-table">
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Actor</th>
-          <th>Acción</th>
-          <th>Objetivo</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (entry of entries(); track entry.id) {
-          <tr>
-            <td class="td-date">{{ entry.at }}</td>
-            <td>{{ entry.actor }}</td>
-            <td>
-              <span class="action-chip" [attr.data-action]="entry.action">
-                {{ entry.action }}
-              </span>
-            </td>
-            <td class="td-target">{{ entry.target }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
+  <div class="audit-filters">
+    <div class="period-buttons">
+      <button type="button" [class.active]="period() === '1w'" (click)="setPeriod('1w')">1 semana</button>
+      <button type="button" [class.active]="period() === '1m'" (click)="setPeriod('1m')">1 mes</button>
+      <button type="button" [class.active]="period() === '1y'" (click)="setPeriod('1y')">1 año</button>
+      <button type="button" [class.active]="period() === 'all'" (click)="setPeriod('all')">Todo</button>
+    </div>
+
+    <input
+      type="text"
+      class="filter-input"
+      placeholder="Buscar actor…"
+      (input)="onActorChange($event)" />
+
+    <select class="filter-select" (change)="onActionChange($event)">
+      <option value="">Todas las acciones</option>
+      <option value="LOGIN">LOGIN</option>
+      <option value="LOGIN_FAILED">LOGIN_FAILED</option>
+      <option value="LOGOUT">LOGOUT</option>
+      <option value="TOKEN_REFRESH_FAILED">TOKEN_REFRESH_FAILED</option>
+      <option value="ROLE_CHANGE">ROLE_CHANGE</option>
+      <option value="USER_DEACTIVATED">USER_DEACTIVATED</option>
+      <option value="CONFIG_UPDATE">CONFIG_UPDATE</option>
+      <option value="PHISHING_DETECTED">PHISHING_DETECTED</option>
+      <option value="AUTO_ANALYSIS">AUTO_ANALYSIS</option>
+      <option value="EMAIL_MARKED_IMPORTANT">EMAIL_MARKED_IMPORTANT</option>
+      <option value="EMAIL_HIDDEN">EMAIL_HIDDEN</option>
+      <option value="EMAIL_DELETED">EMAIL_DELETED</option>
+      <option value="EXPORT_CSV">EXPORT_CSV</option>
+    </select>
+
+    <select class="filter-select" (change)="onSeverityChange($event)">
+      <option value="">Todas las severidades</option>
+      <option value="INFO">INFO</option>
+      <option value="WARNING">WARNING</option>
+      <option value="CRITICAL">CRITICAL</option>
+    </select>
+
+    <input
+      type="text"
+      class="filter-input search-input"
+      placeholder="Búsqueda libre…"
+      (input)="onQueryInput($event)" />
+
+    <button type="button" class="btn-export" (click)="exportCsv()">
+      Exportar CSV
+    </button>
   </div>
+
+  @if (loading()) {
+    <div class="state-container">
+      <div class="spinner"></div>
+      <p>Cargando registros…</p>
+    </div>
+  } @else if (error()) {
+    <div class="state-container error-state">
+      <p>Error al cargar los registros.</p>
+      <button type="button" class="btn-retry" (click)="loadEntries()">Reintentar</button>
+    </div>
+  } @else if (emptyState()) {
+    <div class="state-container empty-state">
+      <p>No hay registros de auditoría todavía.</p>
+    </div>
+  } @else if (entries().length > 0) {
+    @if (totalPages() > 1) {
+      <app-email-paginator
+        [currentPage]="currentPage()"
+        [hasNextPage]="hasNextPage()"
+        [lastKnownPage]="totalPages() - 1"
+        (page)="onPageChange($event)" />
+    }
+
+    <div class="audit-card">
+      <div class="audit-table-wrapper">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Actor</th>
+              <th>Acción</th>
+              <th>Severidad</th>
+              <th>Objetivo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of entries(); track entry.id) {
+              <tr class="clickable-row" (click)="openDrawer(entry)">
+                <td class="td-date">{{ entry.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td>{{ entry.actorEmail }}</td>
+                <td>
+                  <span class="action-chip" [attr.data-action]="entry.actionType" [attr.data-severity]="entry.severity.toLowerCase()">
+                    {{ entry.actionType }}
+                  </span>
+                </td>
+                <td>
+                  <span class="severity-chip" [attr.data-severity]="entry.severity.toLowerCase()">
+                    {{ entry.severity }}
+                  </span>
+                </td>
+                <td class="td-target">{{ entry.targetId || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
 </app-page-shell>
+
+<app-audit-detail-drawer
+  [entry]="selectedEntry()"
+  [open]="drawerOpen()"
+  (closeDrawer)="closeDrawer()"
+  (correlationClick)="onCorrelationClick($event)" />

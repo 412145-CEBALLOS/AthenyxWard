@@ -15,6 +15,7 @@ import { ReminderService } from '../../services/reminder.service';
 import { NotificationService } from '../../services/notification.service';
 import { EmailSearchService } from '../../services/email-search.service';
 import { AiExplanationService } from '../../services/ai-explanation.service';
+import { AppConfigInitializerService } from '../../services/app-config-initializer.service';
 import { EmailDetail, EmailSummary, EmailPageResponse } from '../../models/email-summary.model';
 import { EmailAction } from '../../models/email-action.model';
 import { EmailAnalysisResult, AnalysisState } from '../../models/email-analysis.model';
@@ -54,6 +55,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly emailSearchService = inject(EmailSearchService);
   private readonly aiExplanationService = inject(AiExplanationService);
+  protected readonly appConfig = inject(AppConfigInitializerService);
   private readonly platformId = inject(PLATFORM_ID);
 
   readonly emails = signal<EmailSummary[]>([]);
@@ -550,23 +552,17 @@ export class HomeComponent implements OnInit, OnDestroy {
    * the list endpoint's JOIN — see US 2.3 {@code EmailSummary}):
    *
    * <ul>
-   *   <li>{@code TRIAL} — never auto-runs. Panel stays in
-   *       {@code idle}; the user must press the in-body
-   *       "Analizar este correo" button.</li>
-   *   <li>{@code PREMIUM} / {@code ADMIN} — first checks the 24 h
-   *       cache via {@code getLatest}; if a recent analysis exists
-   *       it is shown immediately. If not, the panel stays in
-   *       {@code idle} and the first toggle click triggers
-   *       {@code analyze()} (see {@link onAnalysisRequest}).</li>
+   *   <li>If {@code summary.riskLevel} is {@code null}: no analysis has
+   *       ever run — panel stays in {@code idle}. For TRIAL the
+   *       "Analizar este correo" button is shown; for PREMIUM/ADMIN the
+   *       first toggle click triggers {@code analyze()}.</li>
+   *   <li>If {@code summary.riskLevel} is set: a cached analysis exists.
+   *       The panel calls {@code getLatest} to restore it for every
+   *       role (including TRIAL, fixing the case where the user had
+   *       already analysed the email in a previous session).</li>
    * </ul>
    */
   private bootstrapAnalysis(detail: EmailDetail, summary: EmailSummary): void {
-    const role = this.userRole();
-    if (role === 'TRIAL') {
-      this.analysisResult.set(null);
-      this.analysisState.set('idle');
-      return;
-    }
     if (summary.riskLevel == null) {
       this.analysisResult.set(null);
       this.analysisState.set('idle');
@@ -1090,7 +1086,11 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.aiState.set('ready');
       },
       error: (err: HttpErrorResponse) => {
-        if (err.status === 403) {
+        const code = err.error?.error;
+        if (err.status === 403 && code === 'ai_premium_required') {
+          this.aiState.set('unavailable-trial');
+          this.toast.error('La función "Explicar con IA" requiere plan Premium o Admin.');
+        } else if (err.status === 403 && code === 'trial_limit_exceeded') {
           this.aiState.set('unavailable-trial');
           this.toast.error('Has alcanzado el límite de análisis de tu prueba (incluye explicaciones con IA).');
         } else {

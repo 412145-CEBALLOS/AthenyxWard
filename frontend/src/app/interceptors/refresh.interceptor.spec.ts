@@ -141,5 +141,51 @@ describe('refreshInterceptor', () => {
         });
     });
 
+    it('navigates to /account-disabled when refresh returns ACCOUNT_DISABLED (403)', (done: DoneFn) => {
+      const refreshSpy = jasmine.createSpy('refresh');
+      const mockRouter = { navigate: jasmine.createSpy('navigate') };
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: PLATFORM_ID, useValue: 'browser' },
+          {
+            provide: AuthService,
+            useValue: {
+              refresh: refreshSpy,
+              refreshFailed: { set: jasmine.createSpy('set') } as unknown as AuthService['refreshFailed'],
+              currentUser: { set: jasmine.createSpy('set') } as unknown as AuthService['currentUser'],
+            },
+          },
+          { provide: Router, useValue: mockRouter },
+        ],
+      });
+
+      const accountDisabledErr = new HttpErrorResponse({
+        status: 403,
+        error: { error: 'ACCOUNT_DISABLED' },
+      });
+      refreshSpy.and.returnValue(throwError(() => accountDisabledErr));
+
+      let handlerCall = 0;
+      const handler = jasmine
+        .createSpy('next')
+        .and.callFake(() => {
+          handlerCall++;
+          return handlerCall === 1
+            ? throwError(() => new HttpErrorResponse({ status: 401 }))
+            : of(new HttpResponse({ status: 200 }));
+        }) as jasmine.Spy<HttpHandlerFn>;
+
+      const req = new HttpRequest('GET', '/api/emails/fetch');
+      TestBed.runInInjectionContext(() => refreshInterceptor(req, handler))
+        .pipe(take(1))
+        .subscribe({
+          error: () => {
+            expect(mockRouter.navigate).toHaveBeenCalledWith(['/account-disabled']);
+            done();
+          },
+        });
+    });
+
   });
 });

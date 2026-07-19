@@ -1,5 +1,7 @@
 package com.athenyx.backend.service;
 
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
 import com.athenyx.backend.dto.UpcomingReminderNotification;
 import com.athenyx.backend.entity.Email;
 import com.athenyx.backend.entity.Reminder;
@@ -48,6 +50,7 @@ class NotificationServiceIntegrationTest {
     @Autowired private EmailRepository emailRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private Clock clock;
+    @Autowired private ConfigService configService;
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 6, 24, 12, 0);
 
@@ -228,6 +231,6 @@ class NotificationServiceIntegrationTest {
      */
     private NotificationService pinnedService() {
         Clock fixed = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
-        return new NotificationService(reminderRepository, fixed);
+        return new NotificationService(reminderRepository, fixed, configService);
     }
 }

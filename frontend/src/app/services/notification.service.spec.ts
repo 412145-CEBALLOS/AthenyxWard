@@ -1,12 +1,36 @@
-import { TestBed, fakeAsync, tick, discardPeriodicTasks } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { provideHttpClient, HttpErrorResponse } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { NotificationService } from './notification.service';
 import { ReminderService } from './reminder.service';
 import { ToastService } from './toast.service';
+import { AppConfigInitializerService } from './app-config-initializer.service';
+import { AuthService } from './auth.service';
 import { UpcomingNotification } from '../models/notification.model';
 import { of, throwError, Subject } from 'rxjs';
+
+const premiumUser = { id: 1, email: 'p@p.com', name: 'P', role: 'PREMIUM', pictureUrl: '', trialEndDate: null, trialExpired: false, accessibilityMode: false, termsAcceptedAt: null, termsVersion: null };
+
+function makeMockAppConfig() {
+  return {
+    pollIntervalSeconds: signal(120),
+    supportEmail: signal('s@s.com'),
+    loading: signal(false),
+    riskThresholds: signal({ low: 40, medium: 70 }),
+    aiEnabled: signal(true),
+    load: jasmine.createSpy('load'),
+  };
+}
+
+function makeMockAuth() {
+  return {
+    user: signal(null).asReadonly(),
+    currentUser: signal(null),
+    isLoggedIn: signal(false),
+    refreshFailed: signal(false),
+  };
+}
 
 describe('NotificationService', () => {
   let service: NotificationService;
@@ -18,6 +42,8 @@ describe('NotificationService', () => {
     success: jasmine.Spy;
     info: jasmine.Spy;
   };
+  let mockAppConfig: ReturnType<typeof makeMockAppConfig>;
+  let mockAuth: ReturnType<typeof makeMockAuth>;
 
   const inOneHour: UpcomingNotification = {
     reminderId: 1, emailId: 10, emailSubject: 'Soon', emailSender: 'a@b.com',
@@ -43,14 +69,18 @@ describe('NotificationService', () => {
       success: jasmine.createSpy('success'),
       info: jasmine.createSpy('info'),
     };
+    mockAppConfig = makeMockAppConfig();
+    mockAuth = makeMockAuth();
 
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        NotificationService,
         { provide: ReminderService, useValue: reminderService },
         { provide: ToastService, useValue: toast },
+        { provide: AppConfigInitializerService, useValue: mockAppConfig },
+        { provide: AuthService, useValue: mockAuth },
+        NotificationService,
       ],
     });
 
@@ -59,9 +89,11 @@ describe('NotificationService', () => {
   });
 
   afterEach(() => {
-    service.stopPolling();
+    service.stopPollingLoop();
     if (http) http.verify();
   });
+
+  // --- fetchOnce ---
 
   it('hits the upcoming endpoint with the correct URL', () => {
     service.fetchOnce().subscribe();
@@ -78,16 +110,19 @@ describe('NotificationService', () => {
     expect(received).toEqual([]);
   });
 
+  // --- polling ---
+
   it('starts polling: first call is immediate, then once per interval', fakeAsync(() => {
-    service.startPolling(60_000);
+    service.startPollingLoop(60_000);
     http.expectOne('/api/notifications/upcoming').flush([]);
-    service.stopPolling();
     tick(60_000);
-    http.expectNone('/api/notifications/upcoming');
+    http.expectOne('/api/notifications/upcoming').flush([]);
+    // Stop polling to prevent pending interval requests
+    service.stopPollingLoop();
   }));
 
   it('updates the notifications signal after a successful poll', () => {
-    service.startPolling(60_000);
+    service.startPollingLoop(60_000);
     http.expectOne('/api/notifications/upcoming').flush([overdue, inOneHour, farFuture]);
     expect(service.notifications().length).toBe(3);
     expect(service.count()).toBe(3);
@@ -95,7 +130,7 @@ describe('NotificationService', () => {
   });
 
   it('fires a warning toast with action button for an overdue item', () => {
-    service.startPolling(60_000);
+    service.startPollingLoop(60_000);
     http.expectOne('/api/notifications/upcoming').flush([overdue]);
     expect(toast.warning).toHaveBeenCalledTimes(1);
     const args = toast.warning.calls.mostRecent().args;
@@ -104,26 +139,21 @@ describe('NotificationService', () => {
   });
 
   it('does NOT re-fire the warning toast for the same reminder within the session', () => {
-    // Mark the reminder as already shown — simulates a previous poll
-    // having fired the toast already. The next poll must skip it.
     service.markShown(overdue.reminderId);
-    service.startPolling(60_000);
+    service.startPollingLoop(60_000);
     http.expectOne('/api/notifications/upcoming').flush([overdue]);
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
   it('fires an info toast for items due in the next hour', () => {
-    service.startPolling(60_000);
+    service.startPollingLoop(60_000);
     http.expectOne('/api/notifications/upcoming').flush([inOneHour]);
     expect(toast.info).toHaveBeenCalledTimes(1);
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
   it('does NOT fire any toast for items more than 24 hours away', () => {
-    // 25h ahead — outside the 24h "coming up" window. The item
-    // still appears in the bell panel (and therefore in the
-    // notifications signal) but no toast is fired.
-    service.startPolling(60_000);
+    service.startPollingLoop(60_000);
     http.expectOne('/api/notifications/upcoming').flush([farFuture]);
     expect(toast.info).not.toHaveBeenCalled();
     expect(toast.warning).not.toHaveBeenCalled();
@@ -136,21 +166,96 @@ describe('NotificationService', () => {
       message: null, reminderDate: new Date(Date.now() + 12 * 3600_000).toISOString(),
       isOverdue: false,
     };
-    service.startPolling(60_000);
+    service.startPollingLoop(60_000);
     http.expectOne('/api/notifications/upcoming').flush([inTwelveHours]);
     expect(toast.info).toHaveBeenCalledTimes(1);
     const message = toast.info.calls.mostRecent().args[0];
     expect(message).toContain('Mañana');
-    // Should mention the future distance (h or d), not "min".
     expect(message).toMatch(/en (\d+ h|\d+ d)/);
   });
 
   it('does NOT re-fire the info toast for the same reminder within the session', () => {
     service.markShown(inOneHour.reminderId);
-    service.startPolling(60_000);
+    service.startPollingLoop(60_000);
     http.expectOne('/api/notifications/upcoming').flush([inOneHour]);
     expect(toast.info).not.toHaveBeenCalled();
   });
+
+  // --- overdueTimers scheduling ---
+
+  it('fires warning immediately when isOverdue=true arrives in poll', () => {
+    service.startPollingLoop(60_000);
+    http.expectOne('/api/notifications/upcoming').flush([overdue]);
+    expect(toast.warning).toHaveBeenCalledTimes(1);
+  });
+
+  it('schedules setTimeout for items due within 24h', () => {
+    const dueSoon: UpcomingNotification = {
+      reminderId: 10, emailId: 50, emailSubject: 'Due Soon', emailSender: 'x@y.com',
+      message: null, reminderDate: new Date(Date.now() + 10_000).toISOString(),
+      isOverdue: false,
+    };
+    service.startPollingLoop(60_000);
+    http.expectOne('/api/notifications/upcoming').flush([dueSoon]);
+
+    const timers = (service as any).overdueTimers as Map<number, any>;
+    expect(timers.has(10)).toBeTrue();
+  });
+
+  it('does not schedule timer for already-overdue item', () => {
+    service.startPollingLoop(60_000);
+    http.expectOne('/api/notifications/upcoming').flush([overdue]);
+
+    const timers = (service as any).overdueTimers as Map<number, any>;
+    expect(timers.has(overdue.reminderId)).toBeFalse();
+    expect(toast.warning).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not schedule timer for items more than 24h away', () => {
+    service.startPollingLoop(60_000);
+    http.expectOne('/api/notifications/upcoming').flush([farFuture]);
+
+    const timers = (service as any).overdueTimers as Map<number, any>;
+    expect(timers.has(farFuture.reminderId)).toBeFalse();
+  });
+
+  it('clears overdue timer when reminder is removed', () => {
+    const dueSoon: UpcomingNotification = {
+      reminderId: 10, emailId: 50, emailSubject: 'Due Soon', emailSender: 'x@y.com',
+      message: null, reminderDate: new Date(Date.now() + 10_000).toISOString(),
+      isOverdue: false,
+    };
+    service.startPollingLoop(60_000);
+    http.expectOne('/api/notifications/upcoming').flush([dueSoon]);
+
+    const timers = (service as any).overdueTimers as Map<number, any>;
+    expect(timers.has(10)).toBeTrue();
+
+    service.removeLocally(10);
+    expect(timers.has(10)).toBeFalse();
+  });
+
+  it('clears overdue timer when reminder is marked done', () => {
+    reminderService.update.and.returnValue(of({
+      id: 10, emailId: 50, reminderDate: new Date(Date.now() + 10_000).toISOString(),
+      message: null, done: true, createdAt: '', updatedAt: '',
+    }));
+    const dueSoon: UpcomingNotification = {
+      reminderId: 10, emailId: 50, emailSubject: 'Due Soon', emailSender: 'x@y.com',
+      message: null, reminderDate: new Date(Date.now() + 10_000).toISOString(),
+      isOverdue: false,
+    };
+    service.startPollingLoop(60_000);
+    http.expectOne('/api/notifications/upcoming').flush([dueSoon]);
+
+    const timers = (service as any).overdueTimers as Map<number, any>;
+    expect(timers.has(10)).toBeTrue();
+
+    service.markDoneLocally(10);
+    expect(timers.has(10)).toBeFalse();
+  });
+
+  // --- markDone / markDoneById ---
 
   it('markDone updates the backend, removes the entry locally, and fires done$', () => {
     reminderService.update.and.returnValue(of({
@@ -180,14 +285,36 @@ describe('NotificationService', () => {
     });
     expect(errored).toBeTrue();
     expect(toast.error).toHaveBeenCalled();
-    // The inflight set is cleared so a second click can retry.
     expect((service as any).inflightMarkDone.has(overdue.reminderId)).toBeFalse();
   });
 
+  it('markDoneById with 404 removes notification locally and does NOT show error toast', () => {
+    service.notifications.set([overdue, inOneHour]);
+    const notFoundError = { status: 404 } as HttpErrorResponse;
+    reminderService.update.and.returnValue(throwError(() => notFoundError));
+    let errored = false;
+    service.markDoneById(overdue.reminderId).subscribe({
+      error: () => (errored = true),
+    });
+    expect(errored).toBeFalse();
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(service.notifications().length).toBe(1);
+    expect(service.notifications()[0].reminderId).toBe(1);
+    expect((service as any).inflightMarkDone.has(overdue.reminderId)).toBeFalse();
+  });
+
+  it('markDoneById with 404 fires done$ so subscribers stay in sync', () => {
+    service.notifications.set([overdue, inOneHour]);
+    const notFoundError = { status: 404 } as HttpErrorResponse;
+    reminderService.update.and.returnValue(throwError(() => notFoundError));
+    let emittedId: number | undefined;
+    const sub = service.done$.subscribe((id) => (emittedId = id));
+    service.markDoneById(overdue.reminderId).subscribe();
+    sub.unsubscribe();
+    expect(emittedId).toBe(overdue.reminderId);
+  });
+
   it('markDone is idempotent while a request is in flight', () => {
-    // Use a never-completing observable to keep the first request
-    // in flight while we issue the second one. The inflight set
-    // should make the second call a no-op.
     const pending = new Subject<void>();
     reminderService.update.and.returnValue(pending);
     service.markDone(overdue).subscribe();
@@ -225,15 +352,9 @@ describe('NotificationService', () => {
     pending.complete();
   });
 
-  it('stopPolling clears the interval', fakeAsync(() => {
-    service.startPolling(60_000);
-    http.expectOne('/api/notifications/upcoming').flush([]);
-    service.stopPolling();
-    tick(120_000);
-    http.expectNone('/api/notifications/upcoming');
-  }));
+  // --- markDoneLocally ---
 
-  it('markDoneLocally removes the item and fires done$ (no signal cascade)', () => {
+  it('markDoneLocally removes the item and fires done$', () => {
     service.notifications.set([overdue, inOneHour]);
     let emittedId: number | undefined;
     const sub = service.done$.subscribe((id) => (emittedId = id));
@@ -243,33 +364,43 @@ describe('NotificationService', () => {
     expect(emittedId).toBe(overdue.reminderId);
   });
 
+  // --- stopPolling ---
+
+  it('stopPolling clears the interval', fakeAsync(() => {
+    service.startPollingLoop(60_000);
+    http.expectOne('/api/notifications/upcoming').flush([]);
+    service.stopPollingLoop();
+    tick(120_000);
+    http.expectNone('/api/notifications/upcoming');
+  }));
+
   // --- US 2.7 hardening: poll/markDone race ---
 
   it('poll skips the network round-trip while a markDone is in flight', fakeAsync(() => {
-    // The in-flight guard is what prevents a racing poll from
-    // re-fetching the just-done reminder. We verify the public
-    // surface: a markDone is in flight, the next poll cycle
-    // is dropped (no HTTP request), and once the PATCH settles
-    // the guard drains and the following cycle is allowed
-    // through.
-    service.startPolling(60_000);
+    service.startPollingLoop(60_000);
     http.expectOne('/api/notifications/upcoming').flush([]);
+    tick(10);
     const inFlight = (service as any).inflightMarkDone as Set<number>;
     expect(inFlight.size).toBe(0);
 
-    // Issue a markDone. We use an `of(...)` because it resolves
-    // synchronously, so the tap (and the in-flight set drain)
-    // happens before our assertions.
     reminderService.update.and.returnValue(of({
       id: 2, emailId: 11, reminderDate: overdue.reminderDate,
       message: null, done: true, createdAt: '', updatedAt: '',
     }));
     service.markDoneById(overdue.reminderId).subscribe();
-    // Drain confirmed.
     expect(inFlight.has(overdue.reminderId)).toBeFalse();
-
-    // Stop polling so the fakeAsync teardown doesn't leak the
-    // 60s tick into the afterEach's http.verify().
-    service.stopPolling();
+    // Stop polling before test ends to prevent pending interval request
+    service.stopPollingLoop();
   }));
+
+  // --- legacy startPolling / stopPolling (now no-ops) ---
+
+  it('startPolling is now a no-op (self-reactive via effect)', () => {
+    (service as any).startPolling(60_000);
+    http.expectNone('/api/notifications/upcoming');
+  });
+
+  it('stopPolling is now a no-op (self-reactive via effect)', () => {
+    (service as any).stopPolling();
+  });
 });

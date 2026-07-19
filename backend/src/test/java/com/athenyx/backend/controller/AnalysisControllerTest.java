@@ -6,6 +6,7 @@ import com.athenyx.backend.dto.HeuristicAnalysisResponse;
 import com.athenyx.backend.heuristics.HeuristicAnalysisService;
 import com.athenyx.backend.heuristics.TrialLimitExceededException;
 import com.athenyx.backend.service.AnalysisHistoryService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -51,6 +52,9 @@ class AnalysisControllerTest {
     @Mock
     private Authentication authentication;
 
+    @Mock
+    private HttpServletRequest request;
+
     @InjectMocks
     private AnalysisController controller;
 
@@ -58,7 +62,7 @@ class AnalysisControllerTest {
 
     @Test
     void analyze_endpoint_isAuthenticatedOnly() throws Exception {
-        Method m = AnalysisController.class.getMethod("analyze", Long.class, Authentication.class);
+        Method m = AnalysisController.class.getMethod("analyze", Long.class, Authentication.class, HttpServletRequest.class);
         PreAuthorize annotation = m.getAnnotation(PreAuthorize.class);
         assertThat(annotation).isNotNull();
         assertThat(annotation.value()).isEqualTo("isAuthenticated()");
@@ -94,10 +98,16 @@ class AnalysisControllerTest {
     @Test
     void analyze_returns200WithResponseBody() {
         when(authentication.getPrincipal()).thenReturn(1L);
+        when(authentication.getDetails()).thenReturn("u@test.com");
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("User-Agent")).thenReturn("TestBrowser/1.0");
+        when(request.getAttribute("correlationId")).thenReturn("corr-123");
         HeuristicAnalysisResponse response = buildResponse(42, com.athenyx.backend.heuristics.ThreatLevel.YELLOW);
-        when(service.analyze(1L, 10L)).thenReturn(CompletableFuture.completedFuture(response));
+        when(service.analyze(eq(1L), eq(10L), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(response));
 
-        ResponseEntity<HeuristicAnalysisResponse> result = controller.analyze(10L, authentication);
+        ResponseEntity<HeuristicAnalysisResponse> result = controller.analyze(10L, authentication, request);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isNotNull();
@@ -110,11 +120,16 @@ class AnalysisControllerTest {
     @Test
     void analyze_returns403WhenTrialLimitExceeded() {
         when(authentication.getPrincipal()).thenReturn(1L);
+        when(authentication.getDetails()).thenReturn("u@test.com");
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getHeader("User-Agent")).thenReturn("TestBrowser/1.0");
+        when(request.getAttribute("correlationId")).thenReturn("corr-123");
         CompletableFuture<HeuristicAnalysisResponse> failed = new CompletableFuture<>();
         failed.completeExceptionally(new TrialLimitExceededException("Límite de análisis alcanzado", 0));
-        when(service.analyze(1L, 10L)).thenReturn(failed);
+        when(service.analyze(eq(1L), eq(10L), any(), any(), any())).thenReturn(failed);
 
-        ResponseEntity<HeuristicAnalysisResponse> result = controller.analyze(10L, authentication);
+        ResponseEntity<HeuristicAnalysisResponse> result = controller.analyze(10L, authentication, request);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(result.getBody()).isNull();

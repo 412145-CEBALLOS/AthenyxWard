@@ -4,7 +4,9 @@ import com.athenyx.backend.dto.AnalysisHistoryResponse;
 import com.athenyx.backend.dto.HeuristicAnalysisResponse;
 import com.athenyx.backend.heuristics.HeuristicAnalysisService;
 import com.athenyx.backend.heuristics.TrialLimitExceededException;
+import com.athenyx.backend.security.CorrelationIdFilter;
 import com.athenyx.backend.service.AnalysisHistoryService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -30,10 +32,15 @@ public class AnalysisController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<HeuristicAnalysisResponse> analyze(
             @PathVariable Long id,
-            Authentication auth) {
+            Authentication auth,
+            HttpServletRequest request) {
         Long userId = (Long) auth.getPrincipal();
+        String actorEmail = (String) auth.getDetails();
+        String ipAddress = extractIpAddress(request);
+        String userAgent = request.getHeader("User-Agent");
+        String correlationId = extractCorrelationId(request);
         try {
-            HeuristicAnalysisResponse response = service.analyze(userId, id).join();
+            HeuristicAnalysisResponse response = service.analyze(userId, id, ipAddress, userAgent, correlationId).join();
             return ResponseEntity.ok(response);
         } catch (TrialLimitExceededException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -80,5 +87,17 @@ public class AnalysisController {
         LocalDateTime fromDt = (from == null) ? null : from.atStartOfDay();
         LocalDateTime toDt   = (to   == null) ? null : to.atTime(LocalTime.MAX);
         return ResponseEntity.ok(historyService.getHistory(userId, fromDt, toDt, page, size));
+    }
+
+    private String extractIpAddress(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        return forwarded != null && !forwarded.isBlank()
+                ? forwarded.split(",")[0].trim()
+                : request.getRemoteAddr();
+    }
+
+    private String extractCorrelationId(HttpServletRequest request) {
+        Object attr = request.getAttribute(CorrelationIdFilter.ATTRIBUTE);
+        return attr instanceof String s ? s : null;
     }
 }

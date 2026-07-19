@@ -2,6 +2,7 @@ package com.athenyx.backend.controller;
 
 import com.athenyx.backend.ai.AiExplanationService;
 import com.athenyx.backend.ai.AiOrigin;
+import com.athenyx.backend.ai.AiPremiumRequiredException;
 import com.athenyx.backend.dto.AiExplanationResponse;
 import com.athenyx.backend.heuristics.TrialLimitExceededException;
 import org.junit.jupiter.api.Test;
@@ -46,11 +47,11 @@ class AiControllerTest {
     // --- Security annotation ---
 
     @Test
-    void explain_endpoint_requiresPremiumOrAdmin() throws Exception {
+    void explain_endpoint_requiresAuthentication() throws Exception {
         Method m = AiController.class.getMethod("explain", Long.class, Authentication.class);
         PreAuthorize annotation = m.getAnnotation(PreAuthorize.class);
         assertThat(annotation).isNotNull();
-        assertThat(annotation.value()).isEqualTo("hasAnyRole('PREMIUM', 'ADMIN')");
+        assertThat(annotation.value()).isEqualTo("isAuthenticated()");
     }
 
     // --- Happy path: 200 + response body ---
@@ -88,6 +89,20 @@ class AiControllerTest {
 
         assertThatThrownBy(() -> controller.explain(10L, authentication))
                 .isInstanceOf(TrialLimitExceededException.class);
+    }
+
+    // --- Premium required: CompletionException wraps AiPremiumRequired → rethrown ---
+
+    @Test
+    void explain_throwsAiPremiumRequired_whenCompletionExceptionWrapsIt() {
+        when(authentication.getPrincipal()).thenReturn(1L);
+        CompletionException cause = new CompletionException(
+                new AiPremiumRequiredException("La función \"Explicar con IA\" requiere plan Premium o Admin."));
+        CompletableFuture<AiExplanationResponse> failed = CompletableFuture.failedFuture(cause);
+        when(service.explain(1L, 10L)).thenReturn(failed);
+
+        assertThatThrownBy(() -> controller.explain(10L, authentication))
+                .isInstanceOf(AiPremiumRequiredException.class);
     }
 
     // --- Generic RuntimeException: unwrapped and rethrown ---

@@ -1,5 +1,8 @@
 package com.athenyx.backend.ai;
 
+import com.athenyx.backend.config.ConfigKey;
+import com.athenyx.backend.config.ConfigService;
+import com.athenyx.backend.security.FeatureToggleService;
 import com.athenyx.backend.dto.AiExplanationResponse;
 import com.athenyx.backend.entity.AiExplanation;
 import com.athenyx.backend.entity.Email;
@@ -28,8 +31,6 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class AiExplanationService {
 
-    private static final int TRIAL_LIMIT = 20;
-
     private final org.springframework.ai.chat.client.ChatClient chatClient;
     private final AiProperties aiProperties;
     private final EmailRepository emailRepository;
@@ -38,6 +39,8 @@ public class AiExplanationService {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final ConfigService configService;
+    private final FeatureToggleService featureToggleService;
 
     @Async("aiExecutor")
     @Transactional
@@ -52,8 +55,9 @@ public class AiExplanationService {
             throw new RuntimeException("Acceso denegado");
         }
 
-        if (user.getRole() == Role.TRIAL && user.getAnalysisCount() >= TRIAL_LIMIT) {
-            throw new TrialLimitExceededException("Límite de análisis alcanzado", 0);
+        if (user.getRole() == Role.TRIAL) {
+            throw new AiPremiumRequiredException(
+                    "La función \"Explicar con IA\" requiere plan Premium o Admin.");
         }
 
         EmailAnalysis latest = analysisRepository
@@ -70,7 +74,7 @@ public class AiExplanationService {
                             AiOrigin.FALLBACK, null));
         }
 
-        if (!aiProperties.enabled()) {
+        if (!featureToggleService.isEnabled(ConfigKey.AI_ENABLED)) {
             long durationMs = System.currentTimeMillis() - start;
             log.info("ai.explain userId={} emailId={} durationMs={} origin={}",
                     userId, emailId, durationMs, AiOrigin.FALLBACK);

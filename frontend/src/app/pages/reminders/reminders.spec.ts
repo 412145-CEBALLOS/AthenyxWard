@@ -41,7 +41,7 @@ describe('RemindersComponent', () => {
     const authStub = new AuthServiceStub();
     authStub.user = signal<UserInfo | null>({
       id: 1, name: 'U', email: 'u@example.com', pictureUrl: '',
-      role, trialEndDate: null, trialExpired: false, accessibilityMode: true,
+      role, trialEndDate: null, trialExpired: false, accessibilityMode: true, termsAcceptedAt: null, termsVersion: null,
     });
 
     listSpy = jasmine.createSpy('list').and.returnValue(of([]));
@@ -221,7 +221,7 @@ describe('RemindersComponent', () => {
     const authStub = new AuthServiceStub();
     authStub.user = signal<UserInfo | null>({
       id: 1, name: 'U', email: 'u@example.com', pictureUrl: '',
-      role: 'PREMIUM', trialEndDate: null, trialExpired: false, accessibilityMode: true,
+      role: 'PREMIUM', trialEndDate: null, trialExpired: false, accessibilityMode: true, termsAcceptedAt: null, termsVersion: null,
     });
     const listSpy2 = jasmine.createSpy('list').and.returnValue(of([]));
 

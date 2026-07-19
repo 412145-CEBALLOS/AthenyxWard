@@ -1,0 +1,74 @@
+@if (open() && entry()) {
+  <div class="drawer-overlay" (click)="onOverlayClick()">
+    <div class="drawer-panel" (click)="onPanelClick($event)" role="dialog" aria-modal="true">
+      <div class="drawer-header">
+        <h2 class="drawer-title">Detalle del registro</h2>
+        <button type="button" class="close-btn" (click)="closeDrawer.emit()" aria-label="Cerrar">
+          ✕
+        </button>
+      </div>
+
+      <div class="drawer-body">
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">ID</span>
+            <span class="meta-value">{{ entry()!.id }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Fecha</span>
+            <span class="meta-value">{{ entry()!.createdAt | date: 'dd/MM/yyyy HH:mm:ss' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Actor</span>
+            <span class="meta-value">{{ entry()!.actorEmail }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Rol</span>
+            <span class="meta-value">{{ entry()!.actorRole || '—' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Severidad</span>
+            <span class="severity-chip" [attr.data-severity]="entry()!.severity.toLowerCase()">
+              {{ entry()!.severity }}
+            </span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Resultado</span>
+            <span class="result-chip" [attr.data-result]="entry()!.result.toLowerCase()">
+              {{ entry()!.result }}
+            </span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Acción</span>
+            <span class="action-chip" [attr.data-action]="entry()!.actionType">
+              {{ entry()!.actionType }}
+            </span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Objetivo</span>
+            <span class="meta-value">{{ entry()!.targetId || '—' }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">IP</span>
+            <span class="meta-value">{{ entry()!.ipAddress || '—' }}</span>
+          </div>
+          <div class="meta-item full-width">
+            <span class="meta-label">Correlation ID</span>
+            @if (entry()!.correlationId) {
+              <button type="button" class="correlation-btn" (click)="onCorrelationClick(entry()!.correlationId!)">
+                {{ entry()!.correlationId }}
+              </button>
+            } @else {
+              <span class="meta-value">—</span>
+            }
+          </div>
+        </div>
+
+        <div class="payload-section">
+          <span class="meta-label">Payload</span>
+          <pre class="payload-json">{{ parsePayload(entry()!.payload) | json | json }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+}
