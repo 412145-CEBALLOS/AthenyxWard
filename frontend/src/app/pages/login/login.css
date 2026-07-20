@@ -9,6 +9,134 @@
   overflow: hidden;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    .login-container {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0f172a 100%);
+    }
+
+    .bg-orb-1 {
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.2), transparent 70%);
+    }
+
+    .bg-orb-2 {
+      background: radial-gradient(circle, rgba(96, 165, 250, 0.15), transparent 70%);
+    }
+
+    .bg-orb-3 {
+      background: radial-gradient(circle, rgba(147, 197, 253, 0.2), transparent 70%);
+    }
+
+    .login-card {
+      background: rgba(30, 41, 59, 0.85);
+      border-color: rgba(71, 85, 105, 0.6);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-glow {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent 50%, rgba(96, 165, 250, 0.08));
+    }
+
+    .login-subtitle {
+      color: #94a3b8;
+    }
+
+    .google-btn {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(71, 85, 105, 0.5);
+      color: #e2e8f0;
+    }
+
+    .google-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(96, 165, 250, 0.1);
+    }
+
+    .google-btn[disabled]:hover {
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    .login-checkbox-text {
+      color: #94a3b8;
+    }
+
+    .login-checkbox-text a {
+      color: #60a5fa;
+    }
+
+    .login-legal-hint {
+      color: #64748b;
+    }
+
+    .login-footer {
+      color: #64748b;
+    }
+  }
+}
+
+:root[data-theme="dark"] {
+  .login-container {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0f172a 100%);
+  }
+
+  .bg-orb-1 {
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.2), transparent 70%);
+  }
+
+  .bg-orb-2 {
+    background: radial-gradient(circle, rgba(96, 165, 250, 0.15), transparent 70%);
+  }
+
+  .bg-orb-3 {
+    background: radial-gradient(circle, rgba(147, 197, 253, 0.2), transparent 70%);
+  }
+
+  .login-card {
+    background: rgba(30, 41, 59, 0.85);
+    border-color: rgba(71, 85, 105, 0.6);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .card-glow {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent 50%, rgba(96, 165, 250, 0.08));
+  }
+
+  .login-subtitle {
+    color: #94a3b8;
+  }
+
+  .google-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(71, 85, 105, 0.5);
+    color: #e2e8f0;
+  }
+
+  .google-btn:hover {
+    background: rgba(30, 41, 59, 0.95);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(96, 165, 250, 0.1);
+  }
+
+  .google-btn[disabled]:hover {
+    background: rgba(30, 41, 59, 0.8);
+  }
+
+  .login-checkbox-text {
+    color: #94a3b8;
+  }
+
+  .login-checkbox-text a {
+    color: #60a5fa;
+  }
+
+  .login-legal-hint {
+    color: #64748b;
+  }
+
+  .login-footer {
+    color: #64748b;
+  }
+}
+
 .login-bg-elements {
   position: absolute;
   inset: 0;

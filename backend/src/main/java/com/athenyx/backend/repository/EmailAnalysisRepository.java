@@ -72,4 +72,9 @@ public interface EmailAnalysisRepository extends JpaRepository<EmailAnalysis, Lo
     @Modifying
     @Query("DELETE FROM EmailAnalysis ea WHERE ea.email.id IN :ids")
     int deleteByEmailIdIn(@Param("ids") Collection<Long> ids);
+
+    long countByUserId(Long userId);
+
+    @Query("SELECT MIN(ea.analyzedAt) FROM EmailAnalysis ea WHERE ea.user.id = :userId")
+    LocalDateTime findOldestByUserId(@Param("userId") Long userId);
 }

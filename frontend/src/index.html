@@ -6,6 +6,14 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="icono.jpg">
+  <script>
+    (function() {
+      var v = localStorage.getItem('athenyx.theme');
+      if (v === 'light' || v === 'dark') {
+        document.documentElement.setAttribute('data-theme', v);
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 </head>
 <body>

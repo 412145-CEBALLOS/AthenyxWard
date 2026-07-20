@@ -110,6 +110,9 @@ public interface EmailRepository extends JpaRepository<Email, Long> {
 
     long countByUserId(Long userId);
 
+    @Query("SELECT MIN(e.fetchedAt) FROM Email e WHERE e.user.id = :userId")
+    LocalDateTime findOldestByUserId(@Param("userId") Long userId);
+
     @Query("SELECT e.id FROM Email e WHERE e.fetchedAt < :cutoff")
     List<Long> findIdsOlderThan(LocalDateTime cutoff);
 

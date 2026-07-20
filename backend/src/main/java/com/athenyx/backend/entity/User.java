@@ -85,7 +85,10 @@ public class User {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    
+    private LocalDateTime lastLoginAt;
+
+    private Boolean emailVerified;
+
     private String gmailHistoryId;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

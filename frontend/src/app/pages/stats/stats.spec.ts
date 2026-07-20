@@ -18,6 +18,8 @@ function makeUser(role: 'ADMIN' | 'PREMIUM' | 'TRIAL'): UserInfo {
     accessibilityMode: true,
     termsAcceptedAt: null,
     termsVersion: null,
+    lastLoginAt: null,
+    emailVerified: true,
   };
 }
 

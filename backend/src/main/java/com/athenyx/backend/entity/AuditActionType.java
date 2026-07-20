@@ -32,5 +32,6 @@ public enum AuditActionType {
     REMINDER_DELETED,
     REMINDER_DONE,
     EXPORT_CSV,
-    CONFIG_PURGE
+    CONFIG_PURGE,
+    SESSION_REVOKED
 }

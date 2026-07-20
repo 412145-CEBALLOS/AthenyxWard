@@ -13,6 +13,8 @@ export interface UserInfo {
   accessibilityMode: boolean;
   termsAcceptedAt: string | null;
   termsVersion: string | null;
+  lastLoginAt: string | null;
+  emailVerified: boolean | null;
 }
 
 /**

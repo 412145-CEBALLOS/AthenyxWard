@@ -85,4 +85,7 @@ public interface ReminderRepository extends JpaRepository<Reminder, Long> {
     long countByUserId(Long userId);
 
     long countByUserIdAndDoneFalse(Long userId);
+
+    @Query("SELECT MIN(r.createdAt) FROM Reminder r WHERE r.user.id = :userId")
+    LocalDateTime findOldestByUserId(@Param("userId") Long userId);
 }

@@ -19,5 +19,7 @@ public record UserInfo(
     boolean trialExpired,
     boolean accessibilityMode,
     LocalDateTime termsAcceptedAt,
-    String termsVersion
+    String termsVersion,
+    LocalDateTime lastLoginAt,
+    Boolean emailVerified
 ) {}

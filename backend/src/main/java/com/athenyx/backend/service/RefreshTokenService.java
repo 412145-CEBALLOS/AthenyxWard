@@ -23,6 +23,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -109,6 +110,27 @@ public class RefreshTokenService {
                 .orElseThrow(() -> new RefreshTokenException(
                         RefreshTokenException.Kind.MISSING, "Refresh token not recognised"));
         return existing.getUser();
+    }
+
+    public byte[] hashToken(String rawToken) {
+        return sha256(rawToken);
+    }
+
+    public Optional<RefreshToken> findByTokenHash(byte[] hash) {
+        return repository.findByTokenHash(hash);
+    }
+
+    public List<RefreshToken> listActiveSessions(Long userId) {
+        return repository.findAllByUserIdAndRevokedAtIsNull(userId);
+    }
+
+    @Transactional
+    public int revokeFamily(String familyId, Long userId) {
+        int count = repository.revokeFamily(familyId, RevokedReason.ADMIN, LocalDateTime.now());
+        if (count > 0) {
+            userRepository.incrementTokenVersion(userId);
+        }
+        return count;
     }
 
     @Transactional

@@ -31,6 +31,8 @@ function makeUser(overrides: Partial<UserInfo> = {}): UserInfo {
     accessibilityMode: true,
     termsAcceptedAt: null,
     termsVersion: null,
+    lastLoginAt: null,
+    emailVerified: true,
     ...overrides,
   };
 }

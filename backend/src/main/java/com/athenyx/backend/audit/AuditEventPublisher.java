@@ -122,4 +122,8 @@ public class AuditEventPublisher {
         eventPublisher.publishEvent(new ConfigPurgeEvent(
                 this, actorId, actorEmail, targetType, configKey, purgedCount, skippedDueToReminders));
     }
+
+    public void publishSessionRevoked(Long actorId, String actorEmail, String familyId, String userAgent) {
+        eventPublisher.publishEvent(new SessionRevokedEvent(this, actorId, actorEmail, familyId, userAgent));
+    }
 }

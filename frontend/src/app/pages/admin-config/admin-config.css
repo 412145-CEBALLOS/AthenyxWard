@@ -63,32 +63,266 @@
   background: rgba(255, 255, 255, 0.6);
 }
 
-.config-card-header {
-  margin-bottom: 10px;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    .config-category {
+      background: rgba(30, 41, 59, 0.85);
+      border-color: rgba(71, 85, 105, 0.4);
+    }
+
+    .config-category-header {
+      background: rgba(96, 165, 250, 0.05);
+      border-bottom-color: rgba(71, 85, 105, 0.3);
+      color: #e2e8f0;
+    }
+
+    .config-category-header .ti {
+      color: #60a5fa;
+    }
+
+    .config-count {
+      color: #64748b;
+    }
+
+    .config-card {
+      background: rgba(30, 41, 59, 0.6);
+      border-color: rgba(71, 85, 105, 0.3);
+    }
+
+    .config-label {
+      color: #e2e8f0;
+    }
+
+    .config-key {
+      color: #64748b;
+    }
+
+    .config-description {
+      color: #94a3b8;
+    }
+
+    .config-value-badge {
+      background: rgba(96, 165, 250, 0.08);
+      border-color: rgba(96, 165, 250, 0.25);
+    }
+
+    .config-value-badge--empty {
+      background: rgba(248, 113, 113, 0.08);
+      border-color: rgba(248, 113, 113, 0.35);
+    }
+
+    .config-value-badge-label {
+      color: #94a3b8;
+    }
+
+    .config-value-badge-value {
+      color: #e2e8f0;
+    }
+
+    .config-value-badge--empty .config-value-badge-value {
+      color: #f87171;
+    }
+
+    .config-meta {
+      color: #64748b;
+    }
+
+    .config-input {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-color: rgba(100, 116, 139, 0.5);
+    }
+
+    .config-input:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+    }
+
+    .btn-primary:hover { background: #2563eb; }
+
+    .btn-secondary {
+      background: rgba(100, 116, 139, 0.2);
+      color: #94a3b8;
+    }
+
+    .btn-secondary:hover { background: rgba(100, 116, 139, 0.35); }
+
+    .btn-edit {
+      background: rgba(96, 165, 250, 0.1);
+      color: #60a5fa;
+    }
+
+    .btn-edit:hover { background: rgba(96, 165, 250, 0.18); }
+
+    .btn-purge {
+      background: rgba(248, 113, 113, 0.1);
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.3);
+    }
+
+    .btn-purge:hover { background: rgba(248, 113, 113, 0.15); }
+
+    .btn-danger {
+      background: #dc2626;
+    }
+
+    .btn-danger:hover { background: #b91c1c; }
+
+    .slider {
+      background-color: #475569;
+    }
+
+    input:checked + .slider {
+      background-color: #3b82f6;
+    }
+
+    .bool-label {
+      color: #94a3b8;
+    }
+
+    .state-container {
+      color: #94a3b8;
+    }
+
+    .spinner {
+      border-color: rgba(96, 165, 250, 0.2);
+      border-top-color: #60a5fa;
+    }
+  }
 }
 
-.config-label {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 2px 0;
-  line-height: 1.3;
-}
+:root[data-theme="dark"] {
+  .config-category {
+    background: rgba(30, 41, 59, 0.85);
+    border-color: rgba(71, 85, 105, 0.4);
+  }
 
-.config-key {
-  font-size: 0.72rem;
-  font-weight: 400;
-  color: #94a3b8;
-  margin: 0 0 4px 0;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 0.01em;
-}
+  .config-category-header {
+    background: rgba(96, 165, 250, 0.05);
+    border-bottom-color: rgba(71, 85, 105, 0.3);
+    color: #e2e8f0;
+  }
 
-.config-description {
-  font-size: 0.78rem;
-  color: #64748b;
-  margin: 0;
-  line-height: 1.4;
+  .config-category-header .ti {
+    color: #60a5fa;
+  }
+
+  .config-count {
+    color: #64748b;
+  }
+
+  .config-card {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(71, 85, 105, 0.3);
+  }
+
+  .config-label {
+    color: #e2e8f0;
+  }
+
+  .config-key {
+    color: #64748b;
+  }
+
+  .config-description {
+    color: #94a3b8;
+  }
+
+  .config-value-badge {
+    background: rgba(96, 165, 250, 0.08);
+    border-color: rgba(96, 165, 250, 0.25);
+  }
+
+  .config-value-badge--empty {
+    background: rgba(248, 113, 113, 0.08);
+    border-color: rgba(248, 113, 113, 0.35);
+  }
+
+  .config-value-badge-label {
+    color: #94a3b8;
+  }
+
+  .config-value-badge-value {
+    color: #e2e8f0;
+  }
+
+  .config-value-badge--empty .config-value-badge-value {
+    color: #f87171;
+  }
+
+  .config-meta {
+    color: #64748b;
+  }
+
+  .config-input {
+    background: #1e293b;
+    color: #e2e8f0;
+    border-color: rgba(100, 116, 139, 0.5);
+  }
+
+  .config-input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+  }
+
+  .btn-primary {
+    background: #3b82f6;
+  }
+
+  .btn-primary:hover { background: #2563eb; }
+
+  .btn-secondary {
+    background: rgba(100, 116, 139, 0.2);
+    color: #94a3b8;
+  }
+
+  .btn-secondary:hover { background: rgba(100, 116, 139, 0.35); }
+
+  .btn-edit {
+    background: rgba(96, 165, 250, 0.1);
+    color: #60a5fa;
+  }
+
+  .btn-edit:hover { background: rgba(96, 165, 250, 0.18); }
+
+  .btn-purge {
+    background: rgba(248, 113, 113, 0.1);
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.3);
+  }
+
+  .btn-purge:hover { background: rgba(248, 113, 113, 0.15); }
+
+  .btn-danger {
+    background: #dc2626;
+  }
+
+  .btn-danger:hover { background: #b91c1c; }
+
+  .slider {
+    background-color: #475569;
+  }
+
+  input:checked + .slider {
+    background-color: #3b82f6;
+  }
+
+  .bool-label {
+    color: #94a3b8;
+  }
+
+  .state-container {
+    color: #94a3b8;
+  }
+
+  .spinner {
+    border-color: rgba(96, 165, 250, 0.2);
+    border-top-color: #60a5fa;
+  }
 }
 
 /* ─── Valor actual / display ─── */

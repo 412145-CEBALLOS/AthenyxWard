@@ -77,6 +77,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String email = oauthUser.getAttribute("email");
         String name = oauthUser.getAttribute("name");
         String picture = oauthUser.getAttribute("picture");
+        Boolean emailVerified = oauthUser.getAttribute("email_verified");
+        LocalDateTime now = LocalDateTime.now();
 
         OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
                 oauthToken.getAuthorizedClientRegistrationId(), oauthToken.getName());
@@ -129,6 +131,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     existing.setGoogleAccessToken(encryptedAccessToken);
                     existing.setGoogleRefreshToken(encryptedRefreshToken);
                     existing.setGoogleAccessTokenExpiresAt(tokenExpiresAt);
+                    existing.setLastLoginAt(now);
+                    existing.setEmailVerified(emailVerified);
                     return existing;
                 })
                 .orElseGet(() -> User.builder()
@@ -137,11 +141,13 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                         .name(name)
                         .pictureUrl(picture)
                         .role(Role.TRIAL)
-                        .trialEndDate(LocalDateTime.now().plusDays(30))
+                        .trialEndDate(now.plusDays(30))
                         .googleAccessToken(encryptedAccessToken)
                         .googleRefreshToken(encryptedRefreshToken)
                         .googleAccessTokenExpiresAt(tokenExpiresAt)
                         .accessibilityMode(true)
+                        .lastLoginAt(now)
+                        .emailVerified(emailVerified)
                         .build());
 
         user = userRepository.save(user);

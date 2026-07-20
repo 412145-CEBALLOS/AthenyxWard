@@ -316,6 +316,21 @@ public class AuditEventListener {
                 .build());
     }
 
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onSessionRevoked(SessionRevokedEvent event) {
+        self().persist(builder(event.getSource())
+                .actionType(AuditActionType.SESSION_REVOKED)
+                .actorId(event.getActorId())
+                .actorEmail(event.getActorEmail())
+                .severity(AuditSeverity.INFO)
+                .result(AuditResult.SUCCESS)
+                .payload(json(java.util.Map.of(
+                        "familyId", event.getFamilyId() != null ? event.getFamilyId() : "",
+                        "userAgent", event.getUserAgent() != null ? event.getUserAgent() : ""
+                )))
+                .build());
+    }
+
     private AuditLog.AuditLogBuilder builder(Object source) {
         return AuditLog.builder()
                 .createdAt(LocalDateTime.now(clock))
