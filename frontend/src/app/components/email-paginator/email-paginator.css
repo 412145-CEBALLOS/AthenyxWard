@@ -3,13 +3,13 @@
 }
 
 .paginator {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   display: flex;
   place-items: center;
   justify-content: center;
   padding: 0.35rem 0;
   gap: 4px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  border-bottom: 1px solid var(--border-medium);
 }
 
 .paginator-btn {
