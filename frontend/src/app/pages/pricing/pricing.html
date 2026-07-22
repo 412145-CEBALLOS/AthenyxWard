@@ -1,0 +1,132 @@
+<div class="pricing-page">
+  <header class="pricing-header">
+    <h1>Planes y Precios</h1>
+    <p>Elegí el plan que mejor se adapte a tus necesidades</p>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-state">
+      <p>No se pudieron cargar los precios. Intenta más tarde.</p>
+    </div>
+  }
+
+  @if (!loading() && !error()) {
+    <div class="plans-grid">
+      <article class="plan-card trial">
+        <div class="plan-card-inner">
+          <h2>Prueba</h2>
+          <div class="price-block">
+            <span class="price">$0</span>
+            <span class="period">perpetuo</span>
+          </div>
+          <p class="description">
+            Ideal para probar AthenyxWard y ver cómo protege tu correo.
+          </p>
+          <ul class="features">
+            <li>
+              <i class="ti ti-check"></i>
+              20 análisis de correos
+            </li>
+            <li>
+              <i class="ti ti-check"></i>
+              Análisis heurístico
+            </li>
+            <li>
+              <i class="ti ti-check"></i>
+              Historial de 7 días
+            </li>
+          </ul>
+          <button type="button" class="plan-btn secondary" (click)="goToCheckout()">
+            Empezar gratis
+          </button>
+        </div>
+      </article>
+
+      <article class="plan-card premium">
+        <div class="plan-card-inner">
+          <div class="popular-badge">Más popular</div>
+          <h2>Premium</h2>
+          <div class="price-block">
+            <span class="price">{{ formatPrice(pricing()!.monthlyPrice) }}</span>
+            <span class="period">/mes</span>
+          </div>
+          <p class="description">
+            Análisis ilimitados, IA explicativa y recordatorios para tu seguridad total.
+          </p>
+          <ul class="features">
+            <li>
+              <i class="ti ti-check"></i>
+              Análisis ilimitados
+            </li>
+            <li>
+              <i class="ti ti-check"></i>
+              Explicaciones con IA
+            </li>
+            <li>
+              <i class="ti ti-check"></i>
+              Recordatorios y marcas
+            </li>
+            <li>
+              <i class="ti ti-check"></i>
+              Historial completo
+            </li>
+            <li>
+              <i class="ti ti-check"></i>
+              Prioridad en soporte
+            </li>
+          </ul>
+          <button type="button" class="plan-btn primary" (click)="goToCheckout()">
+            Elegir mensual
+          </button>
+        </div>
+      </article>
+
+      <article class="plan-card annual">
+        <div class="plan-card-inner">
+          <div class="savings-badge">Ahorrá {{ pricing()!.annualSavingsPercent }}%</div>
+          <h2>Premium Anual</h2>
+          <div class="price-block">
+            <span class="price">{{ formatPrice(pricing()!.annualPrice) }}</span>
+            <span class="period">/año</span>
+          </div>
+          <p class="equivalent">
+            Equivale a {{ monthlyEquivalent(pricing()!.annualPrice) }}/mes
+          </p>
+          <ul class="features">
+            <li>
+              <i class="ti ti-check"></i>
+              Todo lo de Premium
+            </li>
+            <li>
+              <i class="ti ti-check"></i>
+              2 meses gratis
+            </li>
+            <li>
+              <i class="ti ti-check"></i>
+              Precio fijo todo el año
+            </li>
+          </ul>
+          <button type="button" class="plan-btn primary" (click)="goToCheckout()">
+            Elegir anual
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <footer class="pricing-footer">
+      <p>
+        Todos los precios incluyen IVA. Pago 100% seguro.
+        Las suscripciones se renuevan automáticamente.
+      </p>
+      <p>
+        ¿Preguntas? Escribinos a <a href="mailto:soporte&#64;athenyx.com">soporte&#64;athenyx.com</a>
+      </p>
+    </footer>
+  }
+</div>

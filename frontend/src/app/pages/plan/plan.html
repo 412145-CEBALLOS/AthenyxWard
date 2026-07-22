@@ -1,39 +1,224 @@
 <app-page-shell
   icon="ti ti-credit-card"
   pageTitle="Mi plan"
-  subtitle="Gestiona tu suscripción y descubre las ventajas disponibles.">
+  [subtitle]="isPremium() ? 'Gestiona tu suscripción' : 'Mejora tu experiencia'">
 
-  <div class="plan-grid">
-    @for (plan of plans(); track plan.name) {
-      <article class="plan-card" [class.highlight]="plan.highlight" [class.current]="isCurrent(plan)">
-        @if (plan.highlight) {
-          <span class="plan-ribbon">Más popular</span>
+  @if (view() === 'loading') {
+    <div class="state-container">
+      <div class="spinner"></div>
+      <p>Cargando...</p>
+    </div>
+  }
+
+  @if (view() === 'error') {
+    <div class="state-container">
+      <i class="ti ti-alert-circle error-icon"></i>
+      <p>No se pudo cargar la información</p>
+      <button class="retry-btn" (click)="loadSubscription()">Reintentar</button>
+    </div>
+  }
+
+  @if (view() === 'trial') {
+    <div class="trial-container">
+      <div class="trial-header">
+        <div class="trial-badge">
+          <i class="ti ti-sparkles"></i>
+          <span>Prueba gratuita</span>
+        </div>
+        @if (trialDaysLeft() > 0) {
+          <p class="trial-info">
+            Te quedan <strong>{{ trialDaysLeft() }} días</strong> de prueba.
+            Aprovechá para analizar tus correos sin límites.
+          </p>
+        } @else {
+          <p class="trial-info trial-expired">
+            Tu período de prueba terminó. Actualizá a Premium para seguir usando AthenyxWard.
+          </p>
         }
-        <header class="plan-header">
-          <h2 class="plan-name">{{ plan.displayName }}</h2>
-          <div class="plan-price">
-            <span class="plan-amount">{{ plan.price }}</span>
-            <span class="plan-period">/ {{ plan.period }}</span>
+      </div>
+
+      <div class="plans-grid">
+        <article class="plan-option" [class.selected]="selectedCycle() === 'MONTHLY'" (click)="selectCycle('MONTHLY')">
+          <div class="plan-option-header">
+            <span class="plan-option-name">Mensual</span>
+            @if (selectedCycle() === 'MONTHLY') {
+              <i class="ti ti-check check-icon"></i>
+            }
           </div>
-        </header>
-        <ul class="plan-features">
-          @for (feature of plan.features; track feature) {
-            <li>
-              <i class="ti ti-check plan-check"></i>
-              {{ feature }}
-            </li>
-          }
-        </ul>
-        <div class="plan-footer">
-          @if (isCurrent(plan)) {
-            <span class="plan-current-badge">Tu plan actual</span>
-          } @else {
-            <button type="button" class="plan-cta" (click)="onSelect(plan.name)">
-              Cambiar a {{ plan.displayName }}
+          <div class="plan-option-price">
+            @if (pricing()) {
+              <span class="price-amount">{{ formatAmount(pricing()!.monthlyPrice, pricing()!.currency) }}</span>
+            }
+            <span class="price-period">/mes</span>
+          </div>
+          <p class="plan-option-desc">Sin compromiso. Cancela cuando quieras.</p>
+        </article>
+
+        <article class="plan-option" [class.selected]="selectedCycle() === 'ANNUAL'" (click)="selectCycle('ANNUAL')">
+          <div class="plan-option-header">
+            <span class="plan-option-name">Anual</span>
+            @if (selectedCycle() === 'ANNUAL') {
+              <i class="ti ti-check check-icon"></i>
+            }
+          </div>
+          <div class="plan-option-price">
+            @if (pricing()) {
+              <span class="price-amount">{{ formatAmount(pricing()!.annualPrice, pricing()!.currency) }}</span>
+            }
+            <span class="price-period">/año</span>
+          </div>
+          <p class="plan-option-desc">Ahorrá ~20%. Equivale a $3.999/mes.</p>
+          <span class="savings-badge">Mejor precio</span>
+        </article>
+      </div>
+
+      <div class="providers-section">
+        <h3 class="providers-title">Método de pago</h3>
+        <div class="providers-grid">
+          @for (provider of providers; track provider.id) {
+            <button
+              type="button"
+              class="provider-btn"
+              [class.selected]="selectedProvider() === provider.id"
+              [class.disabled]="!isProviderEnabled(provider.id)"
+              [disabled]="!isProviderEnabled(provider.id)"
+              (click)="selectProvider(provider.id)">
+              <i [class]="provider.icon"></i>
+              <span>{{ provider.name }}</span>
             </button>
           }
         </div>
-      </article>
-    }
-  </div>
+      </div>
+
+      <button
+        type="button"
+        class="checkout-btn"
+        [disabled]="processing()"
+        (click)="startCheckout()">
+        @if (processing()) {
+          <span class="btn-spinner"></span>
+          Procesando...
+        } @else {
+          <i class="ti ti-arrow-right"></i>
+          Ir a pago con {{ providerName(selectedProvider()) }}
+        }
+      </button>
+
+      <p class="disclaimer">
+        Los precios incluyen IVA. Pago 100% seguro. Tu suscripción se activa inmediatamente después del pago.
+      </p>
+    </div>
+  }
+
+  @if (view() === 'premium') {
+    <div class="premium-container">
+      @if (!subscription()?.autoRenew) {
+        <div class="cancel-warning">
+          <i class="ti ti-alert-triangle"></i>
+          <div>
+            <strong>Suscripción cancelada</strong>
+            <p>
+              Tu suscripción está activa hasta el {{ formatDate(gracePeriodEnd()) }}.
+              Después de esa fecha volverás al plan TRIAL.
+            </p>
+          </div>
+        </div>
+      }
+
+      <div class="subscription-card">
+        <div class="sub-header">
+          <div class="sub-badge">
+            <i class="ti ti-crown"></i>
+            <span>Premium</span>
+          </div>
+          <span class="sub-cycle">{{ subscription()?.billingCycle === 'ANNUAL' ? 'Plan Anual' : 'Plan Mensual' }}</span>
+        </div>
+
+        <div class="sub-details">
+          @if (subscription()?.billingCycle === 'MONTHLY') {
+            <div class="detail-row">
+              <span class="detail-label">Próxima renovación</span>
+              <span class="detail-value">{{ formatDate(subscription()?.renewsAt) }}</span>
+            </div>
+          } @else {
+            <div class="detail-row">
+              <span class="detail-label">Vence</span>
+              <span class="detail-value">{{ formatDate(subscription()?.renewsAt) }}</span>
+            </div>
+          }
+          <div class="detail-row">
+            <span class="detail-label">Monto</span>
+            <span class="detail-value">
+              {{ formatAmount(subscription()?.priceAmount ?? 0, subscription()?.priceCurrency ?? 'ARS') }}
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Método de pago</span>
+            <span class="detail-value">{{ providerName(subscription()?.paymentMethod ?? '') }}</span>
+          </div>
+        </div>
+
+        @if (subscription()?.autoRenew) {
+          <button type="button" class="cancel-btn" (click)="requestCancel()">
+            Cancelar suscripción
+          </button>
+        }
+      </div>
+
+      <div class="history-section">
+        <div class="history-header">
+          <h3>Historial de pagos</h3>
+          @if (!paymentHistory()) {
+            <button type="button" class="load-history-btn" (click)="loadHistory()">
+              Ver historial
+            </button>
+          }
+        </div>
+
+        @if (loadingHistory()) {
+          <div class="history-loading">
+            <div class="spinner small"></div>
+          </div>
+        }
+
+        @if (paymentHistory()?.items?.length) {
+          <div class="history-list">
+            @for (payment of paymentHistory()!.items; track $index) {
+              <div class="history-item">
+                <div class="history-item-left">
+                  <i class="ti" [class]="payment.status === 'COMPLETED' ? 'ti-check-circle success' : 'ti-x-circle fail'"></i>
+                  <div>
+                    <span class="history-desc">
+                      {{ payment.billingCycle === 'ANNUAL' ? 'Plan Anual' : 'Plan Mensual' }}
+                    </span>
+                    <span class="history-date">{{ formatDate(payment.createdAt) }}</span>
+                  </div>
+                </div>
+                <div class="history-item-right">
+                  <span class="history-amount">{{ formatAmount(payment.amount, payment.currency) }}</span>
+                  <span class="history-status" [class]="payment.status.toLowerCase()">
+                    {{ statusLabel(payment.status) }}
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        } @else if (paymentHistory() && !loadingHistory()) {
+          <p class="empty-history">No hay pagos registrados.</p>
+        }
+      </div>
+    </div>
+  }
+
+  @if (showCancelDialog()) {
+    <app-confirm-dialog
+      title="Cancelar suscripción"
+      message="¿Estás seguro de que querés cancelar tu suscripción Premium? Podrás seguir usándola hasta el final del período de facturación actual."
+      confirmLabel="Sí, cancelar"
+      cancelLabel="No, mantener"
+      variant="danger"
+      (confirm)="confirmCancel()"
+      (cancel)="cancelDialogDismiss()">
+    </app-confirm-dialog>
+  }
 </app-page-shell>

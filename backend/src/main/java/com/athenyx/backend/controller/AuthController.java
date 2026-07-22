@@ -17,8 +17,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +47,9 @@ public class AuthController {
     private final RefreshCookieManager refreshCookieManager;
     private final JwtUtil jwtUtil;
     private final AuditEventPublisher auditEventPublisher;
+
+    @Value("${app.auth.cookie-secure:false}")
+    private boolean cookieSecure;
 
     @GetMapping("/me")
     public ResponseEntity<UserInfo> getCurrentUser(Authentication authentication) {
@@ -108,12 +113,14 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE,
                 refreshCookieManager.build(issued.raw(), maxAgeSeconds).toString());
 
-        Cookie accessCookie = new Cookie("athenyx_token", newAccess);
-        accessCookie.setHttpOnly(true);
-        accessCookie.setSecure(false);
-        accessCookie.setPath("/");
-        accessCookie.setMaxAge((int) (ttlMs / 1000));
-        response.addCookie(accessCookie);
+        ResponseCookie accessCookie = ResponseCookie.from("athenyx_token", newAccess)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(ttlMs / 1000)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
 
         log.info("Refresh success for user={} newTokenVersion={}", user.getId(), issued.newTokenVersion());
 
@@ -141,12 +148,14 @@ public class AuthController {
         String actorEmail = userEmail != null ? userEmail : "anonymous";
         auditEventPublisher.publishLogout(userId, actorEmail);
 
-        Cookie cookie = new Cookie("athenyx_token", null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        ResponseCookie accessCookie = ResponseCookie.from("athenyx_token", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookieManager.clear().toString());
 
@@ -174,12 +183,14 @@ public class AuthController {
         String actorEmail = userEmail != null ? userEmail : "anonymous";
         auditEventPublisher.publishLogout(userId, actorEmail, revoked);
 
-        Cookie cookie = new Cookie("athenyx_token", null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        ResponseCookie accessCookie = ResponseCookie.from("athenyx_token", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookieManager.clear().toString());
 

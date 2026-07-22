@@ -8,7 +8,9 @@ public enum ConfigCategory {
     NOTIFICATIONS("Notificaciones"),
     RATE_LIMIT("Rate Limiting"),
     COPY("Copy y contenido"),
-    SECURITY("Seguridad");
+    SECURITY("Seguridad"),
+    PRICING("Precios y Suscripciones"),
+    PAYMENT("Pagos");
 
     private final String label;
 

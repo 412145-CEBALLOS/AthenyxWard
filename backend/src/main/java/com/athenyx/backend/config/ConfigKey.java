@@ -147,6 +147,168 @@ public enum ConfigKey {
             "Lista CSV de direcciones IP bloqueadas en el login. Si está vacía, ninguna IP está bloqueada.",
             null, null, false
         )
+    ),
+    SECURITY_TRUST_FORWARDED_HEADERS(
+        new ConfigMetadata(
+            ConfigCategory.SECURITY,
+            ConfigType.BOOLEAN,
+            "true",
+            "Si es true, el filtro de IP allowlist confía en el header X-Forwarded-For para identificar la IP real del cliente (necesario cuando el backend está detrás de ngrok u otro proxy). En producción, deshabilitar salvo que haya un proxy confiable.",
+            null, null, false
+        )
+    ),
+    SECURITY_WEBHOOK_IP_ALLOWLIST_ENABLED(
+        new ConfigMetadata(
+            ConfigCategory.SECURITY,
+            ConfigType.BOOLEAN,
+            "false",
+            "Habilita el filtro de IP allowlist en el endpoint /api/webhooks/mercadopago. En desarrollo con ngrok, dejar en false (el webhook se autentica via URL secreta). En producción con IP de MP fijas, poner en true.",
+            null, null, false
+        )
+    ),
+    SUBSCRIPTION_PRICE_MONTHLY(
+        new ConfigMetadata(
+            ConfigCategory.PRICING,
+            ConfigType.STRING,
+            "4999.00",
+            "Precio mensual de la suscripción Premium en ARS (formato con punto decimal).",
+            null, null, false
+        )
+    ),
+    SUBSCRIPTION_PRICE_ANNUAL(
+        new ConfigMetadata(
+            ConfigCategory.PRICING,
+            ConfigType.STRING,
+            "47988.00",
+            "Precio anual de la suscripción Premium en ARS. Representa el descuento anual aplicado.",
+            null, null, false
+        )
+    ),
+    SUBSCRIPTION_CURRENCY(
+        new ConfigMetadata(
+            ConfigCategory.PRICING,
+            ConfigType.STRING,
+            "ARS",
+            "Moneda de la suscripción (código ISO 4217). Por ahora solo ARS.",
+            null, null, false
+        )
+    ),
+    SUBSCRIPTION_ANNUAL_SAVINGS_PERCENT(
+        new ConfigMetadata(
+            ConfigCategory.PRICING,
+            ConfigType.INT,
+            "20",
+            "Porcentaje de descuento por contratar el plan anual (mostrado en el badge de la UI).",
+            0, 100, false
+        )
+    ),
+    PAYMENT_ENABLED_PROVIDERS(
+        new ConfigMetadata(
+            ConfigCategory.PRICING,
+            ConfigType.STRING,
+            "PAYPAL,MERCADOPAGO,CARD",
+            "Lista CSV de proveedores de pago activos. Opciones válidas: PAYPAL, MERCADOPAGO, CARD.",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_ENABLED(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.BOOLEAN,
+            "true",
+            "Habilita el provider real de MercadoPago. Si es false o el token no está configurado, usa stub.",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_ACCESS_TOKEN(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.STRING,
+            "",
+            "Access token de MercadoPago (sandbox o producción). Dejar vacío para usar stub.",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_PUBLIC_KEY(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.STRING,
+            "",
+            "Public key de MercadoPago para uso futuro en el frontend.",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_SANDBOX(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.BOOLEAN,
+            "true",
+            "Si true, usa el entorno sandbox de MercadoPago.",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_BACK_URL_SUCCESS(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.STRING,
+            "http://localhost:4200/checkout/return",
+            "URL de retorno al frontend cuando el pago en MP fue exitoso.",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_BACK_URL_SUCCESS_BACKEND(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.STRING,
+            "https://hatchling-pebble-outpost.ngrok-free.dev/api/checkout/return",
+            "URL del backend para que MP redirija después de pago exitoso (sin re-login).",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_BACK_URL_FAILURE(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.STRING,
+            "http://localhost:4200/checkout/return",
+            "URL de retorno al frontend cuando el pago en MP falló.",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_BACK_URL_PENDING(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.STRING,
+            "http://localhost:4200/checkout/return",
+            "URL de retorno al frontend cuando el pago en MP quedó pendiente.",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_NOTIFICATION_URL(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.STRING,
+            "",
+            "URL pública (HTTPS) donde MercadoPago envía las notificaciones IPN. Ej: https://tu-dominio.com/api/webhooks/mercadopago",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_IP_ALLOWLIST(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.STRING,
+            "209.225.49.0/24,216.33.197.0/24,64.7.219.0/24,149.56.151.0/24,149.56.153.0/24,149.56.155.0/24,149.56.157.0/24,149.56.159.0/24",
+            "Lista CSV de CIDR permitidos para webhooks de MP. Por defecto: rangos oficiales de MP (incluye rangos legacy y actuales de AWS US-East).",
+            null, null, false
+        )
+    ),
+    MERCADOPAGO_API_BASE_URL(
+        new ConfigMetadata(
+            ConfigCategory.PAYMENT,
+            ConfigType.STRING,
+            "https://api.mercadopago.com",
+            "URL base para llamadas REST a la API de MercadoPago. Por defecto: producción.",
+            null, null, false
+        )
     );
 
     private final ConfigMetadata metadata;

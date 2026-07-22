@@ -22,6 +22,7 @@ public class ConfigDataInitializer implements ApplicationRunner {
         if (repository.count() > 0) {
             cleanupEmptyIntValues();
             syncPubliclyVisible();
+            insertMissingKeys();
             return;
         }
         log.info("Seeding app_config with {} entries", ConfigKey.values().length);
@@ -74,6 +75,31 @@ public class ConfigDataInitializer implements ApplicationRunner {
         }
         if (fixed > 0) {
             log.info("app_config cleanup: repaired {} empty INT values", fixed);
+        }
+    }
+
+    private void insertMissingKeys() {
+        int inserted = 0;
+        for (ConfigKey key : ConfigKey.values()) {
+            if (repository.findByConfigKey(key.name()).isPresent()) {
+                continue;
+            }
+            AppConfig entity = AppConfig.builder()
+                .configKey(key.name())
+                .value(key.getMetadata().defaultValue())
+                .type(key.getMetadata().type().name())
+                .description(key.getMetadata().description())
+                .category(key.getMetadata().category().name())
+                .minValue(key.getMetadata().minValue())
+                .maxValue(key.getMetadata().maxValue())
+                .publiclyVisible(key.getMetadata().publiclyVisible())
+                .build();
+            repository.save(entity);
+            inserted++;
+            log.info("Inserted missing app_config key: {}", key.name());
+        }
+        if (inserted > 0) {
+            log.info("app_config: inserted {} missing keys", inserted);
         }
     }
 }

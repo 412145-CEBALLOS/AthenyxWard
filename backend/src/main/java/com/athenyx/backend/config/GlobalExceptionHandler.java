@@ -2,7 +2,17 @@ package com.athenyx.backend.config;
 
 import com.athenyx.backend.ai.AiPremiumRequiredException;
 import com.athenyx.backend.ai.AiUnavailableException;
+import com.athenyx.backend.exception.CheckoutAlreadyCompletedException;
+import com.athenyx.backend.exception.CheckoutAlreadyPremiumException;
+import com.athenyx.backend.exception.CheckoutInvalidProviderException;
+import com.athenyx.backend.exception.CheckoutNotFoundException;
+import com.athenyx.backend.exception.CheckoutNotPendingException;
+import com.athenyx.backend.exception.CheckoutPaymentExpiredException;
+import com.athenyx.backend.exception.CheckoutPaymentFailedException;
+import com.athenyx.backend.exception.MercadoPagoApiException;
 import com.athenyx.backend.heuristics.TrialLimitExceededException;
+import com.athenyx.backend.payment.MpApiException;
+import com.athenyx.backend.security.FeatureDisabledException;
 import com.athenyx.backend.security.RefreshTokenException;
 import com.athenyx.backend.service.AdminUserService;
 import com.athenyx.backend.service.reminder.ReminderConflictException;
@@ -17,6 +27,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.Map;
 
 import java.util.Map;
 
@@ -132,10 +144,65 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", ex.getMessage()));
     }
 
+    @ExceptionHandler(com.athenyx.backend.exception.CheckoutAlreadyPremiumException.class)
+    public ResponseEntity<Map<String, String>> handleCheckoutAlreadyPremium(com.athenyx.backend.exception.CheckoutAlreadyPremiumException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.athenyx.backend.exception.CheckoutNotPendingException.class)
+    public ResponseEntity<Map<String, String>> handleCheckoutNotPending(com.athenyx.backend.exception.CheckoutNotPendingException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.athenyx.backend.exception.CheckoutAlreadyCompletedException.class)
+    public ResponseEntity<Map<String, String>> handleCheckoutAlreadyCompleted(com.athenyx.backend.exception.CheckoutAlreadyCompletedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.athenyx.backend.exception.MercadoPagoApiException.class)
+    public ResponseEntity<Map<String, String>> handleMercadoPagoApi(com.athenyx.backend.exception.MercadoPagoApiException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.athenyx.backend.exception.CheckoutInvalidProviderException.class)
+    public ResponseEntity<Map<String, String>> handleCheckoutInvalidProvider(com.athenyx.backend.exception.CheckoutInvalidProviderException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.athenyx.backend.exception.CheckoutPaymentExpiredException.class)
+    public ResponseEntity<Map<String, String>> handleCheckoutPaymentExpired(com.athenyx.backend.exception.CheckoutPaymentExpiredException ex) {
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.athenyx.backend.exception.CheckoutPaymentFailedException.class)
+    public ResponseEntity<Map<String, String>> handleCheckoutPaymentFailed(com.athenyx.backend.exception.CheckoutPaymentFailedException ex) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(com.athenyx.backend.exception.CheckoutNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleCheckoutNotFound(com.athenyx.backend.exception.CheckoutNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
     @ExceptionHandler(com.athenyx.backend.security.FeatureDisabledException.class)
     public ResponseEntity<Map<String, String>> handleFeatureDisabled(com.athenyx.backend.security.FeatureDisabledException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(MpApiException.class)
+    public ResponseEntity<Map<String, String>> handleMpApiException(MpApiException ex) {
+        log.warn("[GlobalExceptionHandler] MpApiException: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("error", "Error al consultar la API de MercadoPago"));
     }
 
     @ExceptionHandler(ClassCastException.class)

@@ -316,6 +316,116 @@ public class AuditEventListener {
                 .build());
     }
 
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onPaymentInitiated(PaymentInitiatedEvent event) {
+        self().persist(builder(event.getSource())
+                .actionType(AuditActionType.PAYMENT_INITIATED)
+                .actorId(event.getActorId())
+                .actorEmail(event.getActorEmail())
+                .targetType("PAYMENT")
+                .targetId(String.valueOf(event.getPaymentId()))
+                .severity(AuditSeverity.INFO)
+                .result(AuditResult.SUCCESS)
+                .payload(json(Map.of(
+                        "paymentId", event.getPaymentId(),
+                        "provider", event.getProvider(),
+                        "amount", event.getAmount(),
+                        "currency", event.getCurrency()
+                )))
+                .build());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onPaymentCompleted(PaymentCompletedEvent event) {
+        self().persist(builder(event.getSource())
+                .actionType(AuditActionType.PAYMENT_COMPLETED)
+                .actorId(event.getActorId())
+                .actorEmail(event.getActorEmail())
+                .targetType("PAYMENT")
+                .targetId(String.valueOf(event.getPaymentId()))
+                .severity(AuditSeverity.INFO)
+                .result(AuditResult.SUCCESS)
+                .payload(json(Map.of(
+                        "paymentId", event.getPaymentId(),
+                        "provider", event.getProvider(),
+                        "amount", event.getAmount(),
+                        "currency", event.getCurrency()
+                )))
+                .build());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onPaymentFailed(PaymentFailedEvent event) {
+        self().persist(builder(event.getSource())
+                .actionType(AuditActionType.PAYMENT_FAILED)
+                .actorId(event.getActorId())
+                .actorEmail(event.getActorEmail())
+                .targetType("PAYMENT")
+                .targetId(String.valueOf(event.getPaymentId()))
+                .severity(AuditSeverity.WARNING)
+                .result(AuditResult.FAILURE)
+                .payload(json(Map.of(
+                        "paymentId", event.getPaymentId(),
+                        "provider", event.getProvider(),
+                        "amount", event.getAmount(),
+                        "currency", event.getCurrency(),
+                        "reason", event.getReason() != null ? event.getReason() : ""
+                )))
+                .build());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onSubscriptionCanceled(SubscriptionCanceledEvent event) {
+        self().persist(builder(event.getSource())
+                .actionType(AuditActionType.SUBSCRIPTION_CANCELED)
+                .actorId(event.getActorId())
+                .actorEmail(event.getActorEmail())
+                .targetType("PAYMENT")
+                .targetId(String.valueOf(event.getPaymentId()))
+                .severity(AuditSeverity.WARNING)
+                .result(AuditResult.SUCCESS)
+                .payload(json(Map.of(
+                        "paymentId", event.getPaymentId(),
+                        "planTier", event.getPlanTier()
+                )))
+                .build());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onSubscriptionExpired(SubscriptionExpiredEvent event) {
+        self().persist(builder(event.getSource())
+                .actionType(AuditActionType.SUBSCRIPTION_EXPIRED)
+                .actorId(event.getActorId())
+                .actorEmail(event.getActorEmail())
+                .targetType("PAYMENT")
+                .targetId(String.valueOf(event.getPaymentId()))
+                .severity(AuditSeverity.WARNING)
+                .result(AuditResult.SUCCESS)
+                .payload(json(Map.of(
+                        "paymentId", event.getPaymentId(),
+                        "planTier", event.getPlanTier()
+                )))
+                .build());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onSubscriptionEmailSent(SubscriptionEmailSentEvent event) {
+        self().persist(builder(event.getSource())
+                .actionType(AuditActionType.SUBSCRIPTION_EMAIL_SENT)
+                .actorId(event.getActorId())
+                .actorEmail(event.getActorEmail())
+                .targetType("PAYMENT")
+                .targetId(String.valueOf(event.getPaymentId()))
+                .severity(AuditSeverity.INFO)
+                .result(AuditResult.SUCCESS)
+                .payload(json(Map.of(
+                        "paymentId", event.getPaymentId(),
+                        "template", event.getTemplate(),
+                        "recipient", event.getRecipient()
+                )))
+                .build());
+    }
+
     private AuditLog.AuditLogBuilder builder(Object source) {
         return AuditLog.builder()
                 .createdAt(LocalDateTime.now(clock))

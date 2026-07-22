@@ -1,0 +1,290 @@
+<div class="checkout-container">
+
+  @switch (step()) {
+
+    @case ('loading') {
+      <div class="state-card">
+        <div class="spinner large"></div>
+        <h2>Cargando...</h2>
+        <p>Preparando tu pago</p>
+      </div>
+    }
+
+    @case ('redirecting') {
+      <div class="state-card redirect-card" [class]="'redirect-card--' + providerColor()">
+        <div class="redirect-provider">
+          <i [class]="providerIcon()"></i>
+          <span>{{ providerLabel() }}</span>
+        </div>
+        <div class="redirect-animation">
+          <div class="pulse-ring"></div>
+          <i [class]="providerIcon() + ' redirect-icon'"></i>
+        </div>
+        <h2>Redirigiendo a {{ providerLabel() }}</h2>
+        <p>Serás redirigido automáticamente a {{ providerLabel() }} para completar el pago de forma segura.</p>
+        <div class="redirect-loader">
+          <div class="loader-bar"></div>
+        </div>
+      </div>
+    }
+
+    @case ('returning') {
+      <div class="state-card">
+        <div class="return-animation">
+          <i class="ti ti-loader-2 spin-icon"></i>
+        </div>
+        <h2>Volviendo a AthenyxWard</h2>
+        <p>Confirmando tu pago...</p>
+      </div>
+    }
+
+    @case ('form') {
+      <div class="state-card">
+        <div class="form-header">
+          <div class="form-provider-badge" [class]="'badge--' + providerColor()">
+            <i [class]="providerIcon()"></i>
+            <span>{{ providerLabel() }}</span>
+          </div>
+          @if (checkout()?.amount) {
+            <div class="form-amount">
+              {{ formatAmount(checkout()!.amount, checkout()!.currency) }}
+            </div>
+          }
+          <div class="form-plan-label">
+            Premium · {{ checkout()?.billingCycle === 'ANNUAL' ? 'Plan Anual' : 'Plan Mensual' }}
+          </div>
+        </div>
+
+        @if (provider() === 'CARD') {
+          <form class="card-form" (submit)="$event.preventDefault(); submitPayment()">
+            <div class="form-group">
+              <label for="card-number">Número de tarjeta</label>
+              <input
+                id="card-number"
+                type="text"
+                inputmode="numeric"
+                placeholder="1234 5678 9012 3456"
+                autocomplete="cc-number"
+                [value]="cardNumber()"
+                (input)="onCardNumberInput($event)"
+                maxlength="19">
+              @if (cardNumber().length >= 13 && !luhnValid()) {
+                <span class="field-error">Número de tarjeta inválido</span>
+              }
+            </div>
+
+            <div class="form-group">
+              <label for="card-holder">Nombre del titular</label>
+              <input
+                id="card-holder"
+                type="text"
+                placeholder="Juan Pérez"
+                autocomplete="cc-name"
+                [value]="cardHolder()"
+                (input)="cardHolder.set($any($event.target).value)">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="card-expiry">Vencimiento</label>
+                <input
+                  id="card-expiry"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="MM/YY"
+                  autocomplete="cc-exp"
+                  [value]="cardExpiry()"
+                  (input)="onCardExpiryInput($event)"
+                  maxlength="5">
+              </div>
+              <div class="form-group">
+                <label for="card-cvv">CVV</label>
+                <input
+                  id="card-cvv"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="123"
+                  autocomplete="cc-csc"
+                  [value]="cardCvv()"
+                  (input)="onCardCvvInput($event)"
+                  maxlength="4">
+              </div>
+            </div>
+
+            @if (isDev()) {
+              <div class="dev-tools">
+                <button type="button" class="dev-fail-btn" (click)="toggleSimulateFail()">
+                  @if (simulateFail()) {
+                    <i class="ti ti-toggle-left"></i> Simular fallo: <strong>ON</strong>
+                  } @else {
+                    <i class="ti ti-toggle-right"></i> Simular fallo: OFF
+                  }
+                </button>
+              </div>
+            }
+
+            <button
+              type="submit"
+              class="pay-btn"
+              [disabled]="!formValid()">
+              <i [class]="providerIcon()"></i>
+              Pagar {{ checkout()?.amount ? formatAmount(checkout()!.amount, checkout()!.currency) : '' }}
+            </button>
+          </form>
+        } @else {
+          <div class="wallet-confirm">
+            @if (provider() === 'PAYPAL') {
+              <p class="wallet-description">
+                Ingresá tu email de PayPal para confirmar el pago.
+              </p>
+              <form class="card-form" (submit)="$event.preventDefault(); submitPayment()">
+                <div class="form-group">
+                  <label for="paypal-email">Email de PayPal</label>
+                  <input
+                    id="paypal-email"
+                    type="email"
+                    placeholder="tu@email.com"
+                    autocomplete="email"
+                    [value]="paypalEmail()"
+                    (input)="paypalEmail.set($any($event.target).value)">
+                </div>
+                @if (isDev()) {
+                  <div class="dev-tools">
+                    <button type="button" class="dev-fail-btn" (click)="toggleSimulateFail()">
+                      @if (simulateFail()) {
+                        <i class="ti ti-toggle-left"></i> Simular fallo: <strong>ON</strong>
+                      } @else {
+                        <i class="ti ti-toggle-right"></i> Simular fallo: OFF
+                      }
+                    </button>
+                  </div>
+                }
+                <button
+                  type="submit"
+                  class="pay-btn"
+                  [disabled]="!formValid()">
+                  <i [class]="providerIcon()"></i>
+                  Pagar {{ checkout()?.amount ? formatAmount(checkout()!.amount, checkout()!.currency) : '' }}
+                </button>
+              </form>
+            } @else {
+              <p class="wallet-description">
+                Vas a pagar con <strong>{{ providerLabel() }}</strong>. Confirmá para continuar.
+              </p>
+              @if (isDev()) {
+                <div class="dev-tools">
+                  <button type="button" class="dev-fail-btn" (click)="toggleSimulateFail()">
+                    @if (simulateFail()) {
+                      <i class="ti ti-toggle-left"></i> Simular fallo: <strong>ON</strong>
+                    } @else {
+                      <i class="ti ti-toggle-right"></i> Simular fallo: OFF
+                    }
+                  </button>
+                </div>
+              }
+              <button type="button" class="pay-btn" (click)="submitPayment()">
+                <i [class]="providerIcon()"></i>
+                Confirmar y pagar {{ checkout()?.amount ? formatAmount(checkout()!.amount, checkout()!.currency) : '' }}
+              </button>
+            }
+          </div>
+        }
+
+        <p class="secure-note">
+          <i class="ti ti-lock"></i>
+          Pago 100% seguro. Tu suscripción se activa inmediatamente.
+        </p>
+      </div>
+    }
+
+    @case ('processing') {
+      <div class="state-card">
+        <div class="processing-animation">
+          <div class="pulse-ring"></div>
+          <i class="ti ti-loader-2 spin-icon"></i>
+        </div>
+        <h2>Procesando pago</h2>
+        <p>Completando tu transacción de forma segura...</p>
+      </div>
+    }
+
+    @case ('success') {
+      <div class="state-card success">
+        <div class="success-icon">
+          <i class="ti ti-circle-check"></i>
+        </div>
+        <h2>¡Pago exitoso!</h2>
+        <p>Tu suscripción Premium está activa.</p>
+        @if (checkout()) {
+          <div class="receipt">
+            <div class="receipt-row">
+              <span>Plan</span>
+              <span>{{ checkout()!.billingCycle === 'ANNUAL' ? 'Premium Anual' : 'Premium Mensual' }}</span>
+            </div>
+            <div class="receipt-row">
+              <span>Monto</span>
+              <span>{{ formatAmount(checkout()!.amount, checkout()!.currency) }}</span>
+            </div>
+            <div class="receipt-row">
+              <span>Método</span>
+              <span>{{ providerLabel() }}</span>
+            </div>
+          </div>
+        }
+        <button type="button" class="action-btn primary" (click)="goToPlan()">
+          Ir a mi plan
+        </button>
+      </div>
+    }
+
+    @case ('expired') {
+      <div class="state-card warning">
+        <div class="warning-icon">
+          <i class="ti ti-clock"></i>
+        </div>
+        <h2>Pago expirado</h2>
+        <p>La sesión de pago expiró. Podés intentar nuevamente.</p>
+        <div class="actions">
+          <button type="button" class="action-btn secondary" (click)="goToPlan()">
+            Volver
+          </button>
+          <button type="button" class="action-btn primary" (click)="retry()">
+            Reintentar
+          </button>
+        </div>
+      </div>
+    }
+
+    @case ('failed') {
+      <div class="state-card error">
+        <div class="error-icon">
+          <i class="ti ti-x-circle"></i>
+        </div>
+        <h2>Pago fallido</h2>
+        <p>No se pudo procesar el pago. No se te cobró nada.</p>
+        <div class="actions">
+          <button type="button" class="action-btn secondary" (click)="goToPlan()">
+            Volver
+          </button>
+          <button type="button" class="action-btn primary" (click)="retry()">
+            Reintentar
+          </button>
+        </div>
+      </div>
+    }
+
+    @case ('error') {
+      <div class="state-card error">
+        <div class="error-icon">
+          <i class="ti ti-alert-circle"></i>
+        </div>
+        <h2>Error</h2>
+        <p>No se pudo procesar la solicitud. Intentá más tarde.</p>
+        <button type="button" class="action-btn secondary" (click)="goToPlan()">
+          Volver al plan
+        </button>
+      </div>
+    }
+
+  }
+</div>

@@ -1057,4 +1057,48 @@ public class GmailService {
         if (authResults.contains("dmarc=none")) return "NONE";
         return null;
     }
+
+    public void sendEmail(Long userId, String to, String subject, String plainBody, String htmlBody) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            Gmail gmail = buildGmailService(user);
+
+            String boundary = "boundary_" + System.currentTimeMillis();
+
+            StringBuilder raw = new StringBuilder();
+            raw.append("To: ").append(to).append("\r\n");
+            raw.append("Subject: ").append(subject).append("\r\n");
+            raw.append("Content-Type: multipart/alternative; boundary=\"").append(boundary).append("\"\r\n");
+            raw.append("\r\n");
+
+            raw.append("--").append(boundary).append("\r\n");
+            raw.append("Content-Type: text/plain; charset=\"UTF-8\"\r\n");
+            raw.append("\r\n");
+            raw.append(plainBody).append("\r\n");
+            raw.append("\r\n");
+
+            if (htmlBody != null && !htmlBody.isBlank()) {
+                raw.append("--").append(boundary).append("\r\n");
+                raw.append("Content-Type: text/html; charset=\"UTF-8\"\r\n");
+                raw.append("\r\n");
+                raw.append(htmlBody).append("\r\n");
+            }
+
+            raw.append("--").append(boundary).append("--\r\n");
+
+            String encoded = Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(raw.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+            Message message = new Message();
+            message.setRaw(encoded);
+
+            gmail.users().messages().send("me", message).execute();
+            log.info("Email sent successfully to {} for user {}", to, userId);
+
+        } catch (Exception e) {
+            log.error("Failed to send email to {} for user {}: {}", to, userId, e.getMessage());
+        }
+    }
 }

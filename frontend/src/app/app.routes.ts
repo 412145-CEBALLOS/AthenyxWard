@@ -53,6 +53,22 @@ export const routes: Routes = [
         canActivate: [authGuard],
       },
       {
+        path: 'checkout/:paymentId',
+        loadComponent: () =>
+          import('./pages/checkout/checkout').then((m) => m.CheckoutComponent),
+        canActivate: [authGuard],
+      },
+      {
+        path: 'checkout/return',
+        loadComponent: () =>
+          import('./pages/checkout-return/checkout-return').then((m) => m.CheckoutReturnComponent),
+      },
+      {
+        path: 'pricing',
+        loadComponent: () =>
+          import('./pages/pricing/pricing').then((m) => m.PricingComponent),
+      },
+      {
         path: 'reminders',
         loadComponent: () =>
           import('./pages/reminders/reminders').then((m) => m.RemindersComponent),

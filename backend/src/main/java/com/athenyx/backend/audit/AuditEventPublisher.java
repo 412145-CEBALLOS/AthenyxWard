@@ -122,4 +122,40 @@ public class AuditEventPublisher {
         eventPublisher.publishEvent(new ConfigPurgeEvent(
                 this, actorId, actorEmail, targetType, configKey, purgedCount, skippedDueToReminders));
     }
+
+    public void publishPaymentInitiated(Long actorId, String actorEmail, Long paymentId,
+                                       String provider, String amount, String currency) {
+        eventPublisher.publishEvent(new PaymentInitiatedEvent(
+                this, actorId, actorEmail, paymentId, provider, amount, currency));
+    }
+
+    public void publishPaymentCompleted(Long actorId, String actorEmail, Long paymentId,
+                                       String provider, String amount, String currency) {
+        eventPublisher.publishEvent(new PaymentCompletedEvent(
+                this, actorId, actorEmail, paymentId, provider, amount, currency));
+    }
+
+    public void publishPaymentFailed(Long actorId, String actorEmail, Long paymentId,
+                                     String provider, String amount, String currency, String reason) {
+        eventPublisher.publishEvent(new PaymentFailedEvent(
+                this, actorId, actorEmail, paymentId, provider, amount, currency, reason));
+    }
+
+    public void publishSubscriptionCanceled(Long actorId, String actorEmail,
+                                          Long paymentId, String planTier) {
+        eventPublisher.publishEvent(new SubscriptionCanceledEvent(
+                this, actorId, actorEmail, paymentId, planTier));
+    }
+
+    public void publishSubscriptionExpired(Long actorId, String actorEmail,
+                                          Long paymentId, String planTier) {
+        eventPublisher.publishEvent(new SubscriptionExpiredEvent(
+                this, actorId, actorEmail, paymentId, planTier));
+    }
+
+    public void publishSubscriptionEmailSent(Long actorId, String actorEmail,
+                                            Long paymentId, String template, String recipient) {
+        eventPublisher.publishEvent(new SubscriptionEmailSentEvent(
+                this, actorId, actorEmail, paymentId, template, recipient));
+    }
 }

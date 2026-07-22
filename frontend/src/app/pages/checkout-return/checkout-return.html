@@ -1,0 +1,61 @@
+<div class="return-container">
+  @switch (step()) {
+    @case ('loading') {
+      <div class="state-card loading">
+        <div class="spinner large"></div>
+        <h2>Verificando tu pago...</h2>
+        <p>Esto puede tomar unos segundos.</p>
+      </div>
+    }
+
+    @case ('pending') {
+      <div class="state-card pending">
+        <div class="icon-wrap pending-icon">
+          <i class="ti ti-clock"></i>
+        </div>
+        <h2>Pago pendiente</h2>
+        <p>Tu pago está siendo procesado por MercadoPago. Te notificaremos cuando esté confirmado.</p>
+        <p class="sub">Este proceso puede demorar unos minutos. No cierres esta ventana.</p>
+        <button type="button" class="btn primary" (click)="goToPlan()">
+          <i class="ti ti-home"></i>
+          Ir a mi plan
+        </button>
+      </div>
+    }
+
+    @case ('success') {
+      <div class="state-card success">
+        <div class="icon-wrap success-icon">
+          <i class="ti ti-check"></i>
+        </div>
+        <h2>Pago exitoso</h2>
+        <p>Tu suscripción Premium está activa. Bienvenido a AthenyxWard.</p>
+        <div class="actions">
+          <button type="button" class="btn primary" (click)="goToPlan()">
+            <i class="ti ti-sparkles"></i>
+            Explorar Premium
+          </button>
+        </div>
+      </div>
+    }
+
+    @case ('failed') {
+      <div class="state-card failed">
+        <div class="icon-wrap failed-icon">
+          <i class="ti ti-x"></i>
+        </div>
+        <h2>Pago fallido</h2>
+        <p>No se pudo procesar el pago. Por favor intenta nuevamente.</p>
+        <div class="actions">
+          <button type="button" class="btn primary" (click)="retry()">
+            <i class="ti ti-refresh"></i>
+            Reintentar
+          </button>
+          <button type="button" class="btn secondary" (click)="goToPlan()">
+            Volver al plan
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>

@@ -165,9 +165,9 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 issued.row().getAbsoluteExpiresAt()).toSeconds();
 
         String accessCookie = buildSetCookie(
-                "athenyx_token", jwt, "/", jwtUtil.getExpirationMs() / 1000, false);
+                "athenyx_token", jwt, "/", jwtUtil.getExpirationMs() / 1000, "Lax");
         String refreshCookie = buildSetCookie(
-                "athenyx_refresh", issued.raw(), "/", refreshMaxAge, false);
+                "athenyx_refresh", issued.raw(), "/", refreshMaxAge, "Lax");
 
         log.info("OAuth2 success for user={} ({}): writing access cookie + refresh cookie (maxAge={}s)",
                 user.getId(), user.getEmail(), refreshMaxAge);
@@ -204,7 +204,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         return request.getRemoteAddr();
     }
 
-    private String buildSetCookie(String name, String value, String path, long maxAgeSeconds, boolean sameSiteStrict) {
+    private String buildSetCookie(String name, String value, String path, long maxAgeSeconds, String sameSite) {
         StringBuilder sb = new StringBuilder(128);
         sb.append(name).append('=').append(value)
                 .append("; Path=").append(path)
@@ -213,8 +213,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         if (cookieSecure) {
             sb.append("; Secure");
         }
-        if (sameSiteStrict) {
-            sb.append("; SameSite=Strict");
+        if (sameSite != null && !sameSite.isEmpty()) {
+            sb.append("; SameSite=").append(sameSite);
         }
         return sb.toString();
     }
