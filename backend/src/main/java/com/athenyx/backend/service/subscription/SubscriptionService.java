@@ -119,7 +119,8 @@ public class SubscriptionService {
         return new UserInfo(
                 user.getId(), user.getName(), user.getEmail(), user.getPictureUrl(),
                 user.getRole(), user.getTrialEndDate(), user.isTrialExpired(),
-                user.isAccessibilityMode(), user.getTermsAcceptedAt(), user.getTermsVersion());
+                user.isAccessibilityMode(), user.getTermsAcceptedAt(), user.getTermsVersion(),
+                user.getLastLoginAt(), user.getEmailVerified());
     }
 
     public PaymentHistoryResponse getHistory(Long userId, int page, int size) {
