@@ -15,7 +15,7 @@
 }
 
 .modal-card {
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--surface-1);
   border-radius: 16px;
   padding: 24px 28px;
   max-width: 420px;
@@ -30,18 +30,18 @@
   margin: 0;
   font-size: 1.15rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-strong);
 }
 
 .dialog-subtitle {
   margin: 0;
   font-size: 0.9rem;
-  color: #475569;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
 .dialog-subtitle strong {
-  color: #1e293b;
+  color: var(--text-default);
 }
 
 .form-group {
@@ -53,12 +53,12 @@
 .form-label {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--text-muted);
 }
 
 .form-label code {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
+  background: var(--accent-bg);
+  color: var(--status-info-text);
   padding: 1px 5px;
   border-radius: 4px;
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
@@ -67,12 +67,12 @@
 
 .form-select,
 .form-input {
-  background: rgba(248, 250, 252, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: var(--surface-input);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   padding: 9px 12px;
   font-size: 0.88rem;
-  color: #1e293b;
+  color: var(--text-default);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
   width: 100%;
@@ -81,8 +81,8 @@
 
 .form-select:focus,
 .form-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .dialog-actions {
@@ -104,21 +104,22 @@
 }
 
 .btn-secondary {
-  background: rgba(148, 163, 184, 0.18);
-  color: #1e293b;
+  background: var(--surface-badge);
+  color: var(--text-default);
 }
 
 .btn-secondary:hover {
-  background: rgba(148, 163, 184, 0.3);
+  background: var(--surface-hover);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb, #1e40af);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  filter: brightness(1.08);
 }
 
 .btn-primary:disabled {

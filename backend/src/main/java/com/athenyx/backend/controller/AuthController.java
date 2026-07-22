@@ -5,6 +5,8 @@ import com.athenyx.backend.dto.AcceptTermsRequest;
 import com.athenyx.backend.dto.RefreshResponse;
 import com.athenyx.backend.dto.UpdateAccessibilityModeRequest;
 import com.athenyx.backend.dto.UserInfo;
+import com.athenyx.backend.dto.UserUsageResponse;
+import com.athenyx.backend.dto.ActiveSessionResponse;
 import com.athenyx.backend.entity.User;
 import com.athenyx.backend.security.RefreshCookieManager;
 import com.athenyx.backend.security.RefreshTokenException;
@@ -26,6 +28,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -57,6 +60,38 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(authService.getUserInfo(userId));
+    }
+
+    @GetMapping("/me/usage")
+    public ResponseEntity<UserUsageResponse> getUserUsage(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(authService.getUserUsage(userId));
+    }
+
+    @GetMapping("/me/sessions")
+    public ResponseEntity<List<ActiveSessionResponse>> listSessions(
+            Authentication authentication,
+            HttpServletRequest request) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String rawToken = readRefreshCookie(request);
+        return ResponseEntity.ok(authService.listActiveSessions(userId, rawToken));
+    }
+
+    @DeleteMapping("/me/sessions/{id}")
+    public ResponseEntity<Void> revokeSession(
+            Authentication authentication,
+            HttpServletRequest request,
+            @PathVariable Long id) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long userId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String rawToken = readRefreshCookie(request);
+        authService.revokeSession(userId, id, rawToken);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/me/accessibility-mode")

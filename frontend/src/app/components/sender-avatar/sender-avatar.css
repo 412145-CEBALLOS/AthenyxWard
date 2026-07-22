@@ -44,9 +44,9 @@
 }
 
 .avatar.has-favicon {
-  background: #ffffff;
-  border-color: rgba(226, 232, 240, 0.8);
-  color: #1e293b;
+  background: var(--surface-1-solid);
+  border-color: var(--border-medium);
+  color: var(--text-default);
 }
 
 .initials {

@@ -15,7 +15,7 @@
 }
 
 .confirm-card {
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--surface-1);
   border-radius: 16px;
   padding: 24px 28px;
   max-width: 420px;
@@ -30,13 +30,13 @@
   margin: 0;
   font-size: 1.15rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-strong);
 }
 
 .confirm-message {
   margin: 0;
   font-size: 0.95rem;
-  color: #475569;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -59,12 +59,12 @@
 }
 
 .btn-secondary {
-  background: rgba(148, 163, 184, 0.18);
-  color: #1e293b;
+  background: var(--surface-badge);
+  color: var(--text-default);
 }
 
 .btn-secondary:hover {
-  background: rgba(148, 163, 184, 0.3);
+  background: var(--surface-hover);
 }
 
 .btn-primary {

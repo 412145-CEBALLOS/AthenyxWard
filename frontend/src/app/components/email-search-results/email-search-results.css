@@ -15,10 +15,10 @@
   width: min(520px, calc(100vw - 32px));
   max-height: 400px;
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--surface-1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid var(--border-medium);
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(15, 23, 42, 0.18);
   z-index: 99;
@@ -32,15 +32,15 @@
   align-items: center;
   gap: 10px;
   padding: 16px 18px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 0.88rem;
 }
 
 .search-results-loading .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(59, 130, 246, 0.2);
-  border-top-color: #3b82f6;
+  border: 2px solid var(--color-spinner);
+  border-top-color: var(--color-spinner-accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;
@@ -52,7 +52,7 @@
 
 .search-results-empty {
   padding: 24px 18px;
-  color: #94a3b8;
+  color: var(--text-faintest);
   font-size: 0.88rem;
   text-align: center;
 }
@@ -75,7 +75,7 @@
 }
 
 .search-result-item:hover {
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--accent-bg-subtle);
 }
 
 .result-content {
@@ -96,7 +96,7 @@
 .result-sender {
   font-size: 0.84rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-default);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -106,14 +106,14 @@
 
 .result-date {
   font-size: 0.74rem;
-  color: #94a3b8;
+  color: var(--text-faintest);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .result-subject {
   font-size: 0.82rem;
-  color: #334155;
+  color: var(--text-muted);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -122,7 +122,7 @@
 
 .result-snippet {
   font-size: 0.76rem;
-  color: #64748b;
+  color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -137,12 +137,12 @@
 }
 
 .result-risk-red {
-  background: #ef4444;
+  background: var(--color-danger);
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
 }
 
 .result-risk-yellow {
-  background: #f59e0b;
+  background: var(--color-warning);
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
 }
 
@@ -153,10 +153,10 @@
   margin-top: 4px;
   background: none;
   border: none;
-  border-top: 1px solid rgba(226, 232, 240, 0.8);
+  border-top: 1px solid var(--border-medium);
   text-align: left;
   cursor: pointer;
-  color: #3b82f6;
+  color: var(--color-primary);
   font-size: 0.85rem;
   font-weight: 600;
   font-family: inherit;
@@ -164,7 +164,7 @@
 }
 
 .search-results-view-all:hover {
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--accent-bg-subtle);
 }
 
 /* Hide on mobile — the home page filters the inbox live instead. */

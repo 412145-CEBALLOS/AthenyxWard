@@ -67,7 +67,7 @@ public class AdminUserService {
             user.getRole(),
             user.getTrialEndDate(),
             user.getAnalysisCount(),
-            user.getUpdatedAt(),
+            user.getLastLoginAt(),
             user.getCreatedAt(),
             user.isActive(),
             user.getDeletedAt(),
@@ -167,7 +167,7 @@ public class AdminUserService {
             u.getRole(),
             u.getTrialEndDate(),
             u.getAnalysisCount(),
-            u.getUpdatedAt(),
+            u.getLastLoginAt(),
             u.isActive(),
             u.getCreatedAt()
         );

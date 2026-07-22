@@ -7,8 +7,8 @@
   align-items: center;
   gap: 16px;
   padding: 24px 28px 20px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
-  background: rgba(248, 250, 252, 0.4);
+  border-bottom: 1px solid var(--border-medium);
+  background: var(--surface-2);
 }
 
 .viewer-meta {
@@ -28,12 +28,12 @@
   margin: 0;
   font-size: 1.1rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-default);
 }
 
 .viewer-email {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-faint);
   word-break: break-all;
 }
 
@@ -42,7 +42,7 @@
   align-items: center;
   gap: 5px;
   font-size: 0.78rem;
-  color: #94a3b8;
+  color: var(--text-faintest);
 }
 
 .viewer-date-row svg {
@@ -57,10 +57,10 @@
   gap: 6px;
   height: 36px;
   padding: 0 12px;
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid var(--border-medium);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #475569;
+  background: var(--surface-input);
+  color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   flex-shrink: 0;
@@ -80,13 +80,13 @@
 }
 
 .ai-explain-btn:hover:not(:disabled) {
-  background: #f0f4ff;
-  color: #6366f1;
-  border-color: #c7d2fe;
+  background: var(--accent-indigo-bg);
+  color: var(--accent-indigo);
+  border-color: var(--accent-indigo-border);
 }
 
 .ai-explain-btn:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--accent-indigo);
   outline-offset: 2px;
 }
 

@@ -8,17 +8,22 @@ export type AuditActionType =
   | 'ROLE_CHANGE'
   | 'USER_DEACTIVATED'
   | 'USER_REACTIVATED'
+  | 'USER_DELETED'
+  | 'TRIAL_RESET'
   | 'CONFIG_UPDATE'
+  | 'CONFIG_PURGE'
   | 'PHISHING_DETECTED'
   | 'AUTO_ANALYSIS'
   | 'EMAIL_MARKED_IMPORTANT'
   | 'EMAIL_HIDDEN'
+  | 'EMAIL_UNHIDDEN'
   | 'EMAIL_DELETED'
   | 'REMINDER_CREATED'
   | 'REMINDER_UPDATED'
   | 'REMINDER_DELETED'
   | 'REMINDER_DONE'
-  | 'EXPORT_CSV';
+  | 'EXPORT_CSV'
+  | 'SESSION_REVOKED';
 
 export interface AuditEntryResponse {
   id: number;

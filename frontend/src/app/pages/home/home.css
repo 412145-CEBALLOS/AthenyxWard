@@ -10,7 +10,7 @@
   display: flex;
   width: 100%;
   height: calc(100vh - 68px);
-  background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 40%, #f8fafc 100%);
+  background: var(--bg-home-gradient);
   overflow: hidden;
 }
 
@@ -19,10 +19,10 @@
   min-width: 340px;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--surface-2);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-right: 1px solid rgba(255, 255, 255, 0.7);
+  border-right: 1px solid var(--border-white-40);
   box-shadow: 4px 0 32px rgba(59, 130, 246, 0.06);
 }
 
@@ -31,7 +31,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 20px 16px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  border-bottom: 1px solid var(--border-medium);
   flex-shrink: 0;
 }
 
@@ -43,14 +43,14 @@
 
 .email-box-icon {
   font-size: 1.5rem;
-  color: #3b82f6;
+  color: var(--color-primary);
 }
 
 .email-box-header h2 {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-strong);
   letter-spacing: 0.2px;
 }
 
@@ -60,9 +60,9 @@
   gap: 5px;
   padding: 5px 10px;
   border-radius: 20px;
-  border: 1px solid rgba(100, 116, 139, 0.3);
-  background: rgba(255, 255, 255, 0.6);
-  color: #64748b;
+  border: 1px solid var(--border-medium);
+  background: var(--surface-input);
+  color: var(--text-faint);
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
@@ -70,21 +70,21 @@
 }
 
 .filter-chip:hover {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(100, 116, 139, 0.5);
-  color: #475569;
+  background: var(--surface-hover);
+  border-color: var(--border-soft);
+  color: var(--text-muted);
 }
 
 .filter-chip-active {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #b91c1c;
+  background: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+  color: var(--status-danger-text);
 }
 
 .filter-chip-active:hover {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #991b1b;
+  background: var(--status-danger-border);
+  border-color: var(--status-danger-text);
+  color: var(--status-danger-text);
 }
 
 .filter-chip i {
@@ -99,7 +99,7 @@
   height: 18px;
   padding: 0 4px;
   border-radius: 9px;
-  background: #b91c1c;
+  background: var(--color-danger);
   color: white;
   font-size: 0.7rem;
   font-weight: 600;
@@ -108,8 +108,8 @@
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(59, 130, 246, 0.2);
-  border-top-color: #3b82f6;
+  border: 2px solid var(--color-spinner);
+  border-top-color: var(--color-spinner-accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;
@@ -138,7 +138,7 @@
 .email-empty svg {
   width: 56px;
   height: 56px;
-  color: #cbd5e1;
+  color: var(--text-faintest);
   margin-bottom: 16px;
   opacity: 0.6;
 }
@@ -147,12 +147,12 @@
   margin: 0 0 6px;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-faintest);
 }
 
 .email-empty span {
   font-size: 0.8rem;
-  color: #adb5bd;
+  color: var(--text-faint);
 }
 
 .email-loading {
@@ -163,13 +163,13 @@
   padding: 60px 24px;
   text-align: center;
   gap: 16px;
-  color: #64748b;
+  color: var(--text-faint);
   font-size: 0.9rem;
   flex: 1;
 }
 
 .email-loading .spinner {
-  color: #3b82f6;
+  color: var(--color-primary);
 }
 
 .viewer {
@@ -198,13 +198,13 @@
   flex: 1;
   text-align: center;
   padding: 40px;
-  color: #94a3b8;
+  color: var(--text-faintest);
 }
 
 .viewer-empty svg {
   width: 72px;
   height: 72px;
-  color: #cbd5e1;
+  color: var(--text-faintest);
   opacity: 0.5;
   margin-bottom: 20px;
 }
@@ -213,12 +213,12 @@
   margin: 0 0 6px;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-faintest);
 }
 
 .viewer-empty span {
   font-size: 0.85rem;
-  color: #adb5bd;
+  color: var(--text-faint);
 }
 
 .modal-overlay {
@@ -236,7 +236,7 @@
 }
 
 .modal-card {
-  background: white;
+  background: var(--surface-1);
   border-radius: 20px;
   padding: 32px;
   max-width: 420px;
@@ -249,18 +249,18 @@
   margin: 0 0 12px;
   font-size: 1.3rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-strong);
 }
 
 .modal-card p {
   margin: 0 0 24px;
   font-size: 0.95rem;
-  color: #64748b;
+  color: var(--text-faint);
   line-height: 1.5;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: white;
   border: none;
   padding: 12px 32px;
@@ -283,12 +283,12 @@
   gap: 6px;
   margin: .5rem;
   padding: 8px 16px;
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  border: 1px solid var(--accent-border);
   border-radius: 10px;
-  background: rgba(239, 246, 255, 0.6);
+  background: var(--accent-bg-subtle);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: #1e40af;
+  color: var(--status-info-text);
   font-size: 0.88rem;
   font-weight: 600;
   font-family: inherit;
@@ -298,8 +298,8 @@
 }
 
 .back-button button:hover {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.4);
+  background: var(--accent-bg);
+  border-color: var(--accent-border-strong);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.18);
 }
@@ -331,5 +331,4 @@
   .email-box.ocult {
     display: none;
   }
-
 }

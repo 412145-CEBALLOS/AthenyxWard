@@ -16,7 +16,7 @@
   width: 480px;
   max-width: 100%;
   height: 100%;
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--surface-1);
   box-shadow: -8px 0 32px rgba(15, 23, 42, 0.2);
   display: flex;
   flex-direction: column;
@@ -34,21 +34,21 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .drawer-title {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-strong);
 }
 
 .close-btn {
   background: none;
   border: none;
   font-size: 1.1rem;
-  color: #64748b;
+  color: var(--text-faint);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 6px;
@@ -56,8 +56,8 @@
 }
 
 .close-btn:hover {
-  background: rgba(148, 163, 184, 0.15);
-  color: #1e293b;
+  background: var(--surface-badge);
+  color: var(--text-default);
 }
 
 .drawer-body {
@@ -88,14 +88,14 @@
 .meta-label {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-faintest);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .meta-value {
   font-size: 0.9rem;
-  color: #1e293b;
+  color: var(--text-default);
   word-break: break-all;
 }
 
@@ -113,37 +113,37 @@
 
 .severity-chip[data-severity='info'],
 .action-chip {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
+  background: var(--status-info-bg);
+  color: var(--status-info-text);
 }
 
 .severity-chip[data-severity='warning'] {
-  background: rgba(245, 158, 11, 0.15);
-  color: #b45309;
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
 }
 
 .severity-chip[data-severity='critical'] {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 .result-chip[data-result='success'] {
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
 }
 
 .result-chip[data-result='failure'] {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 .correlation-btn {
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: var(--accent-bg-subtle);
+  border: 1px solid var(--accent-border);
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 0.82rem;
-  color: #1d4ed8;
+  color: var(--status-info-text);
   cursor: pointer;
   font-family: monospace;
   word-break: break-all;
@@ -152,7 +152,7 @@
 }
 
 .correlation-btn:hover {
-  background: rgba(59, 130, 246, 0.15);
+  background: var(--accent-bg);
 }
 
 .payload-section {
@@ -163,12 +163,12 @@
 
 .payload-json {
   margin: 0;
-  background: #f8fafc;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   padding: 12px;
   font-size: 0.8rem;
-  color: #1e293b;
+  color: var(--text-default);
   font-family: 'Courier New', monospace;
   overflow-x: auto;
   white-space: pre-wrap;

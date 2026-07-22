@@ -15,7 +15,7 @@
 }
 
 .modal-card {
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--surface-1);
   border-radius: 16px;
   padding: 24px 28px;
   max-width: 460px;
@@ -30,7 +30,7 @@
   margin: 0;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-strong);
 }
 
 .dialog-field {
@@ -42,22 +42,22 @@
 .dialog-label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-default);
 }
 
 .dialog-label-hint {
-  color: #94a3b8;
+  color: var(--text-faintest);
   font-weight: 500;
 }
 
 .dialog-input,
 .dialog-textarea {
-  border: 1px solid rgba(148, 163, 184, 0.6);
+  border: 1px solid var(--border-soft);
   border-radius: 10px;
   padding: 9px 12px;
   font-size: 0.95rem;
-  color: #0f172a;
-  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-strong);
+  background: var(--surface-input);
   font-family: inherit;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -70,31 +70,31 @@
 .dialog-input:focus,
 .dialog-textarea:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .dialog-input.dialog-input-error {
-  border-color: #ef4444;
-  background: rgba(254, 242, 242, 0.6);
+  border-color: var(--color-danger);
+  background: var(--status-danger-bg);
 }
 
 .dialog-error {
   margin: 0;
   font-size: 0.82rem;
-  color: #b91c1c;
+  color: var(--status-danger-text);
   font-weight: 500;
   text-align: right;
 }
 
 .dialog-counter {
   font-size: 0.74rem;
-  color: #94a3b8;
+  color: var(--text-faintest);
   align-self: flex-end;
 }
 
 .dialog-counter-over {
-  color: #dc2626;
+  color: var(--color-danger);
   font-weight: 600;
 }
 
@@ -120,21 +120,22 @@
 }
 
 .btn-secondary {
-  background: rgba(148, 163, 184, 0.18);
-  color: #1e293b;
+  background: var(--surface-badge);
+  color: var(--text-default);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: rgba(148, 163, 184, 0.3);
+  background: var(--surface-hover);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb, #1e40af);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  filter: brightness(1.08);
 }
 
 .btn-secondary:disabled,

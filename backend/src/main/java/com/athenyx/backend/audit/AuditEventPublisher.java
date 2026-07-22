@@ -123,6 +123,10 @@ public class AuditEventPublisher {
                 this, actorId, actorEmail, targetType, configKey, purgedCount, skippedDueToReminders));
     }
 
+    public void publishSessionRevoked(Long actorId, String actorEmail, String familyId, String userAgent) {
+        eventPublisher.publishEvent(new SessionRevokedEvent(this, actorId, actorEmail, familyId, userAgent));
+    }
+
     public void publishPaymentInitiated(Long actorId, String actorEmail, Long paymentId,
                                        String provider, String amount, String currency) {
         eventPublisher.publishEvent(new PaymentInitiatedEvent(

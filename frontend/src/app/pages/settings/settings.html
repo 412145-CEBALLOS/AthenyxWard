@@ -1,36 +1,324 @@
 <app-page-shell
-  icon="ti ti-settings"
-  pageTitle="Configuración"
-  subtitle="Personaliza tu experiencia en Athenyx Ward.">
+  icon="ti ti-user-circle"
+  pageTitle="Mi cuenta"
+  subtitle="Gestiona tu perfil, sesión y datos.">
 
-  <div class="settings-card">
-    @for (setting of settings(); track setting.key) {
-      <div class="settings-row">
-        <div class="settings-text">
-          <span class="settings-label">{{ setting.label }}</span>
-          <p class="settings-description">{{ setting.description }}</p>
+  @if (loading()) {
+    <div class="state-container">
+      <div class="spinner"></div>
+      <p>Cargando...</p>
+    </div>
+  } @else if (error()) {
+    <div class="state-container">
+      <span class="ti ti-alert-circle error-icon"></span>
+      <p>No se pudo cargar la información.</p>
+    </div>
+  } @else {
+    <!-- ── 1. Perfil ── -->
+    <details open class="settings-section">
+      <summary class="section-header">
+        <span class="ti ti-user"></span>
+        <span>Perfil</span>
+      </summary>
+      <div class="settings-card">
+        <div class="profile-row">
+          @if (user()?.pictureUrl) {
+            <img [src]="user()!.pictureUrl" [alt]="user()!.name" class="profile-avatar" />
+          } @else {
+            <div class="profile-avatar profile-avatar--placeholder">
+              {{ user()?.name?.charAt(0)?.toUpperCase() || '?' }}
+            </div>
+          }
+          <div class="profile-info">
+            <div class="profile-name-row">
+              <span class="profile-name">{{ user()?.name || '—' }}</span>
+              @if (roleInfo().label) {
+                <span class="role-chip" [class]="roleInfo().cssClass">{{ roleInfo().label }}</span>
+              }
+            </div>
+            <div class="profile-email-row">
+              <span class="profile-email">{{ user()?.email }}</span>
+              @if (user()?.emailVerified === true) {
+                <span class="badge-verified" title="Verificado por Google">
+                  <span class="ti ti-check"></span> Verificado
+                </span>
+              } @else if (user()?.emailVerified === false) {
+                <span class="badge-unverified" title="No verificado">
+                  <span class="ti ti-alert-circle"></span> No verificado
+                </span>
+              }
+            </div>
+            <div class="profile-meta">
+              <span>Cuenta desde {{ formatDate(user()?.termsAcceptedAt ?? null) }}</span>
+              <span class="meta-sep">·</span>
+              <span>Último acceso {{ formatDate(user()?.lastLoginAt ?? null) }}</span>
+            </div>
+          </div>
         </div>
-        <div class="settings-control">
-          @if (setting.kind === 'toggle') {
+
+        @if (user()?.role === 'TRIAL' && usage()?.analysis?.trialEndDate) {
+          <div class="trial-banner">
+            <span class="ti ti-clock"></span>
+            Tu período de prueba termina el
+            {{ formatDate(usage()!.analysis!.trialEndDate!) }}
+            <a routerLink="/plan" class="trial-link">Mejorar plan</a>
+          </div>
+        }
+      </div>
+    </details>
+
+    <!-- ── 2. Preferencias ── -->
+    <details open class="settings-section">
+      <summary class="section-header">
+        <span class="ti ti-adjustments"></span>
+        <span>Preferencias</span>
+      </summary>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-text">
+            <span class="settings-label">Modo accesibilidad</span>
+            <p class="settings-description">Texto grande, alto contraste e interfaz simplificada.</p>
+          </div>
+          <div class="settings-control">
             <label class="switch">
               <input
                 type="checkbox"
-                [checked]="setting.value === true"
-                (change)="onToggle(setting.key, $any($event.target).checked)" />
+                [checked]="user()?.accessibilityMode ?? true"
+                (change)="onAccessibilityToggle($any($event.target).checked)" />
               <span class="switch-slider"></span>
             </label>
-          } @else if (setting.kind === 'select' && setting.options) {
-            <select
-              class="select"
-              [value]="setting.value"
-              (change)="onSelect(setting.key, $any($event.target).value)">
-              @for (opt of setting.options; track opt) {
-                <option [value]="opt">{{ opt === 'es' ? 'Español' : 'English' }}</option>
-              }
-            </select>
-          }
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-text">
+            <span class="settings-label">Tema</span>
+            <p class="settings-description">Sigue el sistema, claro u oscuro.</p>
+          </div>
+          <div class="settings-control">
+            <div class="segmented" role="radiogroup" aria-label="Tema">
+              <button type="button" role="radio"
+                      [class.active]="currentTheme() === 'auto'"
+                      [attr.aria-checked]="currentTheme() === 'auto'"
+                      (click)="onThemeChange('auto')">Auto</button>
+              <button type="button" role="radio"
+                      [class.active]="currentTheme() === 'light'"
+                      [attr.aria-checked]="currentTheme() === 'light'"
+                      (click)="onThemeChange('light')">Claro</button>
+              <button type="button" role="radio"
+                      [class.active]="currentTheme() === 'dark'"
+                      [attr.aria-checked]="currentTheme() === 'dark'"
+                      (click)="onThemeChange('dark')">Oscuro</button>
+            </div>
+          </div>
         </div>
       </div>
+    </details>
+
+    <!-- ── 3. Seguridad ── -->
+    <details open class="settings-section">
+      <summary class="section-header">
+        <span class="ti ti-shield"></span>
+        <span>Seguridad</span>
+      </summary>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-text">
+            <span class="settings-label">Cuenta vinculada</span>
+            <p class="settings-description">
+              Tu cuenta de Google <strong>{{ user()?.email }}</strong> es tu identidad en Athenyx Ward.
+              Los cambios en tu cuenta de Google se reflejan aquí al iniciar sesión.
+            </p>
+          </div>
+          <div class="settings-control">
+            <span class="badge-google">
+              <svg width="14" height="14" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M44 24c0-2.2-1.8-4-4-4H4v4h36c2.2 0 4-1.8 4-4z" fill="#4280EF"/>
+                <path d="M4 20h36v4H4z" fill="#34A853"/>
+                <path d="M4 24c0 2.2 1.8 4 4 4h32c2.2 0 4-1.8 4-4s-1.8-4-4-4H8c-2.2 0-4 1.8-4 4z" fill="#FBBC0B"/>
+                <path d="M44 24c0-2.2-1.8-4-4-4H8c-2.2 0-4 1.8-4 4s1.8 4 4 4h32c2.2 0 4-1.8 4-4z" fill="#EA4335"/>
+                <path d="M4 28h36v4H4z" fill="#4280EF"/>
+              </svg>
+              Google
+            </span>
+          </div>
+        </div>
+
+        <div class="settings-row sessions-header">
+          <div class="settings-text">
+            <span class="settings-label">Sesiones activas</span>
+            <p class="settings-description">Dispositivos donde tienes la sesión abierta.</p>
+          </div>
+          <button class="btn-secondary btn-sm" (click)="onLogoutAll()">Cerrar todas</button>
+        </div>
+
+        @if (sessions().length === 0) {
+          <div class="sessions-empty">
+            <span class="ti ti-device-mobile"></span>
+            <p>No hay sesiones activas.</p>
+          </div>
+        } @else {
+          <div class="sessions-list">
+            @for (session of sessions(); track session.id) {
+              <div class="session-row" [class.session-current]="session.current">
+                <div class="session-icon">
+                  <span class="ti" [class.ti-device-mobile]="!session.current" [class.ti-current]="session.current"></span>
+                </div>
+                <div class="session-info">
+                  <div class="session-device">
+                    {{ session.userAgent || 'Navegador desconocido' }}
+                  </div>
+                  <div class="session-meta">
+                    <span>{{ session.ip || 'IP desconocida' }}</span>
+                    <span class="meta-sep">·</span>
+                    <span>Último uso {{ formatDate(session.lastUsedAt ?? null) }}</span>
+                    @if (session.current) {
+                      <span class="badge-current">Esta sesión</span>
+                    }
+                  </div>
+                </div>
+                @if (!session.current) {
+                  <button
+                    class="btn-revoke"
+                    title="Revocar sesión"
+                    (click)="onRevokeRequest(session)">
+                    <span class="ti ti-x"></span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </details>
+
+    <!-- ── 4. Actividad ── -->
+    @if (usage()) {
+      <details open class="settings-section">
+        <summary class="section-header">
+          <span class="ti ti-activity"></span>
+          <span>Actividad</span>
+        </summary>
+        <div class="settings-card usage-card">
+          <!-- Análisis -->
+          <div class="usage-item">
+            <div class="usage-item-header">
+              <span class="ti ti-scan"></span>
+              <span class="usage-label">Análisis heurísticos</span>
+              @if (usage()!.analysis.limit !== null) {
+                <span class="usage-count">{{ usage()!.analysis.used }} / {{ usage()!.analysis.limit }}</span>
+              } @else {
+                <span class="usage-count usage-unlimited">Ilimitado</span>
+              }
+            </div>
+            @if (usage()!.analysis.limit !== null) {
+              <div class="progress-bar">
+                <div
+                  class="progress-fill"
+                  [style.width.%]="trialProgressPercent(usage()!.analysis.used, usage()!.analysis.limit!)"
+                  [class.progress-danger]="(usage()!.analysis.used / usage()!.analysis.limit!) > 0.8">
+                </div>
+              </div>
+            }
+            @if (user()?.role === 'TRIAL') {
+              <a routerLink="/plan" class="usage-cta">Mejorar a Premium</a>
+            }
+          </div>
+
+          <!-- Recordatorios -->
+          <div class="usage-item">
+            <div class="usage-item-header">
+              <span class="ti ti-bell"></span>
+              <span class="usage-label">Recordatorios</span>
+              <span class="usage-count">{{ usage()!.reminders.active }} activos · {{ usage()!.reminders.done }} completados</span>
+            </div>
+          </div>
+
+          <!-- Correos -->
+          <div class="usage-item">
+            <div class="usage-item-header">
+              <span class="ti ti-mail"></span>
+              <span class="usage-label">Correos sincronizados</span>
+              <span class="usage-count">{{ formatCount(usage()!.emails.total) }}</span>
+            </div>
+            <div class="usage-subcounts">
+              <span><span class="ti ti-star"></span> {{ formatCount(usage()!.emails.important) }} importantes</span>
+              <span><span class="ti ti-eye-off"></span> {{ formatCount(usage()!.emails.hidden) }} ocultos</span>
+              <span><span class="ti ti-trash"></span> {{ formatCount(usage()!.emails.deleted) }} eliminados</span>
+            </div>
+          </div>
+
+          <!-- Sesiones -->
+          <div class="usage-item">
+            <div class="usage-item-header">
+              <span class="ti ti-device-mobile"></span>
+              <span class="usage-label">Sesiones activas</span>
+              <span class="usage-count">{{ usage()!.sessions.active }}</span>
+            </div>
+          </div>
+        </div>
+      </details>
     }
-  </div>
+
+    <!-- ── 5. Privacidad y datos ── -->
+    @if (usage()) {
+      <details open class="settings-section">
+        <summary class="section-header">
+          <span class="ti ti-lock"></span>
+          <span>Privacidad y datos</span>
+        </summary>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div class="settings-text">
+              <span class="settings-label">Tus datos en Athenyx Ward</span>
+              <p class="settings-description">
+                Estos son los datos que tenemos asociados a tu cuenta.
+                Si quieres ejercer tu derecho de acceso, rectificación o supresión,
+                contacta con
+                <a [href]="'mailto:' + supportEmail()">{{ supportEmail() }}</a>.
+              </p>
+            </div>
+          </div>
+          <div class="inventory-grid">
+            <div class="inventory-item">
+              <span class="inventory-count">{{ formatCount(usage()!.dataInventory.emails) }}</span>
+              <span class="inventory-label">Correos</span>
+            </div>
+            <div class="inventory-item">
+              <span class="inventory-count">{{ formatCount(usage()!.dataInventory.analyses) }}</span>
+              <span class="inventory-label">Análisis</span>
+            </div>
+            <div class="inventory-item">
+              <span class="inventory-count">{{ formatCount(usage()!.dataInventory.aiExplanations) }}</span>
+              <span class="inventory-label">Explicaciones IA</span>
+            </div>
+            <div class="inventory-item">
+              <span class="inventory-count">{{ formatCount(usage()!.dataInventory.reminders) }}</span>
+              <span class="inventory-label">Recordatorios</span>
+            </div>
+            <div class="inventory-item">
+              <span class="inventory-count">{{ formatCount(usage()!.dataInventory.auditEvents) }}</span>
+              <span class="inventory-label">Eventos de auditoría</span>
+            </div>
+          </div>
+          @if (usage()!.dataInventory.oldestRecordAt) {
+            <div class="oldest-record">
+              Datos más antiguos: {{ formatOldestDate(usage()!.dataInventory.oldestRecordAt) }}
+            </div>
+          }
+        </div>
+      </details>
+    }
+
+  }
+
+  @if (confirmRevoke()) {
+    <app-confirm-dialog
+      title="Revocar sesión"
+      [message]="'¿Cerrar la sesión en este dispositivo? Te redirigiremos al login.'"
+      confirmLabel="Revocar"
+      variant="danger"
+      (confirm)="onRevokeConfirm()"
+      (cancel)="onRevokeCancel()" />
+  }
+
 </app-page-shell>

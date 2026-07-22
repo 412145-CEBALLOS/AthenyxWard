@@ -79,4 +79,6 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
         @Param("severity") AuditSeverity severity);
 
     long countByCreatedAtBefore(LocalDateTime cutoff);
+
+    long countByActorId(Long actorId);
 }

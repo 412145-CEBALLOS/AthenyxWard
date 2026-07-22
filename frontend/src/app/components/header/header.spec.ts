@@ -26,6 +26,7 @@ class AuthServiceStub {
   user = (): UserInfo => ({
     id: 1, name: 'U', email: 'u@example.com', pictureUrl: '',
     role: 'PREMIUM', trialEndDate: null, trialExpired: false, accessibilityMode: true, termsAcceptedAt: null, termsVersion: null,
+    lastLoginAt: null, emailVerified: true,
   });
 }
 
