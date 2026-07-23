@@ -111,7 +111,12 @@ export class AuthService {
         { withCredentials: true },
       )
       .pipe(
-        tap((user) => this.currentUser.set(user)),
+        tap((user) => {
+          this.currentUser.set(user);
+          if (isPlatformBrowser(this.platformId)) {
+            localStorage.setItem('athenyx.accessibility-mode', String(enabled));
+          }
+        }),
       );
   }
 

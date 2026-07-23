@@ -22,7 +22,7 @@ const mockUser = {
   role: 'TRIAL' as const,
   trialEndDate: null,
   trialExpired: false,
-  accessibilityMode: true,
+  accessibilityMode: false,
   termsAcceptedAt: null,
   termsVersion: null,
   lastLoginAt: null,
@@ -205,5 +205,26 @@ describe('SettingsComponent', () => {
     const buttons = compiled.querySelectorAll('.segmented button');
     (buttons[1] as HTMLButtonElement).click();
     expect(mockTheme.setTheme).toHaveBeenCalledWith('light');
+  });
+
+  it('disables theme buttons when accessibility mode is enabled', () => {
+    (mockAuth as any).user.set({ ...mockUser, accessibilityMode: true });
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    const buttons = compiled.querySelectorAll('.segmented button');
+    buttons.forEach((btn) => {
+      expect((btn as HTMLButtonElement).disabled).toBe(true);
+    });
+    expect(compiled.querySelector('.segmented-disabled')).toBeTruthy();
+  });
+
+  it('does not call themeService.setTheme when accessibility mode is enabled', () => {
+    (mockAuth as any).user.set({ ...mockUser, accessibilityMode: true });
+    (mockTheme as any).theme.set('auto');
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    const buttons = compiled.querySelectorAll('.segmented button');
+    (buttons[1] as HTMLButtonElement).click();
+    expect(mockTheme.setTheme).not.toHaveBeenCalled();
   });
 });

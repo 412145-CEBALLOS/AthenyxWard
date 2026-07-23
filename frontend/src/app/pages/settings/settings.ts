@@ -45,8 +45,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly confirmRevoke = signal<ActiveSession | null>(null);
   readonly supportEmail = this.appConfig.supportEmail;
   readonly currentTheme = this.themeService.theme;
+  readonly isAccessibilityMode = computed(() => this.user()?.accessibilityMode ?? true);
 
   onThemeChange(theme: Theme): void {
+    if (this.isAccessibilityMode()) {
+      return;
+    }
     this.themeService.setTheme(theme);
   }
 

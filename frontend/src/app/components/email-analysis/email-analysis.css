@@ -456,35 +456,38 @@
 }
 
 .analysis-panel.accessibility-mode {
-  font-size: 15px;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-base);
 
   .toggle-title {
-    font-size: 17px;
+    font-size: var(--font-size-h3);
+    line-height: var(--line-height-heading);
   }
 
   .section-title {
-    font-size: 13px;
+    font-size: var(--font-size-small);
   }
 
   .verdict-text,
   .bullet-list,
   .summary p {
-    font-size: 16px;
-    line-height: 1.7;
+    font-size: var(--font-size-body);
   }
 
   .panel-toggle {
-    padding: 18px 28px;
+    padding: var(--card-padding) calc(var(--card-padding) + 4px);
   }
 
   .btn-action {
-    font-size: 14px;
-    padding: 8px 14px;
+    font-size: var(--btn-font-size);
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    border-radius: var(--btn-border-radius);
   }
 
   .btn-primary {
-    font-size: 15px;
-    padding: 10px 22px;
+    font-size: var(--btn-font-size);
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    border-radius: var(--btn-border-radius);
   }
 
   .hide-when-accessibility {

@@ -89,24 +89,31 @@
             </label>
           </div>
         </div>
-        <div class="settings-row">
+        <div class="settings-row" [class.disabled-row]="isAccessibilityMode()">
           <div class="settings-text">
             <span class="settings-label">Tema</span>
-            <p class="settings-description">Sigue el sistema, claro u oscuro.</p>
+            @if (isAccessibilityMode()) {
+              <p class="settings-description">El tema se bloquea en modo claro mientras el modo accesibilidad esté activo.</p>
+            } @else {
+              <p class="settings-description">Sigue el sistema, claro u oscuro.</p>
+            }
           </div>
           <div class="settings-control">
-            <div class="segmented" role="radiogroup" aria-label="Tema">
+            <div class="segmented" role="radiogroup" aria-label="Tema" [class.segmented-disabled]="isAccessibilityMode()">
               <button type="button" role="radio"
                       [class.active]="currentTheme() === 'auto'"
                       [attr.aria-checked]="currentTheme() === 'auto'"
+                      [disabled]="isAccessibilityMode()"
                       (click)="onThemeChange('auto')">Auto</button>
               <button type="button" role="radio"
                       [class.active]="currentTheme() === 'light'"
                       [attr.aria-checked]="currentTheme() === 'light'"
+                      [disabled]="isAccessibilityMode()"
                       (click)="onThemeChange('light')">Claro</button>
               <button type="button" role="radio"
                       [class.active]="currentTheme() === 'dark'"
                       [attr.aria-checked]="currentTheme() === 'dark'"
+                      [disabled]="isAccessibilityMode()"
                       (click)="onThemeChange('dark')">Oscuro</button>
             </div>
           </div>
