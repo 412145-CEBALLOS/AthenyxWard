@@ -4,342 +4,337 @@
   [subtitle]="subtitle()">
 
   <div class="stats-page">
-  <div class="period-selector" role="tablist" aria-label="Periodo de tiempo">
-    <button type="button" role="tab"
-      [class.active]="period() === 'week'"
-      [attr.aria-selected]="period() === 'week'"
-      (click)="setPeriod('week')">1 semana</button>
-    <button type="button" role="tab"
-      [class.active]="period() === 'month'"
-      [attr.aria-selected]="period() === 'month'"
-      (click)="setPeriod('month')">1 mes</button>
-    <button type="button" role="tab"
-      [class.active]="period() === 'year'"
-      [attr.aria-selected]="period() === 'year'"
-      (click)="setPeriod('year')">1 año</button>
-  </div>
-
-  @if (isAdmin()) {
-    <!-- ============================== ADMIN DASHBOARD ============================== -->
-
-    <div class="kpi-grid kpi-grid-6">
-      @for (kpi of adminKpis(); track kpi.label) {
-        <div class="kpi-card">
-          <span class="kpi-label">{{ kpi.label }}</span>
-          <span class="kpi-value">{{ kpi.value }}</span>
-          <span class="kpi-trend" [attr.data-up]="kpi.trendUp">
-            <i class="ti" [class.ti-arrow-up]="kpi.trendUp" [class.ti-arrow-down]="!kpi.trendUp"></i>
-            {{ kpi.trend }}
-          </span>
-        </div>
-      }
+    <div class="period-selector" role="tablist" aria-label="Periodo de tiempo">
+      <button type="button" role="tab"
+        [class.active]="period() === 'week'"
+        [attr.aria-selected]="period() === 'week'"
+        (click)="setPeriod('week')">1 semana</button>
+      <button type="button" role="tab"
+        [class.active]="period() === 'month'"
+        [attr.aria-selected]="period() === 'month'"
+        (click)="setPeriod('month')">1 mes</button>
+      <button type="button" role="tab"
+        [class.active]="period() === 'year'"
+        [attr.aria-selected]="period() === 'year'"
+        (click)="setPeriod('year')">1 año</button>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-header">
-        <h2 class="chart-title">Amenazas globales por día</h2>
-        <span class="chart-subtitle">{{ periodLabel() }}</span>
-      </div>
-      <div class="chart-bars">
-        @for (day of adminGlobalDailyThreats(); track day.day) {
-          <div class="chart-bar-wrap">
-            <span class="chart-bar-value">{{ day.threats }}</span>
-            <div class="chart-bar-track">
-              <div class="chart-bar-fill" [style.height.%]="barHeight(day.threats, maxAdminThreat())"></div>
-            </div>
-            <span class="chart-bar-label">{{ day.day }}</span>
-          </div>
-        }
-      </div>
-    </div>
-
-    <div class="row-2">
-      <div class="panel">
-        <h2 class="panel-title">Distribución de riesgo global</h2>
-        <div class="risk-distribution">
-          @for (bucket of adminGlobalRiskDistribution(); track bucket.level) {
-            <div class="risk-row">
-              <div class="risk-row-meta">
-                <span class="risk-dot" [attr.data-level]="bucket.level"></span>
-                <span class="risk-row-label">{{ levelLabel(bucket.level) }}</span>
-                <span class="risk-row-count">{{ bucket.count | number:'1.0-0' }}</span>
-                <span class="risk-row-pct">{{ riskPercent(bucket.count, adminTotalRisk()) }}</span>
-              </div>
-              <div class="risk-row-track">
-                <div class="risk-row-fill"
-                  [attr.data-level]="bucket.level"
-                  [style.width.%]="widthPercent(bucket.count, adminTotalRisk())"></div>
-              </div>
-            </div>
-          }
+    @if (loading()) {
+      <div class="stats-skeleton">
+        <div class="skeleton-row" [class.skeleton-row-6]="isAdmin()"></div>
+        <div class="skeleton-chart"></div>
+        <div class="skeleton-row-2">
+          <div class="skeleton-panel"></div>
+          <div class="skeleton-panel"></div>
         </div>
       </div>
-
-      <div class="panel">
-        <h2 class="panel-title">Distribución de usuarios</h2>
-        <div class="user-split">
-          @for (bucket of adminUserSplit(); track bucket.role) {
-            <div class="user-split-card" [attr.data-role]="bucket.role">
-              <span class="user-split-role">{{ roleLabel(bucket.role) }}</span>
-              <span class="user-split-count">{{ bucket.count | number:'1.0-0' }}</span>
-              <span class="user-split-pct">
-                {{ riskPercent(bucket.count, adminTotalUsers()) }}
-              </span>
-            </div>
-          }
-        </div>
+    } @else if (error()) {
+      <div class="stats-empty">
+        <i class="ti ti-alert-circle"></i>
+        <p>{{ error() }}</p>
+        <button type="button" class="stats-retry" (click)="retry()">Reintentar</button>
       </div>
-    </div>
-
-    <div class="row-2">
-      <div class="panel">
-        <h2 class="panel-title">Top amenazas globales</h2>
-        <ul class="ranked-list">
-          @for (cat of adminTopThreatCategories(); track cat.category; let i = $index) {
-            <li class="ranked-item">
-              <span class="ranked-index">{{ i + 1 }}</span>
-              <span class="ranked-label">{{ cat.category }}</span>
-              <div class="ranked-track">
-                <div class="ranked-fill" [style.width.%]="barHeight(cat.count, adminTopMax())"></div>
-              </div>
-              <span class="ranked-count">{{ cat.count | number:'1.0-0' }}</span>
-            </li>
-          }
-        </ul>
+    } @else if (isEmpty()) {
+      <div class="stats-empty">
+        <i class="ti ti-chart-bar-off"></i>
+        <p>No hay datos disponibles para este período.</p>
+        <span class="stats-empty-hint">Realiza o espera análisis para ver las estadísticas.</span>
       </div>
+    } @else if (isAdmin()) {
+      <!-- ============================== ADMIN DASHBOARD ============================== -->
 
-      <div class="panel">
-        <h2 class="panel-title">Marcas suplantadas</h2>
-        <ul class="ranked-list">
-          @for (brand of adminImpersonatedBrands(); track brand.brand; let i = $index) {
-            <li class="ranked-item">
-              <span class="ranked-index">{{ i + 1 }}</span>
-              <span class="ranked-label">{{ brand.brand }}</span>
-              <div class="ranked-track">
-                <div class="ranked-fill" [style.width.%]="barHeight(brand.count, adminBrandsMax())"></div>
-              </div>
-              <span class="ranked-count">{{ brand.count | number:'1.0-0' }}</span>
-            </li>
-          }
-        </ul>
-      </div>
-    </div>
-
-    <div class="row-2">
-      <div class="panel">
-        <h2 class="panel-title">Análisis heurístico vs IA</h2>
-        <div class="source-split">
-          @for (source of adminAnalysisSourceSplit(); track source.source) {
-            <div class="source-row">
-              <div class="source-meta">
-                <span class="source-label">{{ source.source }}</span>
-                <span class="source-count">{{ source.count | number:'1.0-0' }}</span>
-              </div>
-              <div class="source-track">
-                <div class="source-fill" [style.width.%]="barHeight(source.count, adminSourceMax())"></div>
-              </div>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="panel">
-        <h2 class="panel-title">Conversión trial → premium</h2>
-        <div class="conversion-card">
-          <span class="conversion-value">{{ adminConversionRate().value }}</span>
-          <span class="conversion-trend" [attr.data-up]="adminConversionRate().trendUp">
-            <i class="ti" [class.ti-arrow-up]="adminConversionRate().trendUp" [class.ti-arrow-down]="!adminConversionRate().trendUp"></i>
-            {{ adminConversionRate().trend }}
-          </span>
-          <p class="conversion-help">Usuarios trial que se convirtieron a premium en el periodo.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="row-2">
-      <div class="panel">
-        <h2 class="panel-title">Usuarios activos</h2>
-        <div class="engagement-grid">
-          @for (metric of adminEngagement(); track metric.label) {
-            <div class="engagement-card">
-              <span class="engagement-label">{{ metric.label }}</span>
-              <span class="engagement-value">{{ metric.value }}</span>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="panel">
-        <h2 class="panel-title">Latencia de análisis</h2>
-        <div class="latency-grid">
-          <div class="latency-cell">
-            <span class="latency-label">p50</span>
-            <span class="latency-value">{{ adminAnalysisLatency().p50 }}</span>
-          </div>
-          <div class="latency-cell">
-            <span class="latency-label">p95</span>
-            <span class="latency-value">{{ adminAnalysisLatency().p95 }}</span>
-          </div>
-          <div class="latency-cell">
-            <span class="latency-label">p99</span>
-            <span class="latency-value">{{ adminAnalysisLatency().p99 }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-header">
-        <h2 class="chart-title">Nuevos registros por día</h2>
-        <span class="chart-subtitle">{{ periodLabel() }}</span>
-      </div>
-      <div class="chart-bars">
-        @for (day of adminNewSignups(); track day.day) {
-          <div class="chart-bar-wrap">
-            <span class="chart-bar-value">{{ day.signups }}</span>
-            <div class="chart-bar-track">
-              <div class="chart-bar-fill" [style.height.%]="barHeight(day.signups, maxSignup())"></div>
-            </div>
-            <span class="chart-bar-label">{{ day.day }}</span>
-          </div>
-        }
-      </div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-header">
-        <h2 class="chart-title">Amenazas por hora del día</h2>
-        <span class="chart-subtitle">Distribución agregada</span>
-      </div>
-      <div class="heatmap">
-        @for (bucket of adminThreatsByHour(); track bucket.hour) {
-          <div class="heatmap-cell"
-            [style.opacity]="heatmapIntensity(bucket.count, maxHourCount())"
-            [title]="formatHour(bucket.hour) + ' · ' + bucket.count + ' amenazas'">
-            <span class="heatmap-hour">{{ formatHour(bucket.hour) }}</span>
-            <span class="heatmap-count">{{ bucket.count }}</span>
-          </div>
-        }
-      </div>
-    </div>
-
-  } @else {
-    <!-- ============================== USER DASHBOARD ============================== -->
-
-    <div class="kpi-grid">
-      @for (kpi of userKpis(); track kpi.label) {
-        <div class="kpi-card">
-          <span class="kpi-label">{{ kpi.label }}</span>
-          <span class="kpi-value">{{ kpi.value }}</span>
-          <span class="kpi-trend" [attr.data-up]="kpi.trendUp">
-            <i class="ti" [class.ti-arrow-up]="kpi.trendUp" [class.ti-arrow-down]="!kpi.trendUp"></i>
-            {{ kpi.trend }}
-          </span>
-        </div>
-      }
-
-      <div class="kpi-card kpi-safe">
-        <div class="kpi-safe-icon"><i class="ti ti-shield-check"></i></div>
-        <div class="kpi-safe-body">
-          <span class="kpi-label">Última amenaza detectada</span>
-          <span class="kpi-safe-title">Sin amenazas nuevas</span>
-          <span class="kpi-safe-sub">{{ timeSinceLastThreat() }}</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-header">
-        <h2 class="chart-title">Amenazas detectadas por día</h2>
-        <span class="chart-subtitle">{{ periodLabel() }}</span>
-      </div>
-      <div class="chart-bars">
-        @for (day of userWeeklyThreats(); track day.day) {
-          <div class="chart-bar-wrap">
-            <span class="chart-bar-value">{{ day.threats }}</span>
-            <div class="chart-bar-track">
-              <div class="chart-bar-fill" [style.height.%]="barHeight(day.threats, maxUserThreat())"></div>
-            </div>
-            <span class="chart-bar-label">{{ day.day }}</span>
-          </div>
-        }
-      </div>
-    </div>
-
-    <div class="row-2">
-      <div class="panel">
-        <h2 class="panel-title">Distribución de riesgo</h2>
-        <div class="risk-distribution">
-          @for (bucket of userRiskDistribution(); track bucket.level) {
-            <div class="risk-row">
-              <div class="risk-row-meta">
-                <span class="risk-dot" [attr.data-level]="bucket.level"></span>
-                <span class="risk-row-label">{{ levelLabel(bucket.level) }}</span>
-                <span class="risk-row-count">{{ bucket.count | number:'1.0-0' }}</span>
-                <span class="risk-row-pct">{{ riskPercent(bucket.count, userTotalRisk()) }}</span>
-              </div>
-              <div class="risk-row-track">
-                <div class="risk-row-fill"
-                  [attr.data-level]="bucket.level"
-                  [style.width.%]="widthPercent(bucket.count, userTotalRisk())"></div>
-              </div>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="panel">
-        <h2 class="panel-title">Top categorías de amenaza</h2>
-        <ul class="ranked-list">
-          @for (cat of userTopThreats(); track cat.category; let i = $index) {
-            <li class="ranked-item">
-              <span class="ranked-index">{{ i + 1 }}</span>
-              <span class="ranked-label">{{ cat.category }}</span>
-              <div class="ranked-track">
-                <div class="ranked-fill" [style.width.%]="barHeight(cat.count, userTopMax())"></div>
-              </div>
-              <span class="ranked-count">{{ cat.count }}</span>
-            </li>
-          }
-        </ul>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2 class="panel-title">Actividad reciente</h2>
-      <ul class="recent-list">
-        @for (item of userRecentActivity(); track item.date) {
-          <li class="recent-item">
-            <span class="risk-dot" [attr.data-level]="item.level"></span>
-            <div class="recent-body">
-              <span class="recent-sender">{{ item.sender }}</span>
-              <span class="recent-date">{{ item.date }}</span>
-            </div>
-            <span class="risk-badge" [attr.data-level]="item.level">
-              {{ levelLabel(item.level) }} · {{ item.risk }}%
+      <div class="kpi-grid kpi-grid-6">
+        @for (kpi of adminKpis(); track kpi.label) {
+          <div class="kpi-card">
+            <span class="kpi-label">{{ kpi.label }}</span>
+            <span class="kpi-value">{{ formatKpiValue(kpi) }}</span>
+            <span class="kpi-trend" [attr.data-up]="kpi.trendUp">
+              <i class="ti" [class.ti-arrow-up]="kpi.trendUp" [class.ti-arrow-down]="!kpi.trendUp"></i>
+              {{ formatTrend(kpi) }}
             </span>
-          </li>
+          </div>
         }
-      </ul>
-    </div>
+      </div>
 
-    @if (userTrialUsage(); as trial) {
-      <div class="panel">
-        <h2 class="panel-title">Uso de la prueba</h2>
-        <div class="trial-progress">
-          <div class="trial-meta">
-            <span class="trial-label">Análisis restantes</span>
-            <span class="trial-count">{{ trial.total - trial.used }} de {{ trial.total }}</span>
-          </div>
-          <div class="trial-track">
-            <div class="trial-fill" [style.width.%]="userTrialPercent()"></div>
-          </div>
-          <p class="trial-help">
-            Has utilizado {{ trial.used }} de {{ trial.total }} análisis disponibles en tu prueba.
-          </p>
+      <div class="chart-card">
+        <div class="chart-header">
+          <h2 class="chart-title">Amenazas globales por día</h2>
+          <span class="chart-subtitle">{{ periodLabel() }}</span>
+        </div>
+        <div class="chart-bars">
+          @for (day of adminGlobalDailyThreats(); track day.label) {
+            <div class="chart-bar-wrap">
+              <span class="chart-bar-value">{{ day.count }}</span>
+              <div class="chart-bar-track">
+                <div class="chart-bar-fill" [style.height.%]="barHeight(day.count, maxAdminThreat())"></div>
+              </div>
+              <span class="chart-bar-label">{{ day.label }}</span>
+            </div>
+          }
         </div>
       </div>
+
+      <div class="row-2">
+        <div class="panel">
+          <h2 class="panel-title">Distribución de riesgo global</h2>
+          <div class="risk-distribution">
+            @for (bucket of adminGlobalRiskDistribution(); track bucket.level) {
+              <div class="risk-row">
+                <div class="risk-row-meta">
+                  <span class="risk-dot" [attr.data-level]="bucket.level"></span>
+                  <span class="risk-row-label">{{ levelLabel(bucket.level) }}</span>
+                  <span class="risk-row-count">{{ bucket.count | number:'1.0-0' }}</span>
+                  <span class="risk-row-pct">{{ riskPercent(bucket.count, adminTotalRisk()) }}</span>
+                </div>
+                <div class="risk-row-track">
+                  <div class="risk-row-fill"
+                    [attr.data-level]="bucket.level"
+                    [style.width.%]="widthPercent(bucket.count, adminTotalRisk())"></div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Distribución de usuarios</h2>
+          <div class="user-split">
+            @for (bucket of adminUserSplit(); track bucket.role) {
+              <div class="user-split-card" [attr.data-role]="bucket.role">
+                <span class="user-split-role">{{ roleLabel(bucket.role) }}</span>
+                <span class="user-split-count">{{ bucket.count | number:'1.0-0' }}</span>
+                <span class="user-split-pct">
+                  {{ riskPercent(bucket.count, adminTotalUsers()) }}
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="panel">
+          <h2 class="panel-title">Top amenazas globales</h2>
+          <ul class="ranked-list">
+            @for (cat of adminTopCategories(); track cat.category; let i = $index) {
+              <li class="ranked-item">
+                <span class="ranked-index">{{ i + 1 }}</span>
+                <span class="ranked-label">{{ cat.category }}</span>
+                <div class="ranked-track">
+                  <div class="ranked-fill" [style.width.%]="barHeight(cat.count, adminTopMax())"></div>
+                </div>
+                <span class="ranked-count">{{ cat.count | number:'1.0-0' }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Análisis heurístico vs IA</h2>
+          <div class="source-split">
+            @for (source of adminAnalysisSourceSplit(); track source.source) {
+              <div class="source-row">
+                <div class="source-meta">
+                  <span class="source-label">{{ source.source }}</span>
+                  <span class="source-count">{{ source.count | number:'1.0-0' }}</span>
+                </div>
+                <div class="source-track">
+                  <div class="source-fill" [style.width.%]="barHeight(source.count, adminSourceMax())"></div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="panel">
+          <h2 class="panel-title">Conversión trial → premium</h2>
+          @if (adminConversionRate(); as conversion) {
+            <div class="conversion-card">
+              <span class="conversion-value">{{ formatConversionValue(conversion.value) }}</span>
+              <span class="conversion-trend" [attr.data-up]="conversion.trendUp">
+                <i class="ti" [class.ti-arrow-up]="conversion.trendUp" [class.ti-arrow-down]="!conversion.trendUp"></i>
+                {{ formatConversionTrend(conversion.value, conversion.previousValue) }}
+              </span>
+              <p class="conversion-help">Pagos completados sobre altas en el periodo.</p>
+            </div>
+          }
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Usuarios activos</h2>
+          @if (adminEngagement(); as engagement) {
+            <div class="engagement-grid">
+              <div class="engagement-card">
+                <span class="engagement-label">DAU (usuarios activos hoy)</span>
+                <span class="engagement-value">{{ engagement.dau | number:'1.0-0' }}</span>
+              </div>
+              <div class="engagement-card">
+                <span class="engagement-label">WAU (última semana)</span>
+                <span class="engagement-value">{{ engagement.wau | number:'1.0-0' }}</span>
+              </div>
+              <div class="engagement-card">
+                <span class="engagement-label">MAU (último mes)</span>
+                <span class="engagement-value">{{ engagement.mau | number:'1.0-0' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <h2 class="chart-title">Nuevos registros por día</h2>
+          <span class="chart-subtitle">{{ periodLabel() }}</span>
+        </div>
+        <div class="chart-bars">
+          @for (day of adminNewSignups(); track day.label) {
+            <div class="chart-bar-wrap">
+              <span class="chart-bar-value">{{ day.count }}</span>
+              <div class="chart-bar-track">
+                <div class="chart-bar-fill" [style.height.%]="barHeight(day.count, maxSignup())"></div>
+              </div>
+              <span class="chart-bar-label">{{ day.label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <h2 class="chart-title">Amenazas por hora del día</h2>
+          <span class="chart-subtitle">Distribución agregada</span>
+        </div>
+        <div class="heatmap">
+          @for (bucket of adminThreatsByHour(); track bucket.hour) {
+            <div class="heatmap-cell"
+              [style.opacity]="heatmapIntensity(bucket.count, maxHourCount())"
+              [title]="formatHour(bucket.hour) + ' · ' + bucket.count + ' amenazas'">
+              <span class="heatmap-hour">{{ formatHour(bucket.hour) }}</span>
+              <span class="heatmap-count">{{ bucket.count }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+    } @else {
+      <!-- ============================== USER DASHBOARD ============================== -->
+
+      <div class="kpi-grid">
+        @for (kpi of userKpis(); track kpi.label) {
+          <div class="kpi-card">
+            <span class="kpi-label">{{ kpi.label }}</span>
+            <span class="kpi-value">{{ formatKpiValue(kpi) }}</span>
+            <span class="kpi-trend" [attr.data-up]="kpi.trendUp">
+              <i class="ti" [class.ti-arrow-up]="kpi.trendUp" [class.ti-arrow-down]="!kpi.trendUp"></i>
+              {{ formatTrend(kpi) }}
+            </span>
+          </div>
+        }
+
+        <div class="kpi-card kpi-safe">
+          <div class="kpi-safe-icon"><i class="ti ti-shield-check"></i></div>
+          <div class="kpi-safe-body">
+            <span class="kpi-label">Última amenaza detectada</span>
+            <span class="kpi-safe-title">{{ lastThreatAt() ? 'Amenaza reciente' : 'Sin amenazas nuevas' }}</span>
+            <span class="kpi-safe-sub">{{ timeSinceLastThreat() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <h2 class="chart-title">Amenazas detectadas por día</h2>
+          <span class="chart-subtitle">{{ periodLabel() }}</span>
+        </div>
+        <div class="chart-bars">
+          @for (day of userDailyThreats(); track day.label) {
+            <div class="chart-bar-wrap">
+              <span class="chart-bar-value">{{ day.count }}</span>
+              <div class="chart-bar-track">
+                <div class="chart-bar-fill" [style.height.%]="barHeight(day.count, maxUserThreat())"></div>
+              </div>
+              <span class="chart-bar-label">{{ day.label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="panel">
+          <h2 class="panel-title">Distribución de riesgo</h2>
+          <div class="risk-distribution">
+            @for (bucket of userRiskDistribution(); track bucket.level) {
+              <div class="risk-row">
+                <div class="risk-row-meta">
+                  <span class="risk-dot" [attr.data-level]="bucket.level"></span>
+                  <span class="risk-row-label">{{ levelLabel(bucket.level) }}</span>
+                  <span class="risk-row-count">{{ bucket.count | number:'1.0-0' }}</span>
+                  <span class="risk-row-pct">{{ riskPercent(bucket.count, userTotalRisk()) }}</span>
+                </div>
+                <div class="risk-row-track">
+                  <div class="risk-row-fill"
+                    [attr.data-level]="bucket.level"
+                    [style.width.%]="widthPercent(bucket.count, userTotalRisk())"></div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Top categorías de amenaza</h2>
+          <ul class="ranked-list">
+            @for (cat of userTopCategories(); track cat.category; let i = $index) {
+              <li class="ranked-item">
+                <span class="ranked-index">{{ i + 1 }}</span>
+                <span class="ranked-label">{{ cat.category }}</span>
+                <div class="ranked-track">
+                  <div class="ranked-fill" [style.width.%]="barHeight(cat.count, userTopMax())"></div>
+                </div>
+                <span class="ranked-count">{{ cat.count }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Actividad reciente</h2>
+        <ul class="recent-list">
+          @for (item of userRecentActivity(); track item.date + item.sender) {
+            <li class="recent-item">
+              <span class="risk-dot" [attr.data-level]="item.level"></span>
+              <div class="recent-body">
+                <span class="recent-sender">{{ item.sender }}</span>
+                <span class="recent-date">{{ item.date }}</span>
+              </div>
+              <span class="risk-badge" [attr.data-level]="item.level">
+                {{ levelLabel(item.level) }} · {{ item.risk }}%
+              </span>
+            </li>
+          }
+        </ul>
+      </div>
+
+      @if (userTrialUsage(); as trial) {
+        <div class="panel">
+          <h2 class="panel-title">Uso de la prueba</h2>
+          <div class="trial-progress">
+            <div class="trial-meta">
+              <span class="trial-label">Análisis restantes</span>
+              <span class="trial-count">{{ trial.total - trial.used }} de {{ trial.total }}</span>
+            </div>
+            <div class="trial-track">
+              <div class="trial-fill" [style.width.%]="userTrialPercent()"></div>
+            </div>
+            <p class="trial-help">
+              Has utilizado {{ trial.used }} de {{ trial.total }} análisis disponibles en tu prueba.
+            </p>
+          </div>
+        </div>
+      }
     }
-  }
   </div>
 </app-page-shell>

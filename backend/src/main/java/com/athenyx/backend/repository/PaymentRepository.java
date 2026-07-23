@@ -51,4 +51,44 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         LIMIT 1
         """)
     Optional<Payment> findLatestCompletedByUserId(@Param("userId") Long userId);
+
+    @Query("""
+        SELECT COUNT(p) FROM Payment p
+        WHERE p.status = 'COMPLETED'
+        AND p.expiresAt > :now
+        AND p.canceledAt IS NULL
+        """)
+    long countActiveSubscriptions(@Param("now") LocalDateTime now);
+
+    @Query("""
+        SELECT COUNT(p) FROM Payment p
+        WHERE p.status = 'COMPLETED'
+        AND p.expiresAt > :now
+        AND p.canceledAt IS NULL
+        AND p.completedAt BETWEEN :from AND :to
+        """)
+    long countNewActiveSubscriptions(
+        @Param("now") LocalDateTime now,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.canceledAt IS NOT NULL")
+    long countCanceledSubscriptions();
+
+    @Query("""
+        SELECT COUNT(p) FROM Payment p
+        WHERE p.canceledAt BETWEEN :from AND :to
+        """)
+    long countCanceledSubscriptionsBetween(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    @Query("""
+        SELECT COUNT(p) FROM Payment p
+        WHERE p.status = 'COMPLETED'
+        AND p.completedAt BETWEEN :from AND :to
+        """)
+    long countCompletedPaymentsBetween(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
 }

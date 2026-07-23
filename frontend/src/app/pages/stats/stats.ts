@@ -1,81 +1,29 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnDestroy,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { PageShellComponent } from '../../components/page-shell/page-shell';
 import { AuthService } from '../../services/auth.service';
+import { StatsService } from '../../services/stats.service';
+import {
+  AdminStatsResponse,
+  KpiMetric,
+  StatsPeriod,
+  UserStatsResponse,
+} from '../../models/stats.model';
+import { Subject, takeUntil } from 'rxjs';
 
-type Period = 'week' | 'month' | 'year';
-type RiskLevel = 'GREEN' | 'YELLOW' | 'RED';
-type UserRole = 'ADMIN' | 'PREMIUM' | 'TRIAL';
-
-interface Kpi {
-  label: string;
-  value: string;
-  trend: string;
-  trendUp: boolean;
-}
-
-interface DailyThreat {
-  day: string;
-  threats: number;
-}
-
-interface RiskBucket {
-  level: RiskLevel;
-  count: number;
-}
-
-interface UserBucket {
-  role: UserRole;
-  count: number;
-}
-
-interface ThreatCategory {
-  category: string;
-  count: number;
-}
-
-interface ImpersonatedBrand {
-  brand: string;
-  count: number;
-}
-
-interface AnalysisSource {
-  source: string;
-  count: number;
-}
-
-interface EngagementMetric {
-  label: string;
-  value: string;
-}
-
-interface RecentAnalysis {
-  date: string;
-  sender: string;
-  risk: number;
-  level: RiskLevel;
-}
-
-interface SourceSignup {
-  day: string;
-  signups: number;
-}
-
-interface HourBucket {
-  hour: number;
-  count: number;
-}
-
-interface TrialUsage {
-  used: number;
-  total: number;
-}
+const RATE_LABELS = new Set([
+  'Tasa de phishing',
+  'Riesgo medio',
+  'Media análisis / usuario',
+]);
 
 @Component({
   selector: 'app-stats',
@@ -85,8 +33,16 @@ interface TrialUsage {
   styleUrl: './stats.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class StatsComponent {
+export class StatsComponent implements OnDestroy {
   private readonly auth = inject(AuthService);
+  private readonly statsService = inject(StatsService);
+  private readonly onDestroy = new Subject<void>();
+
+  readonly period = signal<StatsPeriod>('week');
+  readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
+  readonly userStats = signal<UserStatsResponse | null>(null);
+  readonly adminStats = signal<AdminStatsResponse | null>(null);
 
   readonly isAdmin = computed(() => this.auth.user()?.role === 'ADMIN');
   readonly isTrial = computed(() => this.auth.user()?.role === 'TRIAL');
@@ -103,22 +59,31 @@ export class StatsComponent {
     this.isAdmin() ? 'ti ti-shield-cog' : 'ti ti-chart-bar',
   );
 
-  readonly period = signal<Period>('week');
   readonly periodLabel = computed(() => {
     switch (this.period()) {
-      case 'week': return 'Última semana';
-      case 'month': return 'Último mes';
-      case 'year': return 'Último año';
+      case 'week':
+        return 'Última semana';
+      case 'month':
+        return 'Último mes';
+      case 'year':
+        return 'Último año';
     }
   });
-  setPeriod(p: Period): void {
-    this.period.set(p);
-  }
 
-  readonly lastThreatAt = signal<string>('2026-06-08T09:14:00');
+  readonly userKpis = computed(() => this.userStats()?.kpis ?? []);
+  readonly userDailyThreats = computed(() => this.userStats()?.dailyThreats ?? []);
+  readonly userRiskDistribution = computed(() => this.userStats()?.riskDistribution ?? []);
+  readonly userTopCategories = computed(() => this.userStats()?.topCategories ?? []);
+  readonly userRecentActivity = computed(() => this.userStats()?.recentActivity ?? []);
+  readonly userTrialUsage = computed(() => this.userStats()?.trialUsage ?? null);
+  readonly lastThreatAt = computed(() => this.userStats()?.lastThreatAt ?? null);
+
   readonly timeSinceLastThreat = computed(() => {
-    const then = new Date(this.lastThreatAt()).getTime();
+    const last = this.lastThreatAt();
+    if (!last) return 'Sin amenazas registradas';
+    const then = new Date(last).getTime();
     const diffMs = Date.now() - then;
+    if (diffMs < 0) return 'hace menos de 1 minuto';
     const minutes = Math.floor(diffMs / 60_000);
     if (minutes < 1) return 'hace menos de 1 minuto';
     if (minutes < 60) return `hace ${minutes} min`;
@@ -128,140 +93,16 @@ export class StatsComponent {
     return `hace ${days} día${days === 1 ? '' : 's'}`;
   });
 
-  readonly userKpis = signal<Kpi[]>([
-    { label: 'Correos analizados', value: '1.284', trend: '+12%', trendUp: true },
-    { label: 'Amenazas bloqueadas', value: '37', trend: '+4', trendUp: true },
-    { label: 'Tasa de phishing', value: '2,9%', trend: '-0,4%', trendUp: false },
-    { label: 'Tiempo medio de análisis', value: '0,8s', trend: '-0,2s', trendUp: false },
-  ]);
-
-  readonly userWeeklyThreats = signal<DailyThreat[]>([
-    { day: 'Lun', threats: 4 },
-    { day: 'Mar', threats: 7 },
-    { day: 'Mié', threats: 3 },
-    { day: 'Jue', threats: 9 },
-    { day: 'Vie', threats: 6 },
-    { day: 'Sáb', threats: 2 },
-    { day: 'Dom', threats: 1 },
-  ]);
-
-  readonly userRiskDistribution = signal<RiskBucket[]>([
-    { level: 'GREEN', count: 1180 },
-    { level: 'YELLOW', count: 71 },
-    { level: 'RED', count: 33 },
-  ]);
-
-  readonly userTopThreats = signal<ThreatCategory[]>([
-    { category: 'PHISHING', count: 18 },
-    { category: 'SUPLANTACIÓN', count: 9 },
-    { category: 'ENLACE PELIGROSO', count: 6 },
-    { category: 'INGENIERÍA SOCIAL', count: 4 },
-  ]);
-
-  readonly userRecentActivity = signal<RecentAnalysis[]>([
-    { date: '2026-06-08 09:14', sender: 'bancosantander@seguridad-cuenta.com', risk: 87, level: 'RED' },
-    { date: '2026-06-07 18:42', sender: 'soporte@athenyx.app', risk: 12, level: 'GREEN' },
-    { date: '2026-06-07 11:05', sender: 'Amazon <ofertas@amaz0n-promo.net>', risk: 64, level: 'YELLOW' },
-    { date: '2026-06-06 22:31', sender: 'no-reply@accounts.google.com', risk: 18, level: 'GREEN' },
-    { date: '2026-06-06 14:18', sender: 'rectoria@univers1dad-edu.co', risk: 71, level: 'RED' },
-  ]);
-
-  readonly userTrialUsage = computed<TrialUsage | null>(() => {
-    if (this.auth.user()?.role !== 'TRIAL') return null;
-    return { used: 8, total: 20 };
-  });
-
-  readonly adminKpis = signal<Kpi[]>([
-    { label: 'Usuarios totales', value: '1.842', trend: '+47', trendUp: true },
-    { label: 'Suscripciones activas', value: '1.103', trend: '+31', trendUp: true },
-    { label: 'Suscripciones canceladas', value: '214', trend: '+8', trendUp: true },
-    { label: 'Análisis totales', value: '287.451', trend: '+12,4%', trendUp: true },
-    { label: 'Media análisis / usuario', value: '156', trend: '+3', trendUp: true },
-    { label: 'Amenazas globales (mes)', value: '4.812', trend: '-5%', trendUp: false },
-  ]);
-
-  readonly adminGlobalDailyThreats = signal<DailyThreat[]>([
-    { day: 'Lun', threats: 612 },
-    { day: 'Mar', threats: 743 },
-    { day: 'Mié', threats: 588 },
-    { day: 'Jue', threats: 902 },
-    { day: 'Vie', threats: 711 },
-    { day: 'Sáb', threats: 304 },
-    { day: 'Dom', threats: 198 },
-  ]);
-
-  readonly adminUserSplit = signal<UserBucket[]>([
-    { role: 'PREMIUM', count: 1103 },
-    { role: 'TRIAL', count: 738 },
-    { role: 'ADMIN', count: 1 },
-  ]);
-
-  readonly adminGlobalRiskDistribution = signal<RiskBucket[]>([
-    { level: 'GREEN', count: 268210 },
-    { level: 'YELLOW', count: 14283 },
-    { level: 'RED', count: 4958 },
-  ]);
-
-  readonly adminTopThreatCategories = signal<ThreatCategory[]>([
-    { category: 'PHISHING', count: 1980 },
-    { category: 'SUPLANTACIÓN DE MARCA', count: 1142 },
-    { category: 'ENLACES PELIGROSOS', count: 802 },
-    { category: 'INGENIERÍA SOCIAL', count: 511 },
-    { category: 'FACTURAS FALSAS', count: 377 },
-  ]);
-
-  readonly adminImpersonatedBrands = signal<ImpersonatedBrand[]>([
-    { brand: 'Amazon', count: 412 },
-    { brand: 'Microsoft', count: 287 },
-    { brand: 'Santander', count: 201 },
-    { brand: 'Google', count: 188 },
-    { brand: 'WhatsApp', count: 154 },
-  ]);
-
-  readonly adminAnalysisSourceSplit = signal<AnalysisSource[]>([
-    { source: 'Heurística', count: 198342 },
-    { source: 'IA (Llama 3)', count: 89109 },
-  ]);
-
-  readonly adminEngagement = signal<EngagementMetric[]>([
-    { label: 'DAU (usuarios activos hoy)', value: '621' },
-    { label: 'WAU (última semana)', value: '1.288' },
-    { label: 'MAU (último mes)', value: '1.704' },
-  ]);
-
-  readonly adminAnalysisLatency = signal({ p50: '0,6s', p95: '2,1s', p99: '4,7s' });
-
-  readonly adminNewSignups = signal<SourceSignup[]>([
-    { day: 'Lun', signups: 12 },
-    { day: 'Mar', signups: 18 },
-    { day: 'Mié', signups: 9 },
-    { day: 'Jue', signups: 22 },
-    { day: 'Vie', signups: 15 },
-    { day: 'Sáb', signups: 4 },
-    { day: 'Dom', signups: 3 },
-  ]);
-
-  readonly adminConversionRate = signal({ value: '14,2%', trend: '+1,1 pp', trendUp: true });
-
-  readonly adminThreatsByHour = signal<HourBucket[]>(
-    Array.from({ length: 24 }, (_, h) => ({
-      hour: h,
-      count: Math.round(40 + 60 * Math.sin(((h - 8) / 24) * Math.PI * 2) + (h % 3) * 12),
-    })),
-  );
-
-  readonly maxUserThreat = computed(() =>
-    Math.max(1, ...this.userWeeklyThreats().map((d) => d.threats)),
-  );
-  readonly maxAdminThreat = computed(() =>
-    Math.max(1, ...this.adminGlobalDailyThreats().map((d) => d.threats)),
-  );
-  readonly maxSignup = computed(() =>
-    Math.max(1, ...this.adminNewSignups().map((d) => d.signups)),
-  );
-  readonly maxHourCount = computed(() =>
-    Math.max(1, ...this.adminThreatsByHour().map((d) => d.count)),
-  );
+  readonly adminKpis = computed(() => this.adminStats()?.kpis ?? []);
+  readonly adminGlobalDailyThreats = computed(() => this.adminStats()?.dailyThreats ?? []);
+  readonly adminGlobalRiskDistribution = computed(() => this.adminStats()?.riskDistribution ?? []);
+  readonly adminUserSplit = computed(() => this.adminStats()?.userSplit ?? []);
+  readonly adminTopCategories = computed(() => this.adminStats()?.topCategories ?? []);
+  readonly adminAnalysisSourceSplit = computed(() => this.adminStats()?.analysisSourceSplit ?? []);
+  readonly adminEngagement = computed(() => this.adminStats()?.engagement ?? null);
+  readonly adminConversionRate = computed(() => this.adminStats()?.conversionRate ?? null);
+  readonly adminNewSignups = computed(() => this.adminStats()?.signups ?? []);
+  readonly adminThreatsByHour = computed(() => this.adminStats()?.threatsByHour ?? []);
 
   readonly userTotalRisk = computed(() =>
     this.userRiskDistribution().reduce((sum, b) => sum + b.count, 0),
@@ -269,19 +110,28 @@ export class StatsComponent {
   readonly adminTotalRisk = computed(() =>
     this.adminGlobalRiskDistribution().reduce((sum, b) => sum + b.count, 0),
   );
-
   readonly adminTotalUsers = computed(() =>
     this.adminUserSplit().reduce((sum, b) => sum + b.count, 0),
   );
 
+  readonly maxUserThreat = computed(() =>
+    Math.max(1, ...this.userDailyThreats().map((d) => d.count)),
+  );
+  readonly maxAdminThreat = computed(() =>
+    Math.max(1, ...this.adminGlobalDailyThreats().map((d) => d.count)),
+  );
+  readonly maxSignup = computed(() =>
+    Math.max(1, ...this.adminNewSignups().map((d) => d.count)),
+  );
+  readonly maxHourCount = computed(() =>
+    Math.max(1, ...this.adminThreatsByHour().map((d) => d.count)),
+  );
+
   readonly userTopMax = computed(() =>
-    Math.max(1, ...this.userTopThreats().map((t) => t.count)),
+    Math.max(1, ...this.userTopCategories().map((t) => t.count)),
   );
   readonly adminTopMax = computed(() =>
-    Math.max(1, ...this.adminTopThreatCategories().map((t) => t.count)),
-  );
-  readonly adminBrandsMax = computed(() =>
-    Math.max(1, ...this.adminImpersonatedBrands().map((b) => b.count)),
+    Math.max(1, ...this.adminTopCategories().map((t) => t.count)),
   );
   readonly adminSourceMax = computed(() =>
     Math.max(1, ...this.adminAnalysisSourceSplit().map((s) => s.count)),
@@ -291,6 +141,108 @@ export class StatsComponent {
     const t = this.userTrialUsage();
     return t ? Math.round((t.used / t.total) * 100) : 0;
   });
+
+  readonly hasUserData = computed(() =>
+    (this.userStats()?.kpis?.length ?? 0) > 0,
+  );
+  readonly hasAdminData = computed(() =>
+    (this.adminStats()?.kpis?.length ?? 0) > 0,
+  );
+  readonly isEmpty = computed(() => {
+    if (this.loading()) return false;
+    if (this.isAdmin()) return !this.hasAdminData();
+    return !this.hasUserData();
+  });
+
+  constructor() {
+    effect(() => {
+      const p = this.period();
+      const user = this.auth.user();
+      if (user) {
+        this.loadStats();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.onDestroy.next();
+    this.onDestroy.complete();
+  }
+
+  setPeriod(p: StatsPeriod): void {
+    if (this.period() === p) return;
+    this.period.set(p);
+    this.loadStats();
+  }
+
+  retry(): void {
+    this.error.set(null);
+    this.loadStats();
+  }
+
+  private loadStats(): void {
+    this.loading.set(true);
+    this.error.set(null);
+
+    if (this.isAdmin()) {
+      this.statsService
+        .getAdminStats(this.period())
+        .pipe(takeUntil(this.onDestroy))
+        .subscribe({
+          next: (stats) => {
+            this.adminStats.set(stats);
+            this.loading.set(false);
+          },
+          error: () => {
+            this.error.set('No se pudieron cargar las estadísticas.');
+            this.loading.set(false);
+          },
+        });
+    } else {
+      this.statsService
+        .getUserStats(this.period())
+        .pipe(takeUntil(this.onDestroy))
+        .subscribe({
+          next: (stats) => {
+            this.userStats.set(stats);
+            this.loading.set(false);
+          },
+          error: () => {
+            this.error.set('No se pudieron cargar las estadísticas.');
+            this.loading.set(false);
+          },
+        });
+    }
+  }
+
+  formatKpiValue(kpi: KpiMetric): string {
+    if (RATE_LABELS.has(kpi.label)) {
+      return `${kpi.value.toFixed(1).replace('.', ',')}%`;
+    }
+    if (kpi.value >= 1000) {
+      return kpi.value.toLocaleString('es-ES', { maximumFractionDigits: 0 });
+    }
+    return kpi.value.toLocaleString('es-ES', { maximumFractionDigits: 1 });
+  }
+
+  formatTrend(kpi: KpiMetric): string {
+    const delta = kpi.value - kpi.previousValue;
+    const sign = delta >= 0 ? '+' : '';
+    if (RATE_LABELS.has(kpi.label)) {
+      return `${sign}${delta.toFixed(1).replace('.', ',')} pp`;
+    }
+    return `${sign}${Math.round(delta)}`;
+  }
+
+  formatConversionValue(value: number): string {
+    return `${value.toFixed(1).replace('.', ',')}%`;
+  }
+
+  formatConversionTrend(value: number, previous: number): string {
+    const delta = value - previous;
+    const sign = delta >= 0 ? '+' : '';
+    return `${sign}${delta.toFixed(1).replace('.', ',')} pp`;
+  }
 
   barHeight(value: number, max: number): number {
     return Math.max(2, Math.round((value / max) * 100));
@@ -315,19 +267,26 @@ export class StatsComponent {
     return `${h.toString().padStart(2, '0')}:00`;
   }
 
-  levelLabel(level: RiskLevel): string {
+  levelLabel(level: 'GREEN' | 'YELLOW' | 'RED'): string {
     switch (level) {
-      case 'GREEN': return 'Seguro';
-      case 'YELLOW': return 'Sospechoso';
-      case 'RED': return 'Peligroso';
+      case 'GREEN':
+        return 'Seguro';
+      case 'YELLOW':
+        return 'Sospechoso';
+      case 'RED':
+        return 'Peligroso';
     }
   }
 
-  roleLabel(role: UserRole): string {
+  roleLabel(role: 'ADMIN' | 'PREMIUM' | 'TRIAL'): string {
     switch (role) {
-      case 'ADMIN': return 'Admin';
-      case 'PREMIUM': return 'Premium';
-      case 'TRIAL': return 'Prueba';
+      case 'ADMIN':
+        return 'Admin';
+      case 'PREMIUM':
+        return 'Premium';
+      case 'TRIAL':
+        return 'Prueba';
     }
   }
+
 }

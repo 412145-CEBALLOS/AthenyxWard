@@ -77,4 +77,136 @@ public interface EmailAnalysisRepository extends JpaRepository<EmailAnalysis, Lo
 
     @Query("SELECT MIN(ea.analyzedAt) FROM EmailAnalysis ea WHERE ea.user.id = :userId")
     LocalDateTime findOldestByUserId(@Param("userId") Long userId);
+
+    long countByUserIdAndAnalyzedAtBetween(Long userId, LocalDateTime from, LocalDateTime to);
+
+    long countByAnalyzedAtBetween(LocalDateTime from, LocalDateTime to);
+
+    @Query("""
+        SELECT COUNT(ea) FROM EmailAnalysis ea
+        WHERE ea.user.id = :userId
+        AND ea.riskLevel = 'RED'
+        AND ea.analyzedAt BETWEEN :from AND :to
+        """)
+    long countThreatsByUserIdAndAnalyzedAtBetween(
+        @Param("userId") Long userId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    @Query("""
+        SELECT COUNT(ea) FROM EmailAnalysis ea
+        WHERE ea.riskLevel = 'RED'
+        AND ea.analyzedAt BETWEEN :from AND :to
+        """)
+    long countThreatsByAnalyzedAtBetween(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    @Query("""
+        SELECT AVG(ea.riskPercentage) FROM EmailAnalysis ea
+        WHERE ea.user.id = :userId
+        AND ea.analyzedAt BETWEEN :from AND :to
+        """)
+    Double avgRiskPercentageByUserIdAndAnalyzedAtBetween(
+        @Param("userId") Long userId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    @Query("""
+        SELECT AVG(ea.riskPercentage) FROM EmailAnalysis ea
+        WHERE ea.analyzedAt BETWEEN :from AND :to
+        """)
+    Double avgRiskPercentageByAnalyzedAtBetween(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    @Query("""
+        SELECT ea.riskLevel AS level, COUNT(ea) AS count FROM EmailAnalysis ea
+        WHERE ea.user.id = :userId
+        AND ea.analyzedAt BETWEEN :from AND :to
+        GROUP BY ea.riskLevel
+        """)
+    List<RiskLevelCount> countRiskLevelsByUserIdAndDateRange(
+        @Param("userId") Long userId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    @Query("""
+        SELECT ea.riskLevel AS level, COUNT(ea) AS count FROM EmailAnalysis ea
+        WHERE ea.analyzedAt BETWEEN :from AND :to
+        GROUP BY ea.riskLevel
+        """)
+    List<RiskLevelCount> countRiskLevelsByDateRange(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    interface RiskLevelCount {
+        com.athenyx.backend.heuristics.ThreatLevel getLevel();
+        long getCount();
+    }
+
+    @Query("""
+        SELECT ea.origin AS source, COUNT(ea) AS count FROM EmailAnalysis ea
+        WHERE ea.analyzedAt BETWEEN :from AND :to
+        GROUP BY ea.origin
+        """)
+    List<OriginCount> countOriginsByDateRange(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    interface OriginCount {
+        com.athenyx.backend.heuristics.AnalysisOrigin getSource();
+        long getCount();
+    }
+
+    @Query(value = """
+        SELECT DATE(ea.analyzed_at), COUNT(*)
+        FROM email_analysis ea
+        WHERE ea.risk_level = 'RED'
+        AND ea.analyzed_at BETWEEN :from AND :to
+        GROUP BY DATE(ea.analyzed_at)
+        """, nativeQuery = true)
+    List<Object[]> countDailyThreats(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    @Query(value = """
+        SELECT HOUR(ea.analyzed_at), COUNT(*)
+        FROM email_analysis ea
+        WHERE ea.risk_level = 'RED'
+        AND ea.analyzed_at BETWEEN :from AND :to
+        GROUP BY HOUR(ea.analyzed_at)
+        """, nativeQuery = true)
+    List<Object[]> countThreatsByHour(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    @Query("""
+        SELECT ea.findings FROM EmailAnalysis ea
+        WHERE ea.user.id = :userId
+        AND ea.analyzedAt BETWEEN :from AND :to
+        ORDER BY ea.analyzedAt DESC
+        """)
+    List<String> findFindingsByUserIdAndDateRange(
+        @Param("userId") Long userId,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to,
+        Pageable pageable);
+
+    @Query("""
+        SELECT ea.findings FROM EmailAnalysis ea
+        WHERE ea.analyzedAt BETWEEN :from AND :to
+        ORDER BY ea.analyzedAt DESC
+        """)
+    List<String> findFindingsByDateRange(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to,
+        Pageable pageable);
+
+    @Query("""
+        SELECT MAX(ea.analyzedAt) FROM EmailAnalysis ea
+        WHERE ea.user.id = :userId
+        AND ea.riskLevel = 'RED'
+        """)
+    java.util.Optional<LocalDateTime> findLastThreatAtByUserId(@Param("userId") Long userId);
 }

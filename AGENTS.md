@@ -450,9 +450,30 @@ DELETE FROM app_config WHERE config_key NOT IN (
 UPDATE app_config SET config_value = '24' WHERE config_key = 'NOTIFICATIONS_UPCOMING_WINDOW_HOURS' AND (config_value IS NULL OR config_value = '');
 ```
 
+## Statistics (Sprint 4)
+
+Página `/stats` con dashboards separados para usuarios (`/api/stats/user`) y administradores (`/api/stats/admin`). Filtrable por `period=week|month|year`.
+
+### Backend
+
+- **`StatsController`** (`/api/stats`): `GET /user` (autenticado) y `GET /admin` (solo `ADMIN`).
+- **`StatsService`**: agrega datos de `EmailAnalysisRepository`, `UserRepository` y `PaymentRepository`.
+- **Métricas usuario**: correos analizados, amenazas bloqueadas (RED), tasa de phishing, riesgo medio, evolución diaria de amenazas, distribución semáforo, top categorías, actividad reciente, última amenaza, uso trial.
+- **Métricas admin**: usuarios totales, suscripciones activas/canceladas, análisis totales, media análisis/usuario, amenazas globales, evolución diaria, distribución de usuarios por rol, top categorías, split heurística/IA/híbrido, DAU/WAU/MAU, conversión trial→premium, altas por día, heatmap de amenazas por hora.
+- **Tendencias**: cada KPI compara el período actual vs. el período anterior inmediato. Los contadores muestran delta absoluto; los porcentajes muestran delta en puntos porcentuales.
+- **Categorías de amenaza**: se obtienen parseando el JSON del campo `findings` (`HeuristicFindingDto.rule`), con tope de 5000 filas y mapeo de nombres de regla a etiquetas en español.
+- **Definición de "amenaza"**: análisis con `riskLevel = RED`.
+- **Consultas nativas**: agrupación por día/hora usa `DATE()`/`HOUR()` sobre `analyzed_at`, compatible con MySQL y H2 (tests).
+
+### Frontend
+
+- **`StatsService`** (`services/stats.service.ts`) y modelo `models/stats.model.ts`.
+- **`StatsComponent`**: carga datos reales al iniciar y al cambiar período mediante un `effect` sobre `auth.user()` y `period`. Estados de carga (skeleton), error (reintentar) y vacío.
+- **Secciones eliminadas del mock original** por falta de fuente de datos: marcas suplantadas, latencia p50/p95/p99, KPI "tiempo medio de análisis". El KPI de usuario ahora incluye "Riesgo medio".
+- **`stats.spec.ts`**: reescrito; los fallos de encoding UTF-8 previos quedan resueltos.
+
 ### Pre-existing Test Issues (not from US 4.5)
 
-- `stats.spec.ts`: 4 failures due to UTF-8 encoding issues with accented characters (í → Ã­) — Karma charset configuration issue
 - `adminGuard.spec.ts`: `auth.checkAuth is not a function` — stub mismatch, pre-existing
 
 ## Known Issues

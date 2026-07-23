@@ -82,4 +82,34 @@ public interface UserRepository extends JpaRepository<User, Long> {
         ORDER BY CASE WHEN LOWER(u.email) LIKE LOWER(CONCAT(:query, '%')) THEN 0 ELSE 1 END
         """)
     List<User> searchByEmail(@Param("query") String query, Pageable pageable);
+
+    long countByDeletedAtIsNull();
+
+    long countByRoleAndDeletedAtIsNull(Role role);
+
+    @Query("""
+        SELECT u.role AS role, COUNT(u) AS count FROM User u
+        WHERE u.deletedAt IS NULL
+        GROUP BY u.role
+        """)
+    List<RoleCount> countByRoleGrouped();
+
+    interface RoleCount {
+        Role getRole();
+        long getCount();
+    }
+
+    long countByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
+
+    @Query(value = """
+        SELECT DATE(u.created_at), COUNT(*)
+        FROM users u
+        WHERE u.created_at BETWEEN :from AND :to
+        GROUP BY DATE(u.created_at)
+        """, nativeQuery = true)
+    List<Object[]> countDailySignups(
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
+
+    long countByLastLoginAtAfterAndDeletedAtIsNull(LocalDateTime cutoff);
 }
