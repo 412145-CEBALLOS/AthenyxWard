@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   CreateCheckoutRequest,
@@ -10,6 +10,7 @@ import {
 } from '../models/plan.model';
 import { UserInfo } from '../models/user-info.model';
 import { environment } from '../../environments/environment';
+import { SKIP_ERROR_TOAST } from '../interceptors/error-toast.interceptor';
 
 @Injectable({
   providedIn: 'root',
@@ -46,7 +47,8 @@ export class CheckoutService {
     );
   }
 
-  getPricing(): Observable<PublicPricingResponse> {
-    return this.http.get<PublicPricingResponse>(`${environment.apiUrl}/public/pricing`);
+  getPricing(skipToast = false): Observable<PublicPricingResponse> {
+    const context = skipToast ? new HttpContext().set(SKIP_ERROR_TOAST, true) : undefined;
+    return this.http.get<PublicPricingResponse>(`${environment.apiUrl}/public/pricing`, { context });
   }
 }

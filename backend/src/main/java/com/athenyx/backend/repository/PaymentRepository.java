@@ -72,12 +72,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         @Param("from") LocalDateTime from,
         @Param("to") LocalDateTime to);
 
-    @Query("SELECT COUNT(p) FROM Payment p WHERE p.canceledAt IS NOT NULL")
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.cancelRequestedAt IS NOT NULL")
     long countCanceledSubscriptions();
 
     @Query("""
         SELECT COUNT(p) FROM Payment p
-        WHERE p.canceledAt BETWEEN :from AND :to
+        WHERE p.cancelRequestedAt BETWEEN :from AND :to
         """)
     long countCanceledSubscriptionsBetween(
         @Param("from") LocalDateTime from,

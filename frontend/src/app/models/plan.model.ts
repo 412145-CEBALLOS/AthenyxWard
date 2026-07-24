@@ -15,6 +15,7 @@ export interface SubscriptionResponse {
   priceCurrency: string;
   annualSavingsPercent: string;
   enabledProviders: string;
+  cancelAtPeriodEnd: boolean;
 }
 
 export interface CreateCheckoutRequest {

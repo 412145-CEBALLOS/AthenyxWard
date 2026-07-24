@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,7 +54,8 @@ public class SubscriptionService {
                     BigDecimal.ZERO,
                     configService.getString(ConfigKey.SUBSCRIPTION_CURRENCY),
                     configService.getString(ConfigKey.SUBSCRIPTION_ANNUAL_SAVINGS_PERCENT),
-                    enabledProviders
+                    enabledProviders,
+                    false
             );
         }
 
@@ -66,20 +66,23 @@ public class SubscriptionService {
 
         Payment payment = latestCompleted.get();
         boolean isActive = payment.getExpiresAt() != null && payment.getExpiresAt().isAfter(LocalDateTime.now());
+        boolean cancelAtPeriodEnd = payment.getCancelRequestedAt() != null;
+        String status = isActive ? (cancelAtPeriodEnd ? "CANCELED" : "ACTIVE") : "EXPIRED";
 
         return new SubscriptionResponse(
                 payment.getPlanTier(),
-                isActive ? "ACTIVE" : "EXPIRED",
+                status,
                 payment.getCompletedAt(),
                 payment.getExpiresAt(),
                 payment.getCanceledAt(),
                 payment.getProvider().name(),
-                true,
+                isActive && !cancelAtPeriodEnd,
                 payment.getBillingCycle(),
                 payment.getAmount(),
                 payment.getCurrency(),
                 configService.getString(ConfigKey.SUBSCRIPTION_ANNUAL_SAVINGS_PERCENT),
-                configService.getString(ConfigKey.PAYMENT_ENABLED_PROVIDERS)
+                configService.getString(ConfigKey.PAYMENT_ENABLED_PROVIDERS),
+                cancelAtPeriodEnd
         );
     }
 
@@ -98,21 +101,19 @@ public class SubscriptionService {
         }
 
         Payment payment = latestCompleted.get();
-        payment.setCanceledAt(LocalDateTime.now());
-        paymentRepository.save(payment);
+        if (payment.getCancelRequestedAt() != null) {
+            return new UserInfo(
+                    user.getId(), user.getName(), user.getEmail(), user.getPictureUrl(),
+                    user.getRole(), user.getTrialEndDate(), user.isTrialExpired(),
+                    user.isAccessibilityMode(), user.getTermsAcceptedAt(), user.getTermsVersion(),
+                    user.getLastLoginAt(), user.getEmailVerified());
+        }
 
-        Role oldRole = user.getRole();
-        user.setRole(Role.TRIAL);
-        user.setTrialEndDate(LocalDateTime.now(ZoneOffset.UTC).plusDays(30));
-        user.setAnalysisCount(0);
-        userRepository.save(user);
-        userRepository.incrementTokenVersion(userId);
+        payment.setCancelRequestedAt(LocalDateTime.now());
+        paymentRepository.save(payment);
 
         auditEventPublisher.publishSubscriptionCanceled(
                 userId, user.getEmail(), payment.getId(), payment.getPlanTier());
-
-        auditEventPublisher.publishRoleChanged(
-                userId, user.getEmail(), user.getEmail(), oldRole.name(), Role.TRIAL.name());
 
         emailService.sendCancellationEmail(userId, payment.getId());
 
@@ -144,7 +145,8 @@ public class SubscriptionService {
                 null, BigDecimal.ZERO,
                 configService.getString(ConfigKey.SUBSCRIPTION_CURRENCY),
                 configService.getString(ConfigKey.SUBSCRIPTION_ANNUAL_SAVINGS_PERCENT),
-                configService.getString(ConfigKey.PAYMENT_ENABLED_PROVIDERS)
+                configService.getString(ConfigKey.PAYMENT_ENABLED_PROVIDERS),
+                false
         );
     }
 

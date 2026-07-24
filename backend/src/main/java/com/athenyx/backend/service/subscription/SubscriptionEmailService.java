@@ -73,11 +73,16 @@ public class SubscriptionEmailService {
                 plain = SubscriptionTemplates.welcomePlain(name, plan, price, renewsAt);
                 html = SubscriptionTemplates.welcomeHtml(name, plan, price, renewsAt);
             } else {
-                String canceledAt = payment.getCanceledAt() != null
-                        ? payment.getCanceledAt().format(DATE_FORMAT) : "hoy";
+                String canceledAt = payment.getCancelRequestedAt() != null
+                        ? payment.getCancelRequestedAt().format(DATE_FORMAT)
+                        : (payment.getCanceledAt() != null
+                                ? payment.getCanceledAt().format(DATE_FORMAT)
+                                : "hoy");
+                String effectiveUntil = payment.getExpiresAt() != null
+                        ? payment.getExpiresAt().format(DATE_FORMAT) : "N/A";
                 subject = SubscriptionTemplates.cancelSubject();
-                plain = SubscriptionTemplates.cancelPlain(name, canceledAt);
-                html = SubscriptionTemplates.cancelHtml(name, canceledAt);
+                plain = SubscriptionTemplates.cancelPlain(name, canceledAt, effectiveUntil);
+                html = SubscriptionTemplates.cancelHtml(name, canceledAt, effectiveUntil);
             }
 
             gmailService.sendEmail(userId, to, subject, plain, html);

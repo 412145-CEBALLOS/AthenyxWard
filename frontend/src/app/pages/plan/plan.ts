@@ -5,12 +5,12 @@ import {
   signal,
   computed,
   OnInit,
-  OnDestroy,
+  DestroyRef,
   PLATFORM_ID,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PageShellComponent } from '../../components/page-shell/page-shell';
 import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog';
 import { AuthService } from '../../services/auth.service';
@@ -18,6 +18,7 @@ import { SubscriptionService } from '../../services/subscription.service';
 import { CheckoutService } from '../../services/checkout.service';
 import { ToastService } from '../../services/toast.service';
 import { PopupService } from '../../services/popup.service';
+import { SKIP_ERROR_TOAST } from '../../interceptors/error-toast.interceptor';
 import {
   SubscriptionResponse,
   BillingCycle,
@@ -36,7 +37,7 @@ type PlanView = 'loading' | 'error' | 'trial' | 'premium';
   styleUrl: './plan.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PlanComponent implements OnInit, OnDestroy {
+export class PlanComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly subscriptionService = inject(SubscriptionService);
   private readonly checkoutService = inject(CheckoutService);
@@ -44,7 +45,7 @@ export class PlanComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly popupService = inject(PopupService);
-  private readonly onDestroy = new Subject<void>();
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly view = signal<PlanView>('loading');
   readonly subscription = signal<SubscriptionResponse | null>(null);
@@ -58,6 +59,7 @@ export class PlanComponent implements OnInit, OnDestroy {
   readonly pendingCheckoutId = signal<number | null>(null);
 
   readonly showCancelDialog = signal(false);
+  private readonly subscriptionLoading = signal(false);
 
   readonly currentUser = computed<UserInfo | null>(() => this.auth.user());
 
@@ -69,16 +71,6 @@ export class PlanComponent implements OnInit, OnDestroy {
     if (!endDate) return 0;
     const diff = new Date(endDate).getTime() - Date.now();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  });
-
-  readonly gracePeriodEnd = computed(() => {
-    const sub = this.subscription();
-    if (sub && !sub.autoRenew && sub.canceledAt) {
-      const canceled = new Date(sub.canceledAt);
-      canceled.setDate(canceled.getDate() + 30);
-      return canceled.toISOString();
-    }
-    return null;
   });
 
   readonly enabledProviders = computed<string[]>(() => {
@@ -93,22 +85,28 @@ export class PlanComponent implements OnInit, OnDestroy {
   ];
 
   ngOnInit(): void {
-    this.loadSubscription();
-    this.loadPricing();
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadSubscription();
+      this.loadPricing();
+    }
   }
 
   ngOnDestroy(): void {
     this.popupService.closePopup();
-    this.onDestroy.next();
-    this.onDestroy.complete();
   }
 
   loadSubscription(): void {
+    if (this.subscriptionLoading()) {
+      return;
+    }
+    this.subscriptionLoading.set(true);
+    this.subscription.set(null);
     this.view.set('loading');
-    this.subscriptionService.getCurrent()
-      .pipe(takeUntil(this.onDestroy))
+    this.subscriptionService.getCurrent(true)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (sub) => {
+          this.subscriptionLoading.set(false);
           this.subscription.set(sub);
           this.pendingCheckoutId.set(null);
           const role = this.currentUser()?.role;
@@ -119,6 +117,7 @@ export class PlanComponent implements OnInit, OnDestroy {
           }
         },
         error: () => {
+          this.subscriptionLoading.set(false);
           this.view.set('error');
           this.toast.error('No se pudo cargar la información de tu suscripción');
         },
@@ -126,8 +125,8 @@ export class PlanComponent implements OnInit, OnDestroy {
   }
 
   loadPricing(): void {
-    this.checkoutService.getPricing()
-      .pipe(takeUntil(this.onDestroy))
+    this.checkoutService.getPricing(true)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (info) => {
           this.pricing.set(info);
@@ -154,7 +153,7 @@ export class PlanComponent implements OnInit, OnDestroy {
       billingCycle: this.selectedCycle(),
       provider: this.selectedProvider(),
       planTier: 'PREMIUM',
-    }).pipe(takeUntil(this.onDestroy))
+    }).pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
           this.processing.set(false);
@@ -198,7 +197,7 @@ export class PlanComponent implements OnInit, OnDestroy {
   loadHistory(): void {
     this.loadingHistory.set(true);
     this.subscriptionService.getHistory(0, 10)
-      .pipe(takeUntil(this.onDestroy))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (history) => {
           this.paymentHistory.set(history);
@@ -218,7 +217,7 @@ export class PlanComponent implements OnInit, OnDestroy {
   confirmCancel(): void {
     this.showCancelDialog.set(false);
     this.subscriptionService.cancel()
-      .pipe(takeUntil(this.onDestroy))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.toast.warning('Tu suscripción se cancelará al final del período de facturación');

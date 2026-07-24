@@ -17,5 +17,6 @@ public record SubscriptionResponse(
     BigDecimal priceAmount,
     String priceCurrency,
     String annualSavingsPercent,
-    String enabledProviders
+    String enabledProviders,
+    boolean cancelAtPeriodEnd
 ) {}

@@ -56,13 +56,15 @@ public final class SubscriptionTemplates {
         return "Tu suscripción Premium fue cancelada — Athenyx Ward";
     }
 
-    public static String cancelPlain(String name, String canceledAt) {
+    public static String cancelPlain(String name, String canceledAt, String effectiveUntil) {
         return String.format("""
             Hola %s,
 
             Tu suscripción Premium de Athenyx Ward fue cancelada el %s.
 
-            ¿Qué perdés con el plan gratuito?
+            Seguís teniendo acceso a todas las funciones Premium hasta el %s. A partir de esa fecha volverás al plan gratuito.
+
+            ¿Qué cambia con el plan gratuito?
               - Volvés a tener %d análisis de correos por mes
               - No podés usar recordatorios ni marcas importantes
               - El historial queda limitado a 7 días
@@ -71,20 +73,20 @@ public final class SubscriptionTemplates {
             ¿Fue un problema con el servicio? Escribinos a soporte@athenyxward.com antes de irte.
 
             El equipo de Athenyx Ward
-            """, name, canceledAt);
+            """, name, canceledAt, effectiveUntil);
     }
 
-    public static String cancelHtml(String name, String canceledAt) {
+    public static String cancelHtml(String name, String canceledAt, String effectiveUntil) {
         return String.format("""
             <!DOCTYPE html>
             <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
               <h2 style="color: #dc2626;">Tu suscripción fue cancelada</h2>
               <p>Hola <strong>%s</strong>,</p>
-              <p>Tu plan Premium fue cancelado el %s. Ahora tenés acceso al plan gratuito.</p>
+              <p>Tu plan Premium fue cancelado el %s. Seguís teniendo acceso completo hasta el %s; a partir de esa fecha volverás al plan gratuito.</p>
               <p style="color: #888; font-size: 12px;">El equipo de Athenyx Ward · <a href="mailto:soporte@athenyxward.com">soporte@athenyxward.com</a></p>
             </body>
             </html>
-            """, name, canceledAt);
+            """, name, canceledAt, effectiveUntil);
     }
 }

@@ -12,7 +12,8 @@ import java.time.LocalDateTime;
     @Index(name = "idx_payment_user_status", columnList = "user_id, status"),
     @Index(name = "idx_payment_status_expires", columnList = "status, expires_at"),
     @Index(name = "idx_payment_provider_ref", columnList = "provider, provider_ref"),
-    @Index(name = "idx_payment_claim_token", columnList = "claim_token")
+    @Index(name = "idx_payment_claim_token", columnList = "claim_token"),
+    @Index(name = "idx_payment_cancel_req", columnList = "cancel_requested_at")
 })
 @Getter
 @Setter
@@ -65,6 +66,8 @@ public class Payment {
     private LocalDateTime expiresAt;
 
     private LocalDateTime canceledAt;
+
+    private LocalDateTime cancelRequestedAt;
 
     private String failureReason;
 

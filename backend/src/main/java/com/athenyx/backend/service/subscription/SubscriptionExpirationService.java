@@ -37,7 +37,9 @@ public class SubscriptionExpirationService {
             }
 
             payment.setCanceledAt(LocalDateTime.now());
-            payment.setFailureReason("expired");
+            payment.setFailureReason(payment.getCancelRequestedAt() != null
+                    ? "canceled_at_period_end"
+                    : "expired");
             paymentRepository.save(payment);
 
             user.setRole(Role.TRIAL);

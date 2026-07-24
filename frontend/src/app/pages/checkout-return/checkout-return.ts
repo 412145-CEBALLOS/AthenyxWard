@@ -102,6 +102,7 @@ export class CheckoutReturnComponent implements OnInit, OnDestroy {
             this.step.set('success');
             this.auth.checkAuth().pipe(takeUntil(this.onDestroy)).subscribe();
             this.toast.success('Pago completado. Bienvenido a Premium!');
+            this.router.navigate(['/home']);
           } else if (status.status === 'FAILED') {
             this.clearPoll();
             this.step.set('failed');
@@ -148,6 +149,7 @@ export class CheckoutReturnComponent implements OnInit, OnDestroy {
             this.step.set('success');
             this.auth.checkAuth().pipe(takeUntil(this.onDestroy)).subscribe();
             this.toast.success('Pago completado. Bienvenido a Premium!');
+            this.router.navigate(['/home']);
           } else if (status.status === 'FAILED') {
             this.clearPoll();
             this.step.set('failed');

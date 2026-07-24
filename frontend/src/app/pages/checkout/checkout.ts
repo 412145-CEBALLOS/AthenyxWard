@@ -192,6 +192,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           this.step.set('success');
           this.auth.checkAuth().pipe(takeUntil(this.onDestroy)).subscribe();
           this.toast.success('¡Pago completado! Ya sos usuario Premium.');
+          this.router.navigate(['/home']);
         },
         error: (err) => {
           if (err.status === 409) {
@@ -200,6 +201,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
               this.step.set('success');
               this.toast.success('¡Pago completado! Ya sos usuario Premium.');
               this.auth.checkAuth().pipe(takeUntil(this.onDestroy)).subscribe();
+              this.router.navigate(['/home']);
             } else {
               this.step.set('failed');
               this.toast.error('Tu pago anterior no se completó. Iniciá uno nuevo.');
@@ -221,6 +223,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   goToPlan(): void {
     this.router.navigate(['/plan']);
+  }
+
+  goHome(): void {
+    this.router.navigate(['/home']);
   }
 
   retry(): void {

@@ -110,15 +110,15 @@
     </div>
   }
 
-  @if (view() === 'premium') {
+    @if (view() === 'premium') {
     <div class="premium-container">
-      @if (!subscription()?.autoRenew) {
+      @if (subscription()?.cancelAtPeriodEnd) {
         <div class="cancel-warning">
           <i class="ti ti-alert-triangle"></i>
           <div>
             <strong>Suscripción cancelada</strong>
             <p>
-              Tu suscripción está activa hasta el {{ formatDate(gracePeriodEnd()) }}.
+              Tu suscripción está activa hasta el {{ formatDate(subscription()?.renewsAt) }}.
               Después de esa fecha volverás al plan TRIAL.
             </p>
           </div>
@@ -158,7 +158,7 @@
           </div>
         </div>
 
-        @if (subscription()?.autoRenew) {
+        @if (!subscription()?.cancelAtPeriodEnd) {
           <button type="button" class="cancel-btn" (click)="requestCancel()">
             Cancelar suscripción
           </button>
