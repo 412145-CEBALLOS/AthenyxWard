@@ -82,8 +82,13 @@
               [class.selected]="selectedProvider() === provider.id"
               [class.disabled]="!isProviderEnabled(provider.id)"
               [disabled]="!isProviderEnabled(provider.id)"
+              [attr.title]="providerDisabledTooltip(provider.id)"
               (click)="selectProvider(provider.id)">
-              <i [class]="provider.icon"></i>
+              @if (provider.logoUrl) {
+                <img [src]="provider.logoUrl" [alt]="provider.name" class="provider-logo">
+              } @else {
+                <i [class]="provider.icon"></i>
+              }
               <span>{{ provider.name }}</span>
             </button>
           }

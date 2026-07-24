@@ -1069,7 +1069,8 @@ public class GmailService {
 
             StringBuilder raw = new StringBuilder();
             raw.append("To: ").append(to).append("\r\n");
-            raw.append("Subject: ").append(subject).append("\r\n");
+            String encodedSubject = Base64.getEncoder().encodeToString(subject.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            raw.append("Subject: =?UTF-8?B?").append(encodedSubject).append("?=\r\n");
             raw.append("Content-Type: multipart/alternative; boundary=\"").append(boundary).append("\"\r\n");
             raw.append("\r\n");
 

@@ -78,9 +78,9 @@ export class PlanComponent implements OnInit {
     return csv ? csv.split(',') : [];
   });
 
-  readonly providers: { id: string; name: string; icon: string }[] = [
+  readonly providers: { id: string; name: string; icon: string; logoUrl?: string }[] = [
     { id: 'PAYPAL', name: 'PayPal', icon: 'ti ti-brand-paypal' },
-    { id: 'MERCADOPAGO', name: 'MercadoPago', icon: 'ti ti-currency-dollar' },
+    { id: 'MERCADOPAGO', name: 'MercadoPago', icon: 'ti ti-currency-dollar', logoUrl: 'https://logowik.com/content/uploads/images/mercado-pago3162.logowik.com.webp' },
     { id: 'CARD', name: 'Tarjeta', icon: 'ti ti-credit-card' },
   ];
 
@@ -144,7 +144,17 @@ export class PlanComponent implements OnInit {
   }
 
   isProviderEnabled(providerId: string): boolean {
+    if (providerId === 'PAYPAL' || providerId === 'CARD') {
+      return false;
+    }
     return this.enabledProviders().includes(providerId);
+  }
+
+  providerDisabledTooltip(providerId: string): string {
+    if (providerId === 'PAYPAL' || providerId === 'CARD') {
+      return 'Deshabilitado temporalmente';
+    }
+    return '';
   }
 
   startCheckout(): void {

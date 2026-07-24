@@ -226,6 +226,12 @@
   color: var(--text-faint);
 }
 
+.provider-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+}
+
 .provider-btn:hover {
   border-color: var(--text-faintest);
 }
